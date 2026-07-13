@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>정보 페이지 — Boditech MED</title>
+<style>
+  :root {
+    --bg:#ffffff; --surface:#ffffff; --surface2:#f8fafc; --border:#d1d5db;
+    --accent:#2563eb; --accent2:#7c3aed; --accent3:#059669;
+    --text:#111827; --text2:#6b7280; --red:#dc2626; --yellow:#ca8a04;
+    --radius:12px; --radius-sm:6px;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font-family:'Pretendard','Segoe UI',system-ui,sans-serif; min-height:100vh; }
+  .app { display:flex; flex-direction:column; height:100vh; }
+  .header { padding:14px 24px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .home-btn { text-decoration:none; color:var(--text2); font-size:13px; font-weight:600; }
+  .home-btn:hover { color:var(--accent); }
+  .header h1 { font-size:18px; font-weight:700; letter-spacing:-.3px; }
+  .header h1 span { color:var(--accent); }
+  .mode-tabs { display:flex; gap:6px; }
+  .mode-btn { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 18px; color:var(--text2); font-size:13px; font-weight:600; cursor:pointer; }
+  .mode-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .mode-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .search-wrap { flex:1; min-width:220px; max-width:440px; position:relative; }
+  .search-wrap input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:9px 14px 9px 36px; color:var(--text); font-size:14px; outline:none; }
+  .search-wrap input:focus { border-color:var(--accent); }
+  .search-wrap .icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text2); font-size:14px; }
+  .search-note { font-size:11px; color:var(--text2); width:100%; }
+
+  .content { flex:1; overflow-y:auto; padding:20px 24px; }
+
+  /* device chips */
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
+  .chip { background:var(--surface2); border:1px solid var(--border); border-radius:20px; padding:7px 16px; font-size:13px; font-weight:600; color:var(--text2); cursor:pointer; }
+  .chip:hover { border-color:var(--accent); color:var(--accent); }
+  .chip.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .chip .n { font-size:11px; opacity:.7; margin-left:4px; }
+
+  .section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; margin-bottom:16px; }
+  .section h2 { font-size:13px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:.8px; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .section h2 .cnt { background:var(--surface2); border-radius:10px; padding:1px 9px; font-size:11px; color:var(--accent); }
+
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { background:var(--surface2); padding:9px 12px; text-align:left; font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; white-space:nowrap; }
+  td { padding:9px 12px; border-bottom:1px solid #e5e7eb; vertical-align:top; }
+  tr.clickable:hover td { background:var(--surface2); cursor:pointer; }
+  .table-wrap { overflow-x:auto; max-height:520px; overflow-y:auto; }
+
+  .tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; background:rgba(37,99,235,.1); color:var(--accent); margin:1px 2px 1px 0; }
+  .tag-green { background:rgba(5,150,105,.1); color:var(--accent3); }
+  .tag-red { background:rgba(220,38,38,.1); color:var(--red); }
+  .tag-gray { background:var(--surface2); color:var(--text2); }
+
+  .doc-item { display:flex; align-items:baseline; gap:10px; padding:7px 4px; border-bottom:1px solid #f1f5f9; font-size:13px; }
+  .doc-item .ext { font-size:10px; font-weight:700; text-transform:uppercase; background:var(--surface2); border:1px solid var(--border); border-radius:4px; padding:1px 6px; color:var(--text2); min-width:44px; text-align:center; }
+  .doc-item .cat { color:var(--text2); font-size:12px; white-space:nowrap; }
+  .doc-item .nm { flex:1; }
+
+  .cause-block { background:var(--surface2); border-radius:var(--radius-sm); padding:8px 10px; margin:4px 0; font-size:12.5px; line-height:1.55; }
+  .cause-block b { color:var(--accent); }
+
+  .empty-state { text-align:center; padding:60px 20px; color:var(--text2); }
+  .empty-state .ico { font-size:44px; margin-bottom:10px; }
+  .hl { background:#fef08a; border-radius:2px; }
+
+  /* detail overlay */
+  .detail-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:100; }
+  .detail-overlay.open { display:flex; align-items:flex-end; justify-content:flex-end; }
+  .detail-panel { background:var(--surface); width:560px; max-width:100vw; height:100vh; overflow-y:auto; border-left:1px solid var(--border); padding:24px; position:relative; }
+  .detail-close { position:sticky; top:0; float:right; background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:6px 12px; cursor:pointer; font-size:13px; }
+  .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .detail-field.full { grid-column:1/-1; }
+  .detail-field label { font-size:10px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.8px; display:block; margin-bottom:4px; }
+  .detail-field p { font-size:13px; line-height:1.5; background:var(--surface2); border-radius:6px; padding:8px 10px; min-height:32px; word-break:break-word; white-space:pre-wrap; }
+  .section-divider { font-size:11px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:1px; margin:18px 0 8px; grid-column:1/-1; border-bottom:1px solid var(--border); padding-bottom:6px; }
+
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+</style>
+<script src="claim-data.js"></script>
+<script src="claim-sheet.js"></script>
+<script src="guide-data.js"></script>
+<script src="info-docs.js"></script>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <a href="index.html" class="home-btn">← 홈</a>
+    <h1>정보 <span>페이지</span></h1>
+    <div class="mode-tabs">
+      <button class="mode-btn active" id="tabDevice" onclick="switchMode('device')">🔧 장비</button>
+      <button class="mode-btn" id="tabCart" onclick="switchMode('cartridge')">🧪 카트리지 (LOT NO.)</button>
+    </div>
+    <div class="search-wrap">
+      <span class="icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="검색어 입력 후 Enter" autocomplete="off">
+    </div>
+    <div class="search-note">⏎ Enter를 눌러야 검색이 실행됩니다. 검색어를 지우고 Enter를 누르면 전체 보기로 돌아갑니다.</div>
+  </div>
+  <div class="content" id="mainContent"></div>
+</div>
+
+<div class="detail-overlay" id="detailOverlay">
+  <div class="detail-panel">
+    <button class="detail-close" onclick="closeDetail()">✕ 닫기</button>
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<script>
+/* ============ 클레임 데이터 통합 (전 연도) ============ */
+function normalizeRaw(arr) {
+  return (arr || []).map(r => {
+    const o = {};
+    for (const [k, v] of Object.entries(r)) o[k] = (v === null || v === undefined) ? '' : String(v).trim();
+    return o;
+  });
+}
+let ALL_CLAIMS = [], CLAIM_MAP = {}, LOT_INDEX = {}, LOT_LIST = [];
+
+function rebuildClaimAggregates(extras) {
+  extras = extras || { '2024': [], '2025': [], '2026': [] };
+  const base = [].concat(
+    normalizeRaw(typeof RAW_2024 !== 'undefined' ? RAW_2024 : []),
+    normalizeRaw(typeof RAW_2025 !== 'undefined' ? RAW_2025 : []),
+    normalizeRaw(typeof RAW_2026 !== 'undefined' ? RAW_2026 : [])
+  );
+  const seen = new Set(base.map(r => r.no));
+  const extraFlat = normalizeRaw([].concat(extras['2024'] || [], extras['2025'] || [], extras['2026'] || []))
+    .filter(r => r.no && !seen.has(r.no));
+  ALL_CLAIMS = base.concat(extraFlat);
+
+  CLAIM_MAP = {};
+  for (const r of ALL_CLAIMS) CLAIM_MAP[r.no] = r;
+
+  /* ---- 카트리지: LOT NO.별 집계 ---- */
+  LOT_INDEX = {};
+  for (const r of ALL_CLAIMS) {
+    const lot = (r.lot || '').trim();
+    if (!lot || lot.toUpperCase() === 'N/A' || lot === '-') continue;
+    if (!LOT_INDEX[lot]) LOT_INDEX[lot] = { lot: lot, items: {}, claims: [], countries: {}, c3: {}, first: '', last: '' };
+    const L = LOT_INDEX[lot];
+    L.claims.push(r.no);
+    if (r.item) L.items[r.item] = (L.items[r.item] || 0) + 1;
+    if (r.country) L.countries[r.country] = (L.countries[r.country] || 0) + 1;
+    if (r.c3 && r.c3.indexOf('Inquiry') === -1) L.c3[r.c3] = (L.c3[r.c3] || 0) + 1;
+    const d = r.recv_date || '';
+    if (d) {
+      if (!L.first || d < L.first) L.first = d;
+      if (!L.last || d > L.last) L.last = d;
+    }
+  }
+  LOT_LIST = Object.values(LOT_INDEX);
+  LOT_LIST.sort((a, b) => (a.last || '') < (b.last || '') ? 1 : -1); // 최신순
+}
+rebuildClaimAggregates(); // 기본 데이터로 1차 렌더 (업로드 공유분은 아래에서 비동기로 반영)
+
+/* ============ 장비 목록 & 매칭 ============ */
+const DEVICES = [
+  { id:'afias1',  label:'AFIAS-1',  family:'afias', num:1 },
+  { id:'afias3',  label:'AFIAS-3',  family:'afias', num:3 },
+  { id:'afias6',  label:'AFIAS-6',  family:'afias', num:6 },
+  { id:'afias10', label:'AFIAS-10', family:'afias', num:10 },
+  { id:'ich2',    label:'ichroma II',  family:'ichroma', roman:'II' },
+  { id:'ich3',    label:'ichroma III', family:'ichroma', roman:'III' },
+  { id:'trias3',  label:'TRIAS-3',  family:'trias', docDev:['TRIAS-3'] },
+  { id:'ah600',   label:'AH-600 (HPLC)',    family:'hplc', docDev:['AH-600','AH-600 Series (공통)'] },
+  { id:'ah600p',  label:'AH-600pro (HPLC)', family:'hplc', docDev:['AH-600pro','AH-600 Series (공통)'] },
+  { id:'alcis',   label:'ALCIS 2 (Shine i200)', family:'alcis', docDev:['ALCIS 2 (Shine i200)'] },
+];
+
+function romanOk(entryDev, roman) {
+  return new RegExp('(^|[^IVX])' + roman + '($|[^IVX])').test(entryDev.toUpperCase().replace(/2/g,'II').replace(/3/g,'III'));
+}
+function guideDeviceMatch(entryDev, dev) {
+  if (!entryDev) return false;
+  const e = entryDev.toLowerCase();
+  // 가이드의 '공통'은 AFIAS/ichroma 계열 공통 항목 (HPLC/ALCIS/TRIAS에는 표시하지 않음)
+  if (e.trim() === '공통') return dev.family === 'afias' || dev.family === 'ichroma';
+  if (dev.family === 'afias') {
+    if (e.indexOf('afias') === -1) return false;
+    if (e.indexOf('공통') !== -1) return true;
+    const nums = new Set();
+    const range = e.match(/(\d+)\s*-\s*(\d+)/);
+    if (range) [1,3,6,10].forEach(n => { if (n >= +range[1] && n <= +range[2]) nums.add(n); });
+    (e.match(/\d+/g) || []).forEach(n => nums.add(+n));
+    return nums.has(dev.num);
+  }
+  if (dev.family === 'ichroma') {
+    if (e.indexOf('ichroma') === -1) return false;
+    return romanOk(entryDev, dev.roman);
+  }
+  return false;
+}
+function docMatch(doc, dev) {
+  if (dev.docDev) return dev.docDev.indexOf(doc.device) !== -1;
+  if (dev.family === 'afias') return doc.device === dev.label || (doc.pack === '숏메뉴얼' && doc.device === '공통');
+  if (dev.family === 'ichroma') return doc.device.toLowerCase().indexOf('ichroma') !== -1 && romanOk(doc.device, dev.roman);
+  return false;
+}
+function deviceCount(dev) {
+  let n = 0;
+  ['type1_error_index','type1_afias_detail','type2_afias','type2_ichroma','type2_faq'].forEach(sec => {
+    (GUIDE_DATA[sec] || []).forEach(r => { if (guideDeviceMatch(r.device, dev)) n++; });
+  });
+  (typeof GUIDE_DOCS !== 'undefined' ? GUIDE_DOCS : []).forEach(d => { if (docMatch(d, dev)) n++; });
+  return n;
+}
+
+/* ============ 상태 ============ */
+let mode = 'device';
+let selectedDevice = DEVICES[0];
+let kw = '';
+
+function switchMode(m) {
+  mode = m;
+  kw = '';
+  document.getElementById('searchInput').value = '';
+  document.getElementById('tabDevice').classList.toggle('active', m === 'device');
+  document.getElementById('tabCart').classList.toggle('active', m === 'cartridge');
+  render();
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function hl(text) {
+  const t = esc(text);
+  if (!kw) return t;
+  const e = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return t.replace(new RegExp('(' + e + ')', 'gi'), '<span class="hl">$1</span>');
+}
+function matchKw(obj) {
+  if (!kw) return true;
+  const k = kw.toLowerCase();
+  return JSON.stringify(obj).toLowerCase().indexOf(k) !== -1;
+}
+
+/* ============ 장비 뷰 ============ */
+function selectDevice(id) {
+  selectedDevice = DEVICES.find(d => d.id === id) || DEVICES[0];
+  render();
+}
+
+function renderDeviceView() {
+  const dev = selectedDevice;
+  const chips = DEVICES.map(d =>
+    `<button class="chip ${d.id === dev.id ? 'active' : ''}" onclick="selectDevice('${d.id}')">${d.label}<span class="n">${deviceCount(d)}</span></button>`
+  ).join('');
+
+  const ei = (GUIDE_DATA.type1_error_index || []).filter(r => guideDeviceMatch(r.device, dev) && matchKw(r));
+  const det = (GUIDE_DATA.type1_afias_detail || []).filter(r => guideDeviceMatch(r.device, dev) && matchKw(r));
+  const sym = [].concat(GUIDE_DATA.type2_afias || [], GUIDE_DATA.type2_ichroma || [])
+    .filter(r => guideDeviceMatch(r.device, dev) && matchKw(r));
+  const faq = (GUIDE_DATA.type2_faq || []).filter(r => guideDeviceMatch(r.device, dev) && matchKw(r));
+  const docs = (typeof GUIDE_DOCS !== 'undefined' ? GUIDE_DOCS : []).filter(d => docMatch(d, dev) && matchKw(d));
+
+  let html = `<div class="chips">${chips}</div>`;
+  const total = ei.length + det.length + sym.length + faq.length + docs.length;
+  if (kw) html += `<div style="font-size:13px;color:var(--text2);margin-bottom:12px;">"${esc(kw)}" 검색 결과: <b style="color:var(--accent)">${total}건</b> (장비: ${dev.label})</div>`;
+
+  if (ei.length) {
+    html += `<div class="section"><h2>에러코드 인덱스 <span class="cnt">${ei.length}</span></h2><div class="table-wrap"><table>
+      <thead><tr><th>에러코드</th><th>장비</th><th>증상 요약</th><th>분류</th></tr></thead><tbody>` +
+      ei.map(r => `<tr><td style="font-weight:600;color:var(--accent)">${hl(r.error_code)}</td><td>${hl(r.device)}</td><td>${hl(r.symptom_summary)}</td><td><span class="tag tag-gray">${hl(r.category)}</span></td></tr>`).join('') +
+      `</tbody></table></div></div>`;
+  }
+  if (det.length) {
+    html += `<div class="section"><h2>에러 상세 · 원인/조치 <span class="cnt">${det.length}</span></h2>` +
+      det.map(r => {
+        const causes = Array.isArray(r.causes) ? r.causes.map(c =>
+          `<div class="cause-block"><b>원인:</b> ${hl(c.cause || '')}${c.action ? `<br><b>조치:</b> ${hl(c.action)}` : ''}</div>`).join('') : '';
+        return `<div style="margin-bottom:14px;"><div style="font-size:13.5px;font-weight:700;">${hl((r.error_code || '').split('\n')[0])} <span class="tag">${hl(r.device)}</span> <span class="tag tag-gray">${hl(r.category || '')}</span></div>${causes}</div>`;
+      }).join('') + `</div>`;
+  }
+  if (sym.length) {
+    html += `<div class="section"><h2>증상별 대응 <span class="cnt">${sym.length}</span></h2>` +
+      sym.map(r => {
+        const causes = Array.isArray(r.causes) ? r.causes.map(c =>
+          `<div class="cause-block"><b>원인:</b> ${hl(c.cause || '')}${c.action ? `<br><b>조치:</b> ${hl(c.action)}` : ''}</div>`).join('') : '';
+        return `<div style="margin-bottom:14px;"><div style="font-size:13.5px;font-weight:700;">${hl(r.symptom)} <span class="tag">${hl(r.device)}</span></div>${causes}</div>`;
+      }).join('') + `</div>`;
+  }
+  if (faq.length) {
+    html += `<div class="section"><h2>FAQ <span class="cnt">${faq.length}</span></h2>` +
+      faq.map(r => `<div style="margin-bottom:12px;"><div style="font-size:13.5px;font-weight:700;">Q. ${hl(r.symptom)} <span class="tag">${hl(r.device)}</span>${r.error_code ? ` <span class="tag tag-gray">${hl(r.error_code)}</span>` : ''}</div><div class="cause-block">${hl(r.answer || '')}${r.ref ? `<br><span style="color:var(--text2)">참고: ${hl(r.ref)}</span>` : ''}</div></div>`).join('') + `</div>`;
+  }
+  if (docs.length) {
+    const byCat = {};
+    docs.forEach(d => { (byCat[d.category] = byCat[d.category] || []).push(d); });
+    html += `<div class="section"><h2>관련 자료 (업무가이드 파일 목록) <span class="cnt">${docs.length}</span></h2>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">※ 원본 파일은 공유 폴더의 업무가이드(${[...new Set(docs.map(d=>d.pack))].join(' / ')}) 안에 있습니다.</div>` +
+      Object.keys(byCat).sort().map(cat =>
+        `<div style="font-size:12px;font-weight:700;color:var(--accent);margin:10px 0 4px;">${esc(cat)}</div>` +
+        byCat[cat].map(d => `<div class="doc-item"><span class="ext">${esc(d.ext)}</span><span class="nm">${hl(d.name)}</span><span class="cat">${esc(d.pack)}</span></div>`).join('')
+      ).join('') + `</div>`;
+  }
+  if (!total) {
+    html += `<div class="empty-state"><div class="ico">📭</div><p>${kw ? `"${esc(kw)}"에 해당하는 ${dev.label} 정보가 없습니다.` : '해당 장비에 대한 정리된 정보가 없습니다.'}</p></div>`;
+  }
+  document.getElementById('mainContent').innerHTML = html;
+}
+
+/* ============ 카트리지 뷰 ============ */
+let expandedLot = null;
+
+function renderCartridgeView() {
+  let list = LOT_LIST;
+  if (kw) {
+    const k = kw.toLowerCase();
+    list = LOT_LIST.filter(L =>
+      L.lot.toLowerCase().indexOf(k) !== -1 ||
+      Object.keys(L.items).some(i => i.toLowerCase().indexOf(k) !== -1) ||
+      Object.keys(L.countries).some(c => c.toLowerCase().indexOf(k) !== -1) ||
+      Object.keys(L.c3).some(c => c.toLowerCase().indexOf(k) !== -1)
+    );
+    // 정확 일치 LOT 상단 배치
+    list = list.slice().sort((a, b) => {
+      const ax = a.lot.toLowerCase() === k ? 1 : 0, bx = b.lot.toLowerCase() === k ? 1 : 0;
+      if (ax !== bx) return bx - ax;
+      return (a.last || '') < (b.last || '') ? 1 : -1;
+    });
+  }
+  const shown = list.slice(0, 300);
+
+  let html = `<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+    <div class="section" style="flex:1;min-width:160px;margin:0;padding:14px 16px;"><div style="font-size:24px;font-weight:800;color:var(--accent)">${LOT_LIST.length.toLocaleString()}</div><div style="font-size:12px;color:var(--text2)">클레임 접수 LOT 수 (2024–2026)</div></div>
+    <div class="section" style="flex:1;min-width:160px;margin:0;padding:14px 16px;"><div style="font-size:24px;font-weight:800;color:var(--accent3)">${ALL_CLAIMS.filter(r=>r.lot && r.lot.toUpperCase()!=='N/A').length.toLocaleString()}</div><div style="font-size:12px;color:var(--text2)">LOT 정보가 있는 클레임 건수</div></div>
+  </div>`;
+  if (kw) html += `<div style="font-size:13px;color:var(--text2);margin-bottom:10px;">"${esc(kw)}" 검색 결과: <b style="color:var(--accent)">${list.length}개 LOT</b> (최신 접수순, 정확 일치 우선)</div>`;
+
+  html += `<div class="section"><h2>LOT NO.별 클레임 정리 <span class="cnt">${list.length}</span>${list.length > 300 ? ' <span style="font-weight:400;text-transform:none;">— 상위 300개 표시, 검색으로 좁혀주세요</span>' : ''}</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>LOT No.</th><th>Item</th><th>클레임 수</th><th>최근 접수</th><th>최초 접수</th><th>접수 국가</th><th>주요 분류(3rd CLASS)</th></tr></thead><tbody>` +
+    shown.map(L => {
+      const items = Object.keys(L.items).join(', ');
+      const countries = Object.entries(L.countries).sort((a,b)=>b[1]-a[1]).map(([c,n])=>`${c}(${n})`).slice(0,4).join(', ');
+      const c3 = Object.entries(L.c3).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([c,n])=>`<span class="tag tag-gray">${esc(c)} ${n}</span>`).join('');
+      return `<tr class="clickable" onclick="toggleLot('${esc(L.lot).replace(/'/g,"\\'")}')">
+        <td style="font-weight:700;color:var(--accent)">${hl(L.lot)}</td>
+        <td>${hl(items)}</td>
+        <td><b>${L.claims.length}</b></td>
+        <td>${L.last || '-'}</td><td>${L.first || '-'}</td>
+        <td style="font-size:12px;">${hl(countries)}</td><td>${c3}</td>
+      </tr>` + (expandedLot === L.lot ? `<tr><td colspan="7" style="background:var(--surface2);">${lotClaimTable(L)}</td></tr>` : '');
+    }).join('') + `</tbody></table></div></div>`;
+
+  if (!list.length) html += `<div class="empty-state"><div class="ico">🔍</div><p>"${esc(kw)}"에 해당하는 LOT이 없습니다.</p></div>`;
+  document.getElementById('mainContent').innerHTML = html;
+}
+
+function lotClaimTable(L) {
+  const rows = L.claims.map(no => CLAIM_MAP[no]).filter(Boolean)
+    .sort((a, b) => (a.recv_date || '') < (b.recv_date || '') ? 1 : -1);
+  return `<table style="margin:4px 0;"><thead><tr><th>Complaint No.</th><th>수신일</th><th>국가</th><th>Device</th><th>3rd CLASS</th><th>제목/내용</th><th>상태</th></tr></thead><tbody>` +
+    rows.map(r => `<tr class="clickable" onclick="event.stopPropagation();showClaim('${esc(r.no).replace(/'/g,"\\'")}')">
+      <td style="font-weight:600;color:var(--accent)">${esc(r.no)}</td><td>${esc(r.recv_date)}</td><td>${esc(r.country)}</td>
+      <td>${esc(r.device)}</td><td>${esc(r.c3)}</td>
+      <td style="max-width:340px;">${esc((r.title || r.complaint || '').slice(0, 80))}</td>
+      <td>${r.term === 'Closed' ? '<span class="tag tag-green">Closed</span>' : '<span class="tag tag-red">On Going</span>'}</td>
+    </tr>`).join('') + `</tbody></table>`;
+}
+
+function toggleLot(lot) {
+  expandedLot = (expandedLot === lot) ? null : lot;
+  renderCartridgeView();
+}
+
+/* ============ 클레임 상세 ============ */
+function showClaim(no) {
+  const r = CLAIM_MAP[no];
+  if (!r) return;
+  const fields = [
+    ['Complaint No.', r.no], ['수신일', r.recv_date], ['담당자', r.receiver], ['상태', r.term],
+    ['국가 / 지역', (r.country || '') + ' / ' + (r.area || '')], ['Distributor', r.dist],
+    ['---분류'], ['1st CLASS', r.c1], ['2nd CLASS', r.c2], ['3rd CLASS', r.c3],
+    ['---기기/제품'], ['Item', r.item], ['LOT No.', r.lot], ['Device', r.device], ['Serial', r.serial],
+    ['---내용'], ['제목', r.title, 1], ['클레임 내용', r.complaint, 1], ['조사 내용', r.invest, 1],
+    ['Reply', r.reply, 1], ['회신일', r.replied], ['처리기간(일)', r.dur]
+  ];
+  let html = `<h3 style="margin-bottom:2px;">${esc(r.title || r.no)}</h3><div style="font-size:12px;color:var(--text2);margin-bottom:16px;">${esc(r.no)}</div><div class="detail-grid">`;
+  for (const f of fields) {
+    if (f[0].startsWith('---')) html += `<div class="section-divider">${f[0].slice(3)}</div>`;
+    else html += `<div class="detail-field ${f[2] ? 'full' : ''}"><label>${f[0]}</label><p>${esc(f[1]) || '-'}</p></div>`;
+  }
+  html += '</div>';
+  document.getElementById('detailContent').innerHTML = html;
+  document.getElementById('detailOverlay').classList.add('open');
+}
+function closeDetail() { document.getElementById('detailOverlay').classList.remove('open'); }
+document.getElementById('detailOverlay').addEventListener('click', function(e) { if (e.target === this) closeDetail(); });
+
+/* ============ 검색 (Enter 전용) ============ */
+document.getElementById('searchInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    kw = this.value.trim();
+    expandedLot = null;
+    render();
+  }
+});
+
+function render() {
+  if (mode === 'device') renderDeviceView();
+  else renderCartridgeView();
+}
+render();
+
+// 엑셀 업로드로 추가된 공유분(구글 시트, 미설정 시 이 브라우저 전용)을 반영해 재집계
+(async function refreshWithSharedExtras() {
+  try {
+    const extras = await fetchAllClaimExtras();
+    rebuildClaimAggregates(extras);
+    render();
+  } catch (e) { /* claim-sheet.js가 이미 폴백 처리함 */ }
+})();
+</script>
+</body>
+</html>
