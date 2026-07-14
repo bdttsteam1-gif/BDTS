@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>통합검색 — Boditech MED</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #ffffff; color: #1a1a2e; font-size: 14px; min-height: 100vh; }
+
+.nav { background: #1a1a2e; color: #fff; padding: 0 20px; display: flex; align-items: center; height: 52px; gap: 16px; position: sticky; top: 0; z-index: 100; }
+.nav-brand { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+.nav-brand span { color: #2563eb; }
+.nav-home { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 6px 14px; border-radius: 6px; text-decoration: none; font-size: 13px; margin-left: auto; }
+.nav-home:hover { background: rgba(255,255,255,0.2); }
+
+.search-bar { background: #1a1a2e; padding: 20px 24px 18px; border-bottom: 1px solid #2d3150; }
+.search-bar h1 { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 14px; }
+.search-bar h1 span { color: #2563eb; }
+.search-row { display: flex; gap: 10px; align-items: center; max-width: 800px; }
+.search-input-wrap { flex: 1; position: relative; }
+.search-input-wrap input { width: 100%; padding: 11px 16px 11px 40px; background: #22263a; border: 1px solid #2d3150; border-radius: 8px; color: #e8eaf6; font-size: 15px; outline: none; }
+.search-input-wrap input:focus { border-color: #2563eb; }
+.search-input-wrap input::placeholder { color: #8b90b8; }
+.search-input-wrap .ico { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #8b90b8; font-size: 15px; }
+.search-btn { background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 11px 22px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.search-btn:hover { background: #1d4ed8; }
+.clear-btn { background: #22263a; color: #8b90b8; border: 1px solid #2d3150; border-radius: 8px; padding: 11px 18px; font-size: 14px; cursor: pointer; }
+.search-hint { color: #8b90b8; font-size: 12px; margin-top: 8px; }
+
+.tab-bar { display: flex; gap: 4px; padding: 12px 24px 0; border-bottom: 1px solid #e5e7eb; background: #fff; position: sticky; top: 52px; z-index: 90; flex-wrap: wrap; }
+.tab { background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 16px 10px; font-size: 14px; font-weight: 600; color: #6b7280; cursor: pointer; }
+.tab:hover { color: #2563eb; }
+.tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+.tab .cnt { background: #eff6ff; border-radius: 10px; padding: 1px 8px; font-size: 12px; margin-left: 4px; }
+
+.content { max-width: 940px; margin: 0 auto; padding: 20px 24px 60px; }
+.empty-state { text-align: center; padding: 80px 20px; color: #9ca3af; }
+.empty-state .big { font-size: 48px; margin-bottom: 14px; }
+.empty-state p { font-size: 15px; margin-bottom: 6px; color: #6b7280; }
+
+.stats-row { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+.stat-card { flex: 1; min-width: 130px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 16px; }
+.stat-card .val { font-size: 22px; font-weight: 800; color: #2563eb; }
+.stat-card .lbl { font-size: 12px; color: #6b7280; margin-top: 2px; }
+
+.result-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; cursor: pointer; transition: border-color .12s, box-shadow .12s; }
+.result-card:hover { border-color: #2563eb; box-shadow: 0 2px 10px rgba(37,99,235,.07); }
+.rc-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+.rc-title { font-size: 14.5px; font-weight: 700; color: #111827; }
+.rc-source { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 3px 9px; border-radius: 5px; white-space: nowrap; }
+.source-claim { background: #dbeafe; color: #1d4ed8; }
+.source-guide { background: #d1fae5; color: #065f46; }
+.source-client { background: #fef3c7; color: #92400e; }
+.source-doc { background: #ede9fe; color: #5b21b6; }
+.rc-trace { font-size: 11.5px; color: #6b7280; margin-bottom: 6px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.rc-trace .sep { color: #d1d5db; }
+.rc-trace a { color: #2563eb; text-decoration: none; }
+.rc-trace a:hover { text-decoration: underline; }
+.rc-meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12.5px; color: #6b7280; margin-bottom: 6px; }
+.rc-body { font-size: 13px; color: #374151; line-height: 1.55; word-break: break-word; }
+.highlight { background: #fef08a; border-radius: 2px; }
+.exact-badge { font-size: 10px; font-weight: 700; color: #dc2626; background: #fee2e2; border-radius: 4px; padding: 2px 6px; }
+
+.tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.tag-green { background: #d1fae5; color: #065f46; }
+.tag-yellow { background: #fef3c7; color: #92400e; }
+.tag-blue { background: #dbeafe; color: #1d4ed8; }
+.tag-red { background: #fee2e2; color: #b91c1c; }
+
+.load-more-wrap { text-align: center; margin: 20px 0; }
+.load-more-btn { background: #f8fafc; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 26px; font-size: 13px; font-weight: 600; color: #374151; cursor: pointer; }
+.load-more-btn:hover { border-color: #2563eb; color: #2563eb; }
+
+.lot-banner { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; font-size: 13.5px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lot-banner a { color: #1d4ed8; font-weight: 700; text-decoration: none; }
+.lot-banner a:hover { text-decoration: underline; }
+
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 200; }
+.modal-overlay.open { display: flex; align-items: flex-end; justify-content: flex-end; }
+.modal-panel { background: #fff; width: 580px; max-width: 100vw; height: 100vh; overflow-y: auto; padding: 24px; position: relative; }
+.modal-close { position: sticky; top: 0; float: right; background: #f8fafc; border: 1px solid #d1d5db; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px; z-index: 5; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.detail-field.full { grid-column: 1 / -1; }
+.detail-field label { font-size: 10px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .8px; display: block; margin-bottom: 4px; }
+.detail-field p { font-size: 13px; line-height: 1.5; background: #f8fafc; border-radius: 6px; padding: 8px 10px; min-height: 32px; word-break: break-word; white-space: pre-wrap; }
+.section-divider { font-size: 11px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 1px; margin: 18px 0 8px; grid-column: 1 / -1; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div id="loadingBanner" style="background:#1d4ed8;color:#fff;padding:10px 24px;font-size:13px;text-align:center;position:sticky;top:52px;z-index:99;display:flex;align-items:center;justify-content:center;gap:12px;">
+  <span id="loadingText">데이터 로딩 중... (약 15 MB, 처음 접속 시 10~30초 소요될 수 있습니다)</span>
+  <span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;"></span>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+<nav class="nav">
+  <div class="nav-brand">Boditech <span>MED</span></div>
+  <a href="index.html" class="nav-home">홈으로</a>
+</nav>
+
+<div class="search-bar">
+  <h1>통합 <span>검색</span></h1>
+  <div class="search-row">
+    <div class="search-input-wrap">
+      <span class="ico">&#128269;</span>
+      <input type="text" id="searchInput" placeholder="국가·대리점명(연도별 클레임+매출 요약), LOT No., 에러코드, 병원명 등 입력 후 Enter (쉼표(,)로 AND 검색)" autocomplete="off">
+    </div>
+    <button class="search-btn" onclick="runSearch()">검색</button>
+    <button class="clear-btn" onclick="clearSearch()">초기화</button>
+  </div>
+  <div class="search-hint">⏎ Enter 또는 검색 버튼을 눌러야 검색이 실행됩니다 · 정확히 일치하는 결과가 상단에, 이후 최신순으로 정렬됩니다</div>
+</div>
+
+<div class="tab-bar" id="tabBar" style="display:none">
+  <button class="tab active" data-tab="all" onclick="switchTab('all')">전체 <span class="cnt" id="cnt-all">0</span></button>
+  <button class="tab" data-tab="claim" onclick="switchTab('claim')">클레임 <span class="cnt" id="cnt-claim">0</span></button>
+  <button class="tab" data-tab="guide" onclick="switchTab('guide')">가이드 <span class="cnt" id="cnt-guide">0</span></button>
+  <button class="tab" data-tab="client" onclick="switchTab('client')">거래처 이력 <span class="cnt" id="cnt-client">0</span></button>
+  <button class="tab" data-tab="doc" onclick="switchTab('doc')">자료 <span class="cnt" id="cnt-doc">0</span></button>
+</div>
+
+<div class="content" id="mainContent">
+  <div class="empty-state">
+    <div class="big">&#128269;</div>
+    <p>검색어를 입력하고 Enter를 누르면 클레임 · 가이드 · 거래처 이력 · 자료를 동시에 검색합니다.<br>국가나 대리점명을 입력하면 연도별 주요 클레임 유형과 매출 요약이 함께 표시됩니다.</p>
+    <small>모든 결과에는 어디서 가져온 정보인지 출처가 표시됩니다.</small>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-panel">
+    <button class="modal-close" onclick="closeModal()">&#10005; 닫기</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<script>
+/* ============ 전역 상태 ============ */
+var SOURCES = [];        // 통합 검색 인덱스
+var CLAIM_MAP = {};
+var allResults = [];
+var currentTab = 'all';
+var displayCount = 20;
+var _detailMap = {};
+var _dataReady = false;
+var lastKw = '';
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]; });
+}
+
+/* ============ 데이터 로딩 (지연 로딩) ============ */
+function loadScript(src) {
+  return new Promise(function(res, rej) {
+    var s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+function buildIndex(claimExtras) {
+  claimExtras = claimExtras || { '2024': [], '2025': [], '2026': [] };
+  // ---- 클레임 (연도별) ----
+  var years = { '2024': (typeof RAW_2024 !== 'undefined' ? RAW_2024 : []),
+                '2025': (typeof RAW_2025 !== 'undefined' ? RAW_2025 : []),
+                '2026': (typeof RAW_2026 !== 'undefined' ? RAW_2026 : []) };
+  Object.keys(years).forEach(function(y) {
+    years[y].forEach(function(raw) {
+      var r = {};
+      Object.keys(raw).forEach(function(k) { r[k] = raw[k] == null ? '' : String(raw[k]).trim(); });
+      CLAIM_MAP[r.no] = r;
+      SOURCES.push({
+        src: 'claim', data: r, date: r.recv_date || '',
+        trace: ['클레임 현황', y + '년', 'Complaint list'],
+        link: 'claim.html', linkLabel: '클레임 페이지',
+        keyFields: [r.no, r.lot, r.item, r.country, r.dist, r.device, r.serial],
+        text: Object.keys(r).map(function(k){ return r[k]; }).join(' \n ').toLowerCase()
+      });
+    });
+  });
+  // 업로드로 추가된 신규 클레임 (구글 시트 공유, 미설정 시 이 브라우저 전용)도 검색에 포함
+  Object.keys(claimExtras).forEach(function(y) {
+    (claimExtras[y] || []).forEach(function(r) {
+      if (CLAIM_MAP[r.no]) return;
+      CLAIM_MAP[r.no] = r;
+      SOURCES.push({
+        src: 'claim', data: r, date: r.recv_date || '',
+        trace: ['클레임 현황', y + '년', '엑셀 업로드 추가분'],
+        link: 'claim.html', linkLabel: '클레임 페이지',
+        keyFields: [r.no, r.lot, r.item, r.country, r.dist, r.device, r.serial],
+        text: Object.keys(r).map(function(k){ return String(r[k] == null ? '' : r[k]); }).join(' \n ').toLowerCase()
+      });
+    });
+  });
+
+  // ---- 가이드 ----
+  var G = (typeof GUIDE_DATA !== 'undefined') ? GUIDE_DATA : {};
+  var gsec = [
+    ['type1_error_index', '에러코드 인덱스'], ['type1_afias_detail', 'AFIAS 에러 상세'],
+    ['type2_afias', 'AFIAS 증상별 대응'], ['type2_ichroma', 'ichroma 증상별 대응'], ['type2_faq', 'FAQ']
+  ];
+  gsec.forEach(function(pair) {
+    (G[pair[0]] || []).forEach(function(r) {
+      SOURCES.push({
+        src: 'guide', data: r, gtype: pair[0], date: '',
+        trace: ['업무 가이드', pair[1], r.device || ''],
+        link: 'csc.html', linkLabel: 'CSC·가이드 페이지',
+        keyFields: [r.error_code, r.symptom, r.device],
+        text: JSON.stringify(r).toLowerCase()
+      });
+    });
+  });
+
+  // ---- 거래처 이력 ----
+  var C = (typeof CLIENT_RECORDS !== 'undefined') ? CLIENT_RECORDS : [];
+  C.forEach(function(r) {
+    SOURCES.push({
+      src: 'client', data: r, date: r.date || '',
+      trace: ['거래처 이력', r.folder || r.hospital || '', r.category || ''],
+      link: 'client.html', linkLabel: '거래처 이력 페이지',
+      keyFields: [r.hospital, r.region, r.agency, r.device, r.sn, r.reagent, r.reagentLot, r.manager],
+      text: Object.keys(r).map(function(k){ return String(r[k] == null ? '' : r[k]); }).join(' \n ').toLowerCase()
+    });
+  });
+
+  // ---- 업무가이드 자료(파일 인덱스) ----
+  var D = (typeof GUIDE_DOCS !== 'undefined') ? GUIDE_DOCS : [];
+  D.forEach(function(d) {
+    SOURCES.push({
+      src: 'doc', data: d, date: '',
+      trace: ['업무가이드 자료', d.pack, d.device, d.category],
+      link: 'info.html', linkLabel: '정보 페이지',
+      keyFields: [d.name, d.device],
+      text: (d.name + ' ' + d.device + ' ' + d.category + ' ' + d.pack + ' ' + d.path).toLowerCase()
+    });
+  });
+}
+
+Promise.all([
+  loadScript('claim-data.js'),
+  loadScript('claim-sheet.js'),
+  loadScript('guide-data.js'),
+  loadScript('client-data.js'),
+  loadScript('info-docs.js'),
+  loadScript('sales-data.js').catch(function(){ /* sales-data.js 없어도 검색은 동작 */ })
+]).then(function() {
+  return fetchAllClaimExtras();
+}).then(function(extras) {
+  buildIndex(extras);
+  _dataReady = true;
+  document.getElementById('loadingBanner').style.display = 'none';
+  var pending = document.getElementById('searchInput').value.trim();
+  if (pending) runSearch();
+}).catch(function(e) {
+  document.getElementById('loadingText').textContent = '데이터 로딩 실패: ' + e;
+});
+
+/* ============ 검색 & 랭킹 ============ */
+function scoreEntry(entry, keywords, fullKw) {
+  var score = 0;
+  // 모든 키워드가 포함되어야 매치 (AND)
+  for (var i = 0; i < keywords.length; i++) {
+    if (entry.text.indexOf(keywords[i]) === -1) return -1;
+  }
+  var exact = false;
+  // 핵심 필드 정확 일치 → 최상단
+  for (var j = 0; j < entry.keyFields.length; j++) {
+    var f = String(entry.keyFields[j] || '').trim().toLowerCase();
+    if (!f) continue;
+    if (f === fullKw) { score += 1000; exact = true; }
+    else if (f.indexOf(fullKw) === 0) score += 120;
+    else if (f.indexOf(fullKw) !== -1) score += 60;
+  }
+  // 키워드별 가중치
+  keywords.forEach(function(k) {
+    for (var j = 0; j < entry.keyFields.length; j++) {
+      var f = String(entry.keyFields[j] || '').trim().toLowerCase();
+      if (!f) continue;
+      if (f === k) score += 200;
+      else if (f.indexOf(k) === 0) score += 40;
+      else if (f.indexOf(k) !== -1) score += 15;
+    }
+    // 본문 등장 횟수(상한)
+    var cnt = entry.text.split(k).length - 1;
+    score += Math.min(cnt, 5) * 2;
+  });
+  entry._exact = exact;
+  return score;
+}
+
+/* ============ 국가·대리점 인사이트 (클레임 유형 + 매출) ============ */
+var INSIGHT_HTML = '';
+
+function fmtKrwS(v){
+  var a = Math.abs(v);
+  if(a >= 1e8) return (v/1e8).toFixed(1).replace(/\.0$/,'') + '억';
+  if(a >= 1e4) return Math.round(v/1e4).toLocaleString() + '만';
+  return Math.round(v).toLocaleString();
+}
+
+function buildInsight(keywords) {
+  INSIGHT_HTML = '';
+  if (!keywords.length) return;
+
+  var claimYears = { '2024': (typeof RAW_2024 !== 'undefined' ? RAW_2024 : []),
+                     '2025': (typeof RAW_2025 !== 'undefined' ? RAW_2025 : []),
+                     '2026': (typeof RAW_2026 !== 'undefined' ? RAW_2026 : []) };
+  var salesRows = (typeof SALES_ROWS !== 'undefined') ? SALES_ROWS : [];
+
+  /* 키워드가 실제 '국가명' 또는 '대리점/거래처명'과 일치하는지 판별 */
+  var matchedCountries = {}, matchedDists = {};
+  function collect(name, kw, into){
+    var n = String(name || '').trim();
+    if (!n) return;
+    if (n.toLowerCase().indexOf(kw) !== -1) into[n] = 1;
+  }
+  keywords.forEach(function(kw){
+    if (kw.length < 2) return;
+    Object.keys(claimYears).forEach(function(y){
+      claimYears[y].forEach(function(r){
+        collect(r.country, kw, matchedCountries);
+        collect(r.dist, kw, matchedDists);
+      });
+    });
+    salesRows.forEach(function(r){
+      collect(r[3], kw, matchedCountries); /* 수출국가 */
+      collect(r[4], kw, matchedDists);     /* 고객(거래처) */
+    });
+  });
+
+  var nC = Object.keys(matchedCountries).length, nD = Object.keys(matchedDists).length;
+  if (nC + nD === 0) return;          /* 국가·대리점이 아님 → 인사이트 없음 */
+  if (nC + nD > 15) return;           /* 너무 일반적인 검색어 → 생략 */
+
+  /* 매칭 판정 함수 (클레임: country/dist, 매출: 국가/고객) */
+  function claimHit(r){
+    return matchedCountries[String(r.country||'').trim()] || matchedDists[String(r.dist||'').trim()];
+  }
+  function salesHit(r){
+    return matchedCountries[String(r[3]||'').trim()] || matchedDists[String(r[4]||'').trim()];
+  }
+
+  /* 연도별 집계 */
+  var years = ['2026','2025','2024'];
+  var rows = [];
+  var anyClaim = false, anySales = false;
+  function topStr(map, n){
+    return Object.keys(map).map(function(k){ return [k, map[k]]; })
+      .sort(function(a,b){ return b[1]-a[1]; }).slice(0, n)
+      .map(function(e){ return esc(e[0]) + ' <b>' + e[1] + '</b>'; }).join('<br>');
+  }
+  years.forEach(function(y){
+    var cs = (claimYears[y] || []).filter(claimHit);
+    var c3cnt = {}, devCnt = {}, itemCnt = {};
+    cs.forEach(function(r){
+      var key = String(r.c3 || r.c2 || '').trim() || '(미분류)';
+      c3cnt[key] = (c3cnt[key]||0)+1;
+      var dv = String(r.device||'').trim();
+      if(dv && dv!=='N/A') devCnt[dv] = (devCnt[dv]||0)+1;
+      var it = String(r.item||'').trim();
+      if(it && it!=='N/A') itemCnt[it] = (itemCnt[it]||0)+1;
+    });
+    var topTypes = topStr(c3cnt, 3);
+    var topDev = topStr(devCnt, 3);
+    var topItm = topStr(itemCnt, 3);
+
+    var krw = 0, qty = 0;
+    salesRows.forEach(function(r){ if(r[0]===+y && salesHit(r)){ krw += (+r[8]||0); qty += (+r[9]||0); } });
+
+    if (cs.length) anyClaim = true;
+    if (krw || qty) anySales = true;
+    rows.push({ y:y, claims: cs.length, types: topTypes, dev: topDev, itm: topItm, krw: krw, qty: qty });
+  });
+  if (!anyClaim && !anySales) return;
+
+
+  var chips = Object.keys(matchedCountries).sort().slice(0,8).map(function(c){ return '<span style="background:#dbeafe;color:#1d4ed8;border-radius:12px;padding:2px 10px;font-size:11.5px;font-weight:700;">🌍 ' + esc(c) + '</span>'; })
+    .concat(Object.keys(matchedDists).sort().slice(0,8).map(function(d){ return '<span style="background:#ede9fe;color:#5b21b6;border-radius:12px;padding:2px 10px;font-size:11.5px;font-weight:700;">🏢 ' + esc(String(d).split(';')[0]) + '</span>'; }));
+
+  var trs = rows.map(function(r){
+    return '<tr>' +
+      '<td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;"><b>' + r.y + '년</b></td>' +
+      '<td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;">' + (r.claims ? '<b style="color:#1d4ed8;">' + r.claims.toLocaleString() + '건</b>' : '<span style="color:#d1d5db;">-</span>') + '</td>' +
+      '<td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;font-size:12px;line-height:1.6;">' + (r.types || '<span style="color:#d1d5db;">-</span>') + '</td>' +
+      '<td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;font-size:12px;line-height:1.6;">' + (r.dev || '<span style="color:#d1d5db;">-</span>') + '</td>' +
+      '<td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;font-size:12px;line-height:1.6;">' + (r.itm || '<span style="color:#d1d5db;">-</span>') + '</td>' +
+      '<td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;">' + (r.krw ? '<b style="color:#065f46;">' + fmtKrwS(r.krw) + '</b><br><span style="font-size:10.5px;color:#9ca3af;">₩' + Math.round(r.krw).toLocaleString() + '</span>' : '<span style="color:#d1d5db;">-</span>') + '</td>' +
+      '<td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;">' + (r.qty ? Math.round(r.qty).toLocaleString() : '<span style="color:#d1d5db;">-</span>') + '</td>' +
+    '</tr>';
+  }).join('');
+
+  INSIGHT_HTML =
+    '<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:16px 18px;margin-bottom:16px;">' +
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">' +
+        '<span style="font-size:14px;font-weight:800;color:#111827;">📌 국가·대리점 연도별 요약</span>' + chips.join(' ') +
+      '</div>' +
+      '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;background:#fff;border-radius:8px;overflow:hidden;min-width:640px;">' +
+        '<thead><tr style="background:#eff6ff;">' +
+          '<th style="padding:8px 10px;text-align:left;font-size:11.5px;color:#1e40af;">연도</th>' +
+          '<th style="padding:8px 10px;text-align:right;font-size:11.5px;color:#1e40af;">클레임 건수</th>' +
+          '<th style="padding:8px 10px;text-align:left;font-size:11.5px;color:#1e40af;">주요 클레임 유형 (TOP 3)</th>' +
+          '<th style="padding:8px 10px;text-align:left;font-size:11.5px;color:#1e40af;">🖥 주로 접수된 장비 (TOP 3)</th>' +
+          '<th style="padding:8px 10px;text-align:left;font-size:11.5px;color:#1e40af;">🧪 주로 접수된 카트리지 (TOP 3)</th>' +
+          '<th style="padding:8px 10px;text-align:right;font-size:11.5px;color:#1e40af;">매출 (원화)</th>' +
+          '<th style="padding:8px 10px;text-align:right;font-size:11.5px;color:#1e40af;">수량 (환산)</th>' +
+        '</tr></thead><tbody>' + trs + '</tbody></table></div>' +
+      '<div style="font-size:11.5px;color:#6b7280;margin-top:8px;">' +
+        '자세히: <a href="claim.html" style="color:#2563eb;">클레임 현황 →</a> · ' +
+        '<a href="sales.html?q=' + encodeURIComponent(lastKw) + '" style="color:#2563eb;">Sales Report에서 매출 상세 →</a>' +
+      '</div>' +
+    '</div>';
+}
+
+function runSearch() {
+  if (!_dataReady) {
+    document.getElementById('loadingText').textContent = '아직 데이터를 로딩 중입니다. 완료 후 자동으로 검색됩니다.';
+    return;
+  }
+  var kw = document.getElementById('searchInput').value.trim();
+  if (!kw) { clearSearch(); return; }
+  lastKw = kw;
+  var fullKw = kw.toLowerCase();
+  var keywords = fullKw.split(/[,\s]+/).filter(Boolean);
+
+  buildInsight(keywords);
+
+  allResults = [];
+  for (var i = 0; i < SOURCES.length; i++) {
+    var s = scoreEntry(SOURCES[i], keywords, fullKw);
+    if (s >= 0) allResults.push({ entry: SOURCES[i], score: s });
+  }
+  // 정렬: 점수(정확 일치) 우선 → 최신순
+  allResults.sort(function(a, b) {
+    if (b.score !== a.score) return b.score - a.score;
+    var da = a.entry.date || '', db = b.entry.date || '';
+    if (da !== db) return da < db ? 1 : -1;
+    return 0;
+  });
+
+  var cnt = { claim: 0, guide: 0, client: 0, doc: 0 };
+  allResults.forEach(function(r) { cnt[r.entry.src]++; });
+  document.getElementById('cnt-all').textContent = allResults.length.toLocaleString();
+  document.getElementById('cnt-claim').textContent = cnt.claim.toLocaleString();
+  document.getElementById('cnt-guide').textContent = cnt.guide.toLocaleString();
+  document.getElementById('cnt-client').textContent = cnt.client.toLocaleString();
+  document.getElementById('cnt-doc').textContent = cnt.doc.toLocaleString();
+  document.getElementById('tabBar').style.display = 'flex';
+  currentTab = 'all';
+  displayCount = 20;
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.toggle('active', t.dataset.tab === 'all'); });
+  renderResults();
+}
+
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('tabBar').style.display = 'none';
+  allResults = []; lastKw = ''; INSIGHT_HTML = '';
+  document.getElementById('mainContent').innerHTML =
+    '<div class="empty-state"><div class="big">&#128269;</div><p>검색어를 입력하고 Enter를 누르면 클레임 · 가이드 · 거래처 이력 · 자료를 동시에 검색합니다.<br>국가나 대리점명을 입력하면 연도별 주요 클레임 유형과 매출 요약이 함께 표시됩니다.</p><small>모든 결과에는 출처가 표시됩니다.</small></div>';
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  displayCount = 20;
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.toggle('active', t.dataset.tab === tab); });
+  renderResults();
+}
+
+function getFiltered() {
+  if (currentTab === 'all') return allResults;
+  return allResults.filter(function(r) { return r.entry.src === currentTab; });
+}
+
+/* ============ 렌더링 ============ */
+function hl(text) {
+  var t = esc(text);
+  if (!lastKw) return t;
+  var kws = lastKw.split(/\s+/).filter(Boolean);
+  kws.forEach(function(k) {
+    var e = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    t = t.replace(new RegExp('(' + e + ')', 'gi'), '<span class="highlight">$1</span>');
+  });
+  return t;
+}
+function termTag(s) {
+  if (!s) return '';
+  if (s === 'Closed') return '<span class="tag tag-green">Closed</span>';
+  if (s === 'On Going') return '<span class="tag tag-yellow">On Going</span>';
+  return '<span class="tag tag-blue">' + esc(s) + '</span>';
+}
+var SRC_LABEL = { claim: ['Claim','source-claim'], guide: ['Guide','source-guide'], client: ['거래처','source-client'], doc: ['자료','source-doc'] };
+
+function traceHtml(entry) {
+  var parts = entry.trace.filter(Boolean).map(function(t){ return esc(t); });
+  return '<div class="rc-trace">출처: ' + parts.join(' <span class="sep">›</span> ') +
+    ' <span class="sep">|</span> <a href="' + entry.link + '">' + entry.linkLabel + ' →</a></div>';
+}
+
+function renderResults() {
+  var filtered = getFiltered();
+  var content = document.getElementById('mainContent');
+  if (!filtered.length) {
+    content.innerHTML = INSIGHT_HTML + '<div class="empty-state"><div class="big">&#128269;</div><p>"' + esc(lastKw) + '"에 해당하는 결과가 없습니다.</p></div>';
+    return;
+  }
+  var shown = filtered.slice(0, displayCount);
+  var cnt = { claim: 0, guide: 0, client: 0, doc: 0 };
+  allResults.forEach(function(r) { cnt[r.entry.src]++; });
+
+  var statsHtml = '<div class="stats-row">' +
+    '<div class="stat-card"><div class="val">' + filtered.length.toLocaleString() + '</div><div class="lbl">검색 결과' + (currentTab !== 'all' ? ' (' + (SRC_LABEL[currentTab] ? SRC_LABEL[currentTab][0] : '') + ')' : '') + '</div></div>' +
+    '<div class="stat-card"><div class="val" style="color:#1d4ed8">' + cnt.claim.toLocaleString() + '</div><div class="lbl">클레임</div></div>' +
+    '<div class="stat-card"><div class="val" style="color:#065f46">' + cnt.guide.toLocaleString() + '</div><div class="lbl">가이드</div></div>' +
+    '<div class="stat-card"><div class="val" style="color:#92400e">' + cnt.client.toLocaleString() + '</div><div class="lbl">거래처 이력</div></div>' +
+    '<div class="stat-card"><div class="val" style="color:#5b21b6">' + cnt.doc.toLocaleString() + '</div><div class="lbl">자료</div></div>' +
+    '</div>';
+
+  // LOT 정확 일치 시 정보 페이지 안내
+  var lotBanner = '';
+  var kwUp = lastKw.trim();
+  var lotClaims = allResults.filter(function(r) {
+    return r.entry.src === 'claim' && String(r.entry.data.lot || '').trim().toLowerCase() === kwUp.toLowerCase();
+  });
+  if (lotClaims.length > 0 && !/\s/.test(kwUp)) {
+    lotBanner = '<div class="lot-banner">🧪 LOT <b>' + esc(kwUp.toUpperCase()) + '</b> — 클레임 ' + lotClaims.length + '건 접수. ' +
+      '<a href="info.html">정보 페이지(카트리지)에서 LOT별 정리 보기 →</a></div>';
+  }
+
+  _detailMap = {};
+  var cards = shown.map(function(r, i) {
+    _detailMap[i] = r.entry;
+    return renderCard(r.entry, r.score, i);
+  }).join('');
+
+  var more = filtered.length > displayCount
+    ? '<div class="load-more-wrap"><button class="load-more-btn" onclick="loadMore()">더 보기 (' + (filtered.length - displayCount).toLocaleString() + '건 남음)</button></div>'
+    : '';
+  content.innerHTML = INSIGHT_HTML + statsHtml + lotBanner + cards + more;
+}
+
+function loadMore() { displayCount += 20; renderResults(); }
+
+function renderCard(entry, score, idx) {
+  var s = SRC_LABEL[entry.src];
+  var title = '', meta = [], body = '';
+  var d = entry.data;
+  if (entry.src === 'claim') {
+    title = d.title || d.no;
+    meta = [d.no, d.recv_date, d.country, d.dist, d.item ? 'Item: ' + d.item : '', d.lot ? 'LOT: ' + d.lot : ''];
+    body = [d.complaint, d.invest].filter(Boolean).join(' · ').slice(0, 150);
+  } else if (entry.src === 'guide') {
+    title = (d.error_code || d.symptom || '').split('\n')[0];
+    meta = [d.device, d.category || ''];
+    body = d.symptom_summary || d.answer ||
+      (Array.isArray(d.causes) ? d.causes.map(function(c){ return c.cause || ''; }).join(' / ') : '');
+    body = String(body).slice(0, 150);
+  } else if (entry.src === 'client') {
+    title = (d.hospital || '') + (d.request ? ' — ' + d.request.split('\n')[0].slice(0, 50) : '');
+    meta = [d.region ? '📍 ' + d.region : '', d.date, d.manager, d.agency, d.device, d.category];
+    body = [d.action, d.etc].filter(Boolean).join(' · ').slice(0, 150);
+  } else {
+    title = d.name;
+    meta = [d.device, d.category, (d.size / 1048576).toFixed(1) + ' MB'];
+    body = '경로: ' + d.path;
+  }
+  var metaHtml = meta.filter(Boolean).map(function(m){ return '<span>' + hl(m) + '</span>'; }).join('');
+  var statusTag = entry.src === 'claim' ? termTag(d.term) : '';
+  return '<div class="result-card" onclick="showDetail(' + idx + ')">' +
+    '<div class="rc-header"><span class="rc-source ' + s[1] + '">' + s[0] + '</span>' +
+    (entry._exact ? '<span class="exact-badge">정확 일치</span>' : '') +
+    '<span class="rc-title">' + hl(title) + '</span>' + statusTag + '</div>' +
+    traceHtml(entry) +
+    '<div class="rc-meta">' + metaHtml + '</div>' +
+    (body ? '<div class="rc-body">' + hl(body) + '</div>' : '') +
+    '</div>';
+}
+
+/* ============ 상세 모달 ============ */
+function showDetail(idx) {
+  var entry = _detailMap[idx];
+  if (!entry) return;
+  var d = entry.data, fields = [], title = '';
+  if (entry.src === 'claim') {
+    title = d.title || d.no;
+    fields = [
+      ['Complaint No.', d.no], ['수신일', d.recv_date], ['담당자', d.receiver], ['상태', d.term],
+      ['국가 / 지역', (d.country || '') + ' / ' + (d.area || '')], ['Distributor', d.dist], ['Via', d.via],
+      ['---분류'], ['1st CLASS', d.c1], ['2nd CLASS', d.c2], ['3rd CLASS', d.c3], ['중증도', d.severity],
+      ['---기기/제품'], ['Item', d.item], ['LOT No.', d.lot], ['Control LOT', d.ctrl_lot], ['Device', d.device], ['Serial', d.serial], ['SW', d.sw],
+      ['---내용'], ['제목', d.title, 1], ['클레임 내용', d.complaint, 1], ['조사 내용', d.invest, 1],
+      ['Action', d.action, 1], ['Reply', d.reply, 1], ['회신일', d.replied], ['처리기간(일)', d.dur]
+    ];
+  } else if (entry.src === 'guide') {
+    title = (d.error_code || d.symptom || '').split('\n')[0];
+    fields = [['장비', d.device], ['분류', d.category || ''], ['에러코드', d.error_code || ''], ['증상', d.symptom || d.symptom_summary || '', 1]];
+    if (Array.isArray(d.causes)) d.causes.forEach(function(c, i) {
+      fields.push(['원인 ' + (i + 1), c.cause || '', 1]);
+      if (c.action) fields.push(['조치 ' + (i + 1), c.action, 1]);
+    });
+    if (d.answer) fields.push(['답변', d.answer, 1]);
+    if (d.ref) fields.push(['참고', d.ref, 1]);
+  } else if (entry.src === 'client') {
+    title = d.hospital || '';
+    fields = [
+      ['일자', d.date], ['담당자', d.manager], ['컨택방식', d.contact], ['고객명', d.hospital],
+      ['지역명', d.region], ['전화번호', d.phone],
+      ['요청자', d.requester], ['대리점', d.agency], ['분류', d.category],
+      ['---장비/시약'], ['기기명', d.device], ['SN', d.sn], ['시약명', d.reagent], ['시약LOT', d.reagentLot],
+      ['---내용'], ['접수사항', d.request, 1], ['조치사항', d.action, 1], ['기타', d.etc, 1],
+      ['---출처'], ['원본 파일 폴더', d.folder, 1]
+    ];
+  } else {
+    title = d.name;
+    fields = [['자료 묶음', d.pack], ['장비', d.device], ['분류', d.category],
+      ['파일 형식', d.ext], ['크기', (d.size / 1048576).toFixed(2) + ' MB'], ['원본 경로', d.path, 1]];
+  }
+  var html = '<h3 style="margin-bottom:2px;font-size:16px;">' + esc(title) + '</h3>' +
+    '<div style="font-size:12px;color:#6b7280;margin-bottom:16px;">출처: ' + entry.trace.filter(Boolean).map(esc).join(' › ') + '</div><div class="detail-grid">';
+  fields.forEach(function(f) {
+    if (f[0].indexOf('---') === 0) html += '<div class="section-divider">' + f[0].slice(3) + '</div>';
+    else html += '<div class="detail-field ' + (f[2] ? 'full' : '') + '"><label>' + f[0] + '</label><p>' + (esc(f[1]) || '-') + '</p></div>';
+  });
+  html += '</div>';
+  document.getElementById('modalContent').innerHTML = html;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+document.getElementById('modalOverlay').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+
+/* ============ 입력 (Enter 전용) ============ */
+document.getElementById('searchInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') runSearch();
+});
+
+// URL ?q= 지원
+(function() {
+  var m = location.search.match(/[?&]q=([^&]*)/);
+  if (m) document.getElementById('searchInput').value = decodeURIComponent(m[1].replace(/\+/g, ' '));
+})();
+</script>
+</body>
+</html>
