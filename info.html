@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>정보조회 (비공식) — Boditech MED</title>
+<style>
+  :root {
+    --bg:#ffffff; --surface:#ffffff; --surface2:#f8fafc; --border:#d1d5db;
+    --accent:#2563eb; --accent2:#7c3aed; --accent3:#059669;
+    --text:#111827; --text2:#6b7280; --red:#dc2626; --yellow:#ca8a04;
+    --radius:12px; --radius-sm:6px;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font-family:'Pretendard','Segoe UI',system-ui,sans-serif; min-height:100vh; }
+  .app { display:flex; flex-direction:column; height:100vh; }
+  .header { padding:14px 24px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .home-btn { display:flex; align-items:center; gap:6px; text-decoration:none; color:#fff; background:var(--accent); font-size:15px; font-weight:700; padding:8px 14px; border-radius:8px; white-space:nowrap; }
+  .home-btn:hover { background:#1d4ed8; }
+  .home-btn .ico { font-size:17px; }
+  .header h1 { font-size:18px; font-weight:700; letter-spacing:-.3px; }
+  .header h1 span { color:var(--accent); }
+  .mode-tabs { display:flex; gap:6px; }
+  .mode-btn { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 18px; color:var(--text2); font-size:13px; font-weight:600; cursor:pointer; }
+  .mode-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .mode-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .search-wrap { flex:1; min-width:220px; max-width:440px; position:relative; }
+  .search-wrap input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:9px 14px 9px 36px; color:var(--text); font-size:14px; outline:none; }
+  .search-wrap input:focus { border-color:var(--accent); }
+  .search-wrap .icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text2); font-size:14px; }
+  .search-note { font-size:11px; color:var(--text2); width:100%; }
+
+  .content { flex:1; overflow-y:auto; padding:20px 24px; }
+
+  /* device chips */
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
+  .chip { background:var(--surface2); border:1px solid var(--border); border-radius:20px; padding:7px 16px; font-size:13px; font-weight:600; color:var(--text2); cursor:pointer; }
+  .chip:hover { border-color:var(--accent); color:var(--accent); }
+  .chip.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .chip .n { font-size:11px; opacity:.7; margin-left:4px; }
+
+  .section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; margin-bottom:16px; }
+  .detail-section { background:#eff6ff; border:2px solid var(--accent); border-radius:var(--radius); padding:18px 20px; margin-bottom:16px; box-shadow:0 4px 14px rgba(37,99,235,.12); }
+  .detail-section h2 { font-size:14px; font-weight:800; color:var(--accent); margin-bottom:12px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .detail-section h2 .cnt { background:var(--accent); border-radius:10px; padding:1px 9px; font-size:11px; color:#fff; }
+  .detail-back-btn { margin-left:auto; background:var(--accent); color:#fff; border:none; border-radius:8px; padding:7px 14px; font-size:12.5px; font-weight:700; cursor:pointer; }
+  .detail-back-btn:hover { background:#1d4ed8; }
+  .detail-section .table-wrap { background:var(--surface); border-radius:8px; }
+  .section h2 { font-size:13px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:.8px; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .section h2 .cnt { background:var(--surface2); border-radius:10px; padding:1px 9px; font-size:11px; color:var(--accent); }
+
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { background:var(--surface2); padding:9px 12px; text-align:left; font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; white-space:nowrap; }
+  td { padding:9px 12px; border-bottom:1px solid #e5e7eb; vertical-align:top; }
+  tr.clickable:hover td { background:var(--surface2); cursor:pointer; }
+  .table-wrap { overflow-x:auto; max-height:520px; overflow-y:auto; }
+
+  .tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; background:rgba(37,99,235,.1); color:var(--accent); margin:1px 2px 1px 0; }
+  .tag-green { background:rgba(5,150,105,.1); color:var(--accent3); }
+  .tag-red { background:rgba(220,38,38,.1); color:var(--red); }
+  .tag-gray { background:var(--surface2); color:var(--text2); }
+
+  .doc-item { display:flex; align-items:baseline; gap:10px; padding:7px 4px; border-bottom:1px solid #f1f5f9; font-size:13px; }
+  .doc-item .ext { font-size:10px; font-weight:700; text-transform:uppercase; background:var(--surface2); border:1px solid var(--border); border-radius:4px; padding:1px 6px; color:var(--text2); min-width:44px; text-align:center; }
+  .doc-item .cat { color:var(--text2); font-size:12px; white-space:nowrap; }
+  .doc-item .nm { flex:1; }
+
+  .cause-block { background:var(--surface2); border-radius:var(--radius-sm); padding:8px 10px; margin:4px 0; font-size:12.5px; line-height:1.55; }
+  .cause-block b { color:var(--accent); }
+
+  .empty-state { text-align:center; padding:60px 20px; color:var(--text2); }
+  .empty-state .ico { font-size:44px; margin-bottom:10px; }
+  .hl { background:#fef08a; border-radius:2px; }
+
+  /* detail overlay */
+  .detail-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:100; }
+  .detail-overlay.open { display:flex; align-items:flex-end; justify-content:flex-end; }
+  .detail-panel { background:var(--surface); width:560px; max-width:100vw; height:100vh; overflow-y:auto; border-left:1px solid var(--border); padding:24px; position:relative; }
+  .detail-close { position:sticky; top:0; float:right; background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:6px 12px; cursor:pointer; font-size:13px; }
+  .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .detail-field.full { grid-column:1/-1; }
+  .detail-field label { font-size:10px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.8px; display:block; margin-bottom:4px; }
+  .detail-field p { font-size:13px; line-height:1.5; background:var(--surface2); border-radius:6px; padding:8px 10px; min-height:32px; word-break:break-word; white-space:pre-wrap; }
+  .section-divider { font-size:11px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:1px; margin:18px 0 8px; grid-column:1/-1; border-bottom:1px solid var(--border); padding-bottom:6px; }
+
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+  /* ===== Mobile ===== */
+  @media (max-width: 768px) {
+    .app { height:auto; min-height:100vh; }
+    .header { padding:12px 14px; gap:10px; position:sticky; top:0; z-index:50; background:var(--surface); }
+    .header h1 { font-size:16px; }
+    .mode-tabs { width:100%; order:5; }
+    .mode-btn { flex:1; padding:10px 8px; }
+    .search-wrap { flex:1 1 100%; max-width:none; order:6; }
+    .search-wrap input { font-size:16px; padding:11px 14px 11px 36px; }
+    .search-note { order:7; }
+    .content { padding:14px; overflow-y:visible; }
+    .section { padding:14px; }
+    .chips { gap:6px; }
+    .chip { padding:9px 14px; }
+    th, td { padding:8px 10px; }
+    .table-wrap { -webkit-overflow-scrolling:touch; max-height:none; }
+    .detail-overlay.open { align-items:stretch; }
+    .detail-panel { width:100vw; border-left:none; padding:16px; padding-bottom:calc(16px + env(safe-area-inset-bottom)); }
+    .detail-grid { grid-template-columns:1fr; }
+  }
+</style>
+<script src="guide-data.js"></script>
+<script src="info-docs.js"></script>
+<script src="device-data.js"></script>
+<script src="hub-sheet.js"></script>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <a href="index.html" class="home-btn"><span class="ico">🏠</span>홈</a>
+    <h1>정보<span>조회</span> <span style="font-size:11px;font-weight:700;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:2px 9px;margin-left:4px;vertical-align:middle;">비공식</span></h1>
+    <div class="mode-tabs">
+      <button class="mode-btn active" id="tabDevice" onclick="switchMode('device')">🔧 장비</button>
+      <button class="mode-btn" id="tabCart" onclick="switchMode('cartridge')">🧪 카트리지</button>
+    </div>
+    <div class="search-wrap">
+      <span class="icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="검색어 입력 후 Enter (전체 장비 검색 · 2개 이상은 쉼표(,)로 구분)" autocomplete="off">
+    </div>
+    <div class="search-note" id="searchNote">⏎ Enter를 눌러야 검색이 실행됩니다. 장비 탭 검색은 <b>모든 장비</b>를 대상으로 합니다. 키워드 2개 이상은 쉼표(,)로 구분(AND). 검색어를 지우고 Enter를 누르면 전체 보기로 돌아갑니다.</div>
+  </div>
+  <div class="content" id="mainContent"></div>
+</div>
+
+<script>
+/* ============ 장비 목록 & 매칭 ============ */
+const DEVICES = [
+  { id:'afias1',  label:'AFIAS-1',  family:'afias', num:1 },
+  { id:'afias3',  label:'AFIAS-3',  family:'afias', num:3 },
+  { id:'afias6',  label:'AFIAS-6',  family:'afias', num:6 },
+  { id:'afias10', label:'AFIAS-10', family:'afias', num:10 },
+  { id:'ich2',    label:'ichroma II',  family:'ichroma', roman:'II' },
+  { id:'ich3',    label:'ichroma III', family:'ichroma', roman:'III' },
+  { id:'trias3',  label:'TRIAS-3',  family:'trias', docDev:['TRIAS-3'], kb:'TRIAS-3' },
+  { id:'ah600',   label:'AH-600 (HPLC)',    family:'hplc', docDev:['AH-600','AH-600 Series (공통)'], kb:'AH-600' },
+  { id:'ah600p',  label:'AH-600pro (HPLC)', family:'hplc', docDev:['AH-600pro','AH-600 Series (공통)'], kb:'AH-600pro' },
+  { id:'alcis',   label:'ALCIS 2 (Shine i200)', family:'alcis', docDev:['ALCIS 2 (Shine i200)'], kb:'ALCIS 2' },
+];
+
+/* ============ 매뉴얼 분석 데이터(DEVICE_KB) 헬퍼 ============ */
+var KB = (typeof DEVICE_KB !== 'undefined') ? DEVICE_KB : { errors:[], sections:[] };
+function kbErrorsFor(dev) {
+  if (!dev.kb) return [];
+  return KB.errors.filter(e => e.device === dev.kb);
+}
+function kbSectionsFor(dev) {
+  if (!dev.kb) return [];
+  return KB.sections.filter(s => s.device === dev.kb);
+}
+
+function romanOk(entryDev, roman) {
+  return new RegExp('(^|[^IVX])' + roman + '($|[^IVX])').test(entryDev.toUpperCase().replace(/2/g,'II').replace(/3/g,'III'));
+}
+function guideDeviceMatch(entryDev, dev) {
+  if (!entryDev) return false;
+  const e = entryDev.toLowerCase();
+  // 가이드의 '공통'은 AFIAS/ichroma 계열 공통 항목 (HPLC/ALCIS/TRIAS에는 표시하지 않음)
+  if (e.trim() === '공통') return dev.family === 'afias' || dev.family === 'ichroma';
+  if (dev.family === 'afias') {
+    if (e.indexOf('afias') === -1) return false;
+    if (e.indexOf('공통') !== -1) return true;
+    const nums = new Set();
+    const range = e.match(/(\d+)\s*-\s*(\d+)/);
+    if (range) [1,3,6,10].forEach(n => { if (n >= +range[1] && n <= +range[2]) nums.add(n); });
+    (e.match(/\d+/g) || []).forEach(n => nums.add(+n));
+    return nums.has(dev.num);
+  }
+  if (dev.family === 'ichroma') {
+    if (e.indexOf('ichroma') === -1) return false;
+    return romanOk(entryDev, dev.roman);
+  }
+  return false;
+}
+function docMatch(doc, dev) {
+  if (dev.docDev) return dev.docDev.indexOf(doc.device) !== -1;
+  if (dev.family === 'afias') return doc.device === dev.label || (doc.pack === '숏메뉴얼' && doc.device === '공통');
+  if (dev.family === 'ichroma') return doc.device.toLowerCase().indexOf('ichroma') !== -1 && romanOk(doc.device, dev.roman);
+  return false;
+}
+function deviceCount(dev) {
+  let n = 0;
+  ['type1_error_index','type1_afias_detail','type2_afias','type2_ichroma','type2_faq'].forEach(sec => {
+    (GUIDE_DATA[sec] || []).forEach(r => { if (guideDeviceMatch(r.device, dev)) n++; });
+  });
+  (typeof GUIDE_DOCS !== 'undefined' ? GUIDE_DOCS : []).forEach(d => { if (docMatch(d, dev)) n++; });
+  n += kbErrorsFor(dev).length + kbSectionsFor(dev).length;
+  return n;
+}
+
+/* ============ 상태 ============ */
+let mode = 'device';
+let selectedDevice = DEVICES[0];
+let kw = '';
+
+function switchMode(m) {
+  mode = m;
+  kw = '';
+  document.getElementById('searchInput').value = '';
+  document.getElementById('tabDevice').classList.toggle('active', m === 'device');
+  document.getElementById('tabCart').classList.toggle('active', m === 'cartridge');
+  const input = document.getElementById('searchInput');
+  const note = document.getElementById('searchNote');
+  if (m === 'cartridge') {
+    input.placeholder = '검색어 입력 후 Enter (마커명·LOT·내용 등 전체 검색 · 2개 이상은 쉼표(,)로 구분)';
+    note.innerHTML = '⏎ Enter를 눌러야 검색이 실행됩니다. 플랫폼·마커명·LOT·날짜·내용을 모두 검색하며, 결과는 <b>마커명 기준</b>으로 묶여 표시됩니다. 검색어를 지우고 Enter를 누르면 전체 보기로 돌아갑니다.';
+  } else {
+    input.placeholder = '검색어 입력 후 Enter (전체 장비 검색 · 2개 이상은 쉼표(,)로 구분)';
+    note.innerHTML = '⏎ Enter를 눌러야 검색이 실행됩니다. 장비 탭 검색은 <b>모든 장비</b>를 대상으로 합니다. 키워드 2개 이상은 쉼표(,)로 구분(AND). 검색어를 지우고 Enter를 누르면 전체 보기로 돌아갑니다.';
+  }
+  render();
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function kwTerms() {
+  return kw.split(',').map(s => s.trim()).filter(Boolean);
+}
+function hl(text) {
+  let t = esc(text);
+  if (!kw) return t;
+  kwTerms().forEach(term => {
+    const e = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (e) t = t.replace(new RegExp('(' + e + ')', 'gi'), '<span class="hl">$1</span>');
+  });
+  return t;
+}
+function matchKw(obj) {
+  if (!kw) return true;
+  const s = JSON.stringify(obj).toLowerCase();
+  // 모든 키워드가 매칭되어야 함(AND)
+  return kwTerms().every(term => s.indexOf(term.toLowerCase()) !== -1);
+}
+
+/* ============ 장비 뷰 ============ */
+function selectDevice(id) {
+  selectedDevice = DEVICES.find(d => d.id === id) || DEVICES[0];
+  render();
+}
+
+/* KB(매뉴얼 분석) 에러코드 테이블 HTML */
+function kbErrorTableHTML(errors, title) {
+  if (!errors.length) return '';
+  return `<div class="section"><h2>${title} <span class="cnt">${errors.length}</span></h2><div class="table-wrap"><table>
+    <thead><tr><th>코드</th><th>장비</th><th>구분</th><th>내용</th><th>원인 / 조치</th></tr></thead><tbody>` +
+    errors.map(e => {
+      const parts = [];
+      if (e.cause) parts.push(`<b>원인:</b> ${hl(e.cause)}`);
+      if (e.action) parts.push(`<b>조치:</b> ${hl(e.action)}`);
+      const nameDesc = [e.name, e.desc].filter(Boolean).map(hl).join(' — ');
+      return `<tr>
+        <td style="font-weight:700;color:var(--accent);white-space:nowrap;">${hl(e.code)}</td>
+        <td style="white-space:nowrap;">${hl(e.device)}</td>
+        <td>${e.category ? `<span class="tag tag-gray">${hl(e.category)}</span>` : '-'}</td>
+        <td style="min-width:160px;">${nameDesc || '-'}</td>
+        <td style="min-width:220px;">${parts.join('<br>') || '-'}</td>
+      </tr>`;
+    }).join('') + `</tbody></table></div></div>`;
+}
+
+/* KB(매뉴얼 분석) 매뉴얼/운영 섹션 HTML */
+function kbSectionsHTML(sections, title) {
+  if (!sections.length) return '';
+  return `<div class="section"><h2>${title} <span class="cnt">${sections.length}</span></h2>` +
+    sections.map(s => `<div style="margin-bottom:14px;">
+      <div style="font-size:13.5px;font-weight:700;">${hl(s.section)} <span class="tag">${hl(s.device)}</span></div>
+      <div class="cause-block" style="white-space:pre-wrap;">${hl(s.content)}</div>
+    </div>`).join('') + `</div>`;
+}
+
+function renderDeviceView() {
+  // 검색어가 있으면 전체 장비에서 검색 (선택된 장비에 국한하지 않음)
+  if (kw) { renderDeviceSearchAll(); return; }
+
+  const dev = selectedDevice;
+  const chips = DEVICES.map(d =>
+    `<button class="chip ${d.id === dev.id ? 'active' : ''}" onclick="selectDevice('${d.id}')">${d.label}<span class="n">${deviceCount(d)}</span></button>`
+  ).join('');
+
+  const ei = (GUIDE_DATA.type1_error_index || []).filter(r => guideDeviceMatch(r.device, dev));
+  const det = (GUIDE_DATA.type1_afias_detail || []).filter(r => guideDeviceMatch(r.device, dev));
+  const sym = [].concat(GUIDE_DATA.type2_afias || [], GUIDE_DATA.type2_ichroma || [])
+    .filter(r => guideDeviceMatch(r.device, dev));
+  const faq = (GUIDE_DATA.type2_faq || []).filter(r => guideDeviceMatch(r.device, dev));
+  const docs = (typeof GUIDE_DOCS !== 'undefined' ? GUIDE_DOCS : []).filter(d => docMatch(d, dev));
+  const kbErr = kbErrorsFor(dev);
+  const kbSec = kbSectionsFor(dev);
+
+  let html = `<div class="chips">${chips}</div>`;
+  const total = ei.length + det.length + sym.length + faq.length + docs.length + kbErr.length + kbSec.length;
+
+  // 새 장비(TRIAS-3/AH-600/AH-600pro/ALCIS 2): 매뉴얼 분석 데이터 먼저 표시
+  html += kbErrorTableHTML(kbErr, '에러 / 트러블 코드 (매뉴얼 분석)');
+  html += kbSectionsHTML(kbSec, '매뉴얼 · 운영 정보');
+  html += guideEiHTML(ei) + guideDetHTML(det) + guideSymHTML(sym) + guideFaqHTML(faq) + guideDocsHTML(docs);
+
+  if (!total) {
+    html += `<div class="empty-state"><div class="ico">📭</div><p>해당 장비에 대한 정리된 정보가 없습니다.</p></div>`;
+  }
+  document.getElementById('mainContent').innerHTML = html;
+}
+
+/* ============ GUIDE_DATA 섹션 빌더 (per-device / 전체검색 공용) ============ */
+function guideEiHTML(ei) {
+  if (!ei.length) return '';
+  return `<div class="section"><h2>에러코드 인덱스 <span class="cnt">${ei.length}</span></h2><div class="table-wrap"><table>
+    <thead><tr><th>에러코드</th><th>장비</th><th>증상 요약</th><th>분류</th></tr></thead><tbody>` +
+    ei.map(r => `<tr><td style="font-weight:600;color:var(--accent)">${hl(r.error_code)}</td><td>${hl(r.device)}</td><td>${hl(r.symptom_summary)}</td><td><span class="tag tag-gray">${hl(r.category)}</span></td></tr>`).join('') +
+    `</tbody></table></div></div>`;
+}
+function guideDetHTML(det) {
+  if (!det.length) return '';
+  return `<div class="section"><h2>에러 상세 · 원인/조치 <span class="cnt">${det.length}</span></h2>` +
+    det.map(r => {
+      const causes = Array.isArray(r.causes) ? r.causes.map(c =>
+        `<div class="cause-block"><b>원인:</b> ${hl(c.cause || '')}${c.action ? `<br><b>조치:</b> ${hl(c.action)}` : ''}</div>`).join('') : '';
+      return `<div style="margin-bottom:14px;"><div style="font-size:13.5px;font-weight:700;">${hl((r.error_code || '').split('\n')[0])} <span class="tag">${hl(r.device)}</span> <span class="tag tag-gray">${hl(r.category || '')}</span></div>${causes}</div>`;
+    }).join('') + `</div>`;
+}
+function guideSymHTML(sym) {
+  if (!sym.length) return '';
+  return `<div class="section"><h2>증상별 대응 <span class="cnt">${sym.length}</span></h2>` +
+    sym.map(r => {
+      const causes = Array.isArray(r.causes) ? r.causes.map(c =>
+        `<div class="cause-block"><b>원인:</b> ${hl(c.cause || '')}${c.action ? `<br><b>조치:</b> ${hl(c.action)}` : ''}</div>`).join('') : '';
+      return `<div style="margin-bottom:14px;"><div style="font-size:13.5px;font-weight:700;">${hl(r.symptom)} <span class="tag">${hl(r.device)}</span></div>${causes}</div>`;
+    }).join('') + `</div>`;
+}
+function guideFaqHTML(faq) {
+  if (!faq.length) return '';
+  return `<div class="section"><h2>FAQ <span class="cnt">${faq.length}</span></h2>` +
+    faq.map(r => `<div style="margin-bottom:12px;"><div style="font-size:13.5px;font-weight:700;">Q. ${hl(r.symptom)} <span class="tag">${hl(r.device)}</span>${r.error_code ? ` <span class="tag tag-gray">${hl(r.error_code)}</span>` : ''}</div><div class="cause-block">${hl(r.answer || '')}${r.ref ? `<br><span style="color:var(--text2)">참고: ${hl(r.ref)}</span>` : ''}</div></div>`).join('') + `</div>`;
+}
+function guideDocsHTML(docs) {
+  if (!docs.length) return '';
+  const byCat = {};
+  docs.forEach(d => { (byCat[d.category] = byCat[d.category] || []).push(d); });
+  return `<div class="section"><h2>관련 자료 (업무가이드 파일 목록) <span class="cnt">${docs.length}</span></h2>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">※ 원본 파일은 공유 폴더의 업무가이드(${[...new Set(docs.map(d=>d.pack))].join(' / ')}) 안에 있습니다.</div>` +
+    Object.keys(byCat).sort().map(cat =>
+      `<div style="font-size:12px;font-weight:700;color:var(--accent);margin:10px 0 4px;">${esc(cat)}</div>` +
+      byCat[cat].map(d => `<div class="doc-item"><span class="ext">${esc(d.ext)}</span><span class="nm">${hl(d.name)}</span><span class="cat">${esc(d.pack)}</span></div>`).join('')
+    ).join('') + `</div>`;
+}
+
+/* ============ 전체 장비 검색 ============ */
+function renderDeviceSearchAll() {
+  const chips = DEVICES.map(d =>
+    `<button class="chip" onclick="clearDeviceSearch('${d.id}')">${d.label}<span class="n">${deviceCount(d)}</span></button>`
+  ).join('');
+
+  const ei  = (GUIDE_DATA.type1_error_index || []).filter(matchKw);
+  const det = (GUIDE_DATA.type1_afias_detail || []).filter(matchKw);
+  const sym = [].concat(GUIDE_DATA.type2_afias || [], GUIDE_DATA.type2_ichroma || []).filter(matchKw);
+  const faq = (GUIDE_DATA.type2_faq || []).filter(matchKw);
+  const docs = (typeof GUIDE_DOCS !== 'undefined' ? GUIDE_DOCS : []).filter(matchKw);
+  const kbErr = KB.errors.filter(matchKw);
+  const kbSec = KB.sections.filter(matchKw);
+
+  const total = ei.length + det.length + sym.length + faq.length + docs.length + kbErr.length + kbSec.length;
+
+  let html = `<div class="chips">${chips}</div>`;
+  html += `<div style="font-size:13px;color:var(--text2);margin-bottom:12px;">전체 장비 검색 "${esc(kw)}" : <b style="color:var(--accent)">${total}건</b> — 장비 칩을 누르면 검색을 지우고 해당 장비를 봅니다.</div>`;
+
+  html += kbErrorTableHTML(kbErr, '에러 / 트러블 코드 (매뉴얼 분석)');
+  html += kbSectionsHTML(kbSec, '매뉴얼 · 운영 정보');
+  html += guideEiHTML(ei) + guideDetHTML(det) + guideSymHTML(sym) + guideFaqHTML(faq) + guideDocsHTML(docs);
+
+  if (!total) {
+    html += `<div class="empty-state"><div class="ico">📭</div><p>"${esc(kw)}"에 해당하는 장비 정보가 없습니다.</p></div>`;
+  }
+  document.getElementById('mainContent').innerHTML = html;
+}
+
+function clearDeviceSearch(id) {
+  kw = '';
+  document.getElementById('searchInput').value = '';
+  selectedDevice = DEVICES.find(d => d.id === id) || DEVICES[0];
+  render();
+}
+
+/* ============ 카트리지 (수기 기록) ============ */
+var CART_PLATFORMS = ['AFIAS', 'ichroma', 'ALCIS', '기타'];
+var CartStore = makeHubStore('cartridge_log', 'tsHub_cartridgeLog');
+var CART_LOG = [];
+var cartEditId = null;
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+/* 날짜 자유입력 → 'YYYY-MM-DD' (거래처이력카드와 동일한 방식) */
+function normalizeDateInput(str) {
+  str = (str || '').trim();
+  if (!str) return '';
+  let m = str.match(/^(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})$/);
+  if (m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  m = str.match(/^(\d{1,2})[.\-\/](\d{1,2})$/);
+  if (m) {
+    const year = new Date().getFullYear();
+    return `${year}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+  }
+  m = str.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  return str; // 형식 확인 실패 시 원문 그대로 반환 (호출부에서 검증)
+}
+
+/* 구글시트가 'YYYY-MM-DD' 텍스트를 날짜 셀로 자동 변환하면
+   불러올 때 '2026-07-14T15:00:00.000Z' 같은 ISO(UTC) 문자열로 돌아온다.
+   → 다시 한국시간 기준 'YYYY-MM-DD'로 되돌린다. */
+function normalizeSheetDate(v) {
+  if (v == null || v === '') return '';
+  const s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+    const d = new Date(s);
+    if (!isNaN(d)) {
+      // UTC → KST(+9h) 보정 후 날짜만 추출 (어느 브라우저 시간대에서도 동일 결과)
+      const k = new Date(d.getTime() + 9 * 3600 * 1000);
+      return k.getUTCFullYear() + '-' + String(k.getUTCMonth() + 1).padStart(2, '0') + '-' + String(k.getUTCDate()).padStart(2, '0');
+    }
+  }
+  return s;
+}
+
+function loadCartLog() {
+  return CartStore.list().then(list => {
+    (list || []).forEach(r => { r.date = normalizeSheetDate(r.date); });
+    CART_LOG = (list || []).slice().sort((a, b) => {
+      const da = a.date || '', db = b.date || '';
+      if (da !== db) return da < db ? 1 : -1;
+      return String(b.id).localeCompare(String(a.id));
+    });
+    if (mode === 'cartridge') renderCartridgeView();
+  }).catch(() => { /* hub-sheet.js가 이미 localStorage 폴백 처리함 */ });
+}
+
+function cartMarkerList() {
+  const set = {};
+  CART_LOG.forEach(r => { if (r.marker) set[r.marker] = true; });
+  return Object.keys(set).sort((a,b) => a.localeCompare(b,'ko'));
+}
+
+function splitKeywords(str) {
+  return String(str == null ? '' : str).split(',').map(s => s.trim()).filter(Boolean);
+}
+
+function cartKeywordList() {
+  const set = {};
+  CART_LOG.forEach(r => splitKeywords(r.keyword).forEach(k => { set[k] = true; }));
+  return Object.keys(set).sort((a,b) => a.localeCompare(b,'ko'));
+}
+
+function submitCartEntry() {
+  const platformSel = document.getElementById('cartPlatform').value;
+  const platformOther = document.getElementById('cartPlatformOther').value.trim();
+  const platform = (platformSel === '기타' && platformOther) ? platformOther : platformSel;
+  const marker = document.getElementById('cartMarker').value.trim();
+  const lot = document.getElementById('cartLot').value.trim();
+  const dateInput = document.getElementById('cartDate').value.trim();
+  const author = document.getElementById('cartAuthor').value.trim();
+  const ref = document.getElementById('cartRef').value.trim();
+  const keyword = document.getElementById('cartKeyword').value.trim();
+  const note = document.getElementById('cartNote').value.trim();
+  const hint = document.getElementById('cartHint');
+  if (!author) { hint.textContent = '⚠ 작성자를 입력해주세요.'; hint.style.color = 'var(--red)'; document.getElementById('cartAuthor').focus(); return; }
+  const date = dateInput ? normalizeDateInput(dateInput) : todayStr();
+  if (dateInput && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    hint.textContent = '⚠ 작성한 날짜 형식을 확인해주세요 (예: 7/8, 2026-07-08).';
+    hint.style.color = 'var(--red)';
+    document.getElementById('cartDate').focus();
+    return;
+  }
+  document.getElementById('cartDate').value = date;
+  hint.textContent = '저장 중…'; hint.style.color = 'var(--text2)';
+  const rec = { platform, marker, lot, date, author, ref, keyword, note };
+  let op;
+  if (cartEditId) { rec.id = cartEditId; op = CartStore.update(rec); }
+  else { rec.id = 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,6); op = CartStore.add(rec); }
+  const savedId = rec.id, savedKeyword = keyword;
+  op.then(() => {
+    hint.textContent = (cartEditId ? '수정되었습니다.' : '저장되었습니다.') + (CartStore.shared ? ' (전 직원 공유)' : ' (이 브라우저)');
+    hint.style.color = 'var(--accent3)';
+    cartEditId = null;
+    document.getElementById('cartMarker').value = '';
+    document.getElementById('cartLot').value = '';
+    document.getElementById('cartRef').value = '';
+    document.getElementById('cartKeyword').value = '';
+    document.getElementById('cartNote').value = '';
+    document.getElementById('cartDate').value = todayStr();
+    document.getElementById('cartPlatformOther').value = '';
+    document.getElementById('cartPlatformOther').style.display = 'none';
+    document.getElementById('cartSubmitBtn').textContent = '저장';
+    return loadCartLog().then(() => {
+      // 저장 직후 검증: 키워드가 시트에 실제로 저장되었는지 확인
+      if (CartStore.shared && savedKeyword) {
+        const saved = CART_LOG.find(r => String(r.id) === String(savedId));
+        if (saved && !String(saved.keyword == null ? '' : saved.keyword).trim()) {
+          const h = document.getElementById('cartHint');
+          if (h) {
+            h.innerHTML = '⚠ 키워드가 구글시트에 저장되지 않았습니다. <b>Code.gs를 새 버전으로 교체·재배포</b>해야 합니다 (패키지의 Code.gs 참조).';
+            h.style.color = 'var(--red)';
+          }
+        }
+      }
+    });
+  }).catch(err => {
+    hint.textContent = '⚠ 저장 중 오류: ' + err.message; hint.style.color = 'var(--red)';
+  });
+}
+
+function onCartPlatformChange() {
+  const sel = document.getElementById('cartPlatform').value;
+  const other = document.getElementById('cartPlatformOther');
+  other.style.display = sel === '기타' ? 'block' : 'none';
+  if (sel === '기타') other.focus();
+}
+
+function cancelCartEdit() {
+  cartEditId = null;
+  document.getElementById('cartMarker').value = '';
+  document.getElementById('cartLot').value = '';
+  document.getElementById('cartAuthor').value = '';
+  document.getElementById('cartRef').value = '';
+  document.getElementById('cartKeyword').value = '';
+  document.getElementById('cartNote').value = '';
+  document.getElementById('cartDate').value = todayStr();
+  document.getElementById('cartPlatform').value = 'AFIAS';
+  document.getElementById('cartPlatformOther').value = '';
+  document.getElementById('cartPlatformOther').style.display = 'none';
+  document.getElementById('cartSubmitBtn').textContent = '저장';
+  document.getElementById('cartHint').textContent = '';
+}
+
+function editCartEntry(id) {
+  const r = CART_LOG.find(x => String(x.id) === String(id));
+  if (!r) return;
+  cartEditId = id;
+  const known = CART_PLATFORMS.includes(r.platform);
+  document.getElementById('cartPlatform').value = known ? (r.platform || 'AFIAS') : '기타';
+  document.getElementById('cartPlatformOther').style.display = known ? 'none' : 'block';
+  document.getElementById('cartPlatformOther').value = known ? '' : (r.platform || '');
+  document.getElementById('cartMarker').value = r.marker || '';
+  document.getElementById('cartLot').value = r.lot || '';
+  document.getElementById('cartDate').value = r.date || todayStr();
+  document.getElementById('cartAuthor').value = r.author || '';
+  document.getElementById('cartRef').value = r.ref || '';
+  document.getElementById('cartKeyword').value = r.keyword || '';
+  document.getElementById('cartNote').value = r.note || '';
+  document.getElementById('cartSubmitBtn').textContent = '수정 완료';
+  document.getElementById('cartHint').textContent = '기존 기록을 수정하는 중입니다.';
+  document.getElementById('cartHint').style.color = 'var(--accent)';
+  document.getElementById('cartAuthor').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function deleteCartEntry(id, ev) {
+  if (ev) ev.stopPropagation();
+  if (!confirm('이 기록을 삭제할까요?')) return;
+  CartStore.remove(id).then(() => loadCartLog());
+}
+
+function renderCartridgeView() {
+  const matched = CART_LOG.filter(matchKw);
+
+  const groups = {};
+  matched.forEach(r => {
+    const m = r.marker || '(마커 미입력)';
+    (groups[m] = groups[m] || []).push(r);
+  });
+  const markers = Object.keys(groups).sort((a, b) => {
+    const la = groups[a].reduce((mx, r) => (r.date || '') > mx ? (r.date || '') : mx, '');
+    const lb = groups[b].reduce((mx, r) => (r.date || '') > mx ? (r.date || '') : mx, '');
+    if (la !== lb) return la < lb ? 1 : -1;
+    return a.localeCompare(b, 'ko');
+  });
+
+  const markerOptions = cartMarkerList().map(m => `<option value="${esc(m)}">`).join('');
+  const keywordOptions = cartKeywordList().map(k => `<option value="${esc(k)}">`).join('');
+
+  let html = `
+  <div class="section" id="cartEntryForm">
+    <h2>카트리지 기록 추가 <span style="font-size:11px;color:var(--text2);text-transform:none;font-weight:400;">${CartStore.shared ? '· 🟢 전 직원 실시간 공유' : '· 🟡 이 브라우저에만 저장'}</span></h2>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:12px;">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">플랫폼</label>
+        <select id="cartPlatform" onchange="onCartPlatformChange()" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;">
+          ${CART_PLATFORMS.map(p => `<option value="${p}">${p}</option>`).join('')}
+        </select>
+        <input type="text" id="cartPlatformOther" placeholder="플랫폼명을 직접 입력" autocomplete="off" style="display:none;width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;margin-top:6px;">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">마커명</label>
+        <input type="text" id="cartMarker" list="cartMarkerList" placeholder="예: HbA1c" autocomplete="off" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;">
+        <datalist id="cartMarkerList">${markerOptions}</datalist>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">LOT No.</label>
+        <input type="text" id="cartLot" placeholder="예: HB2601A" autocomplete="off" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">작성한 날짜</label>
+        <input type="text" id="cartDate" value="${esc(todayStr())}" placeholder="예: 7/8, 07/08, 2026-07-08" autocomplete="off" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">작성자 <span style="color:var(--red);">*</span></label>
+        <input type="text" id="cartAuthor" placeholder="이름" autocomplete="off" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">메일제목 / 폴더 경로</label>
+        <input type="text" id="cartRef" placeholder="예: [클레임] 2026-01-15 관련 메일 / 공유폴더/문서/경로" autocomplete="off" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">키워드</label>
+        <input type="text" id="cartKeyword" list="cartKeywordList" placeholder="예: 누수, 교체 (쉼표로 여러 개)" autocomplete="off" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;">
+        <datalist id="cartKeywordList">${keywordOptions}</datalist>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">내용</label>
+      <textarea id="cartNote" rows="3" placeholder="내용을 입력하세요" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;font-family:inherit;resize:vertical;"></textarea>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <button type="button" id="cartSubmitBtn" onclick="submitCartEntry()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13.5px;font-weight:700;cursor:pointer;">저장</button>
+      <button type="button" onclick="cancelCartEdit()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:13px;cursor:pointer;color:var(--text2);">취소</button>
+      <span id="cartHint" style="font-size:12.5px;color:var(--text2);"></span>
+    </div>
+  </div>`;
+
+  if (kw) html += `<div style="font-size:13px;color:var(--text2);margin-bottom:10px;">"${esc(kw)}" 검색 결과: <b style="color:var(--accent)">${matched.length}건</b> · <b style="color:var(--accent)">${markers.length}개 마커</b></div>`;
+
+  html += `<div class="section" id="cartMarkerListSection"><h2>마커별 기록 ${kw ? '(검색 결과)' : '(전체)'} <span class="cnt">${markers.length}</span></h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>마커명</th><th>플랫폼</th><th>키워드</th><th>기록 수</th><th>최근 작성일</th><th>상세</th></tr></thead><tbody>` +
+    markers.map(m => {
+      const rows = groups[m];
+      const platforms = Array.from(new Set(rows.map(r => r.platform || '기타')));
+      const kws = Array.from(new Set(rows.reduce((acc, r) => acc.concat(splitKeywords(r.keyword)), [])));
+      const lastDate = rows.reduce((mx, r) => (r.date || '') > mx ? (r.date || '') : mx, '');
+      const mKey = esc(m).replace(/'/g, "\\'");
+      return `<tr class="clickable" onclick="showMarkerDetail('${mKey}')">
+        <td style="font-weight:700;color:var(--accent)">${hl(m)}</td>
+        <td>${platforms.map(p => `<span class="tag tag-gray">${esc(p)}</span>`).join(' ')}</td>
+        <td style="max-width:220px;">${kws.slice(0,4).map(k => `<span class="tag tag-gray">#${hl(k)}</span>`).join(' ')}${kws.length > 4 ? ` <span style="color:var(--text2);font-size:11px;">외 ${kws.length-4}</span>` : ''}${kws.length ? '' : '<span style="color:var(--text2);">-</span>'}</td>
+        <td><b>${rows.length}</b></td>
+        <td>${lastDate || '-'}</td>
+        <td><button type="button" onclick="event.stopPropagation();showMarkerDetail('${mKey}')" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;color:var(--accent);font-weight:600;">자세히</button></td>
+      </tr>`;
+    }).join('') + `</tbody></table></div></div>`;
+
+  html += `<div id="markerDetailResults"></div>`;
+
+  if (!markers.length) html += `<div class="empty-state"><div class="ico">🗒️</div><p>${kw ? `"${esc(kw)}"에 해당하는 기록이 없습니다.` : '아직 등록된 카트리지 기록이 없습니다. 위에서 추가해보세요.'}</p></div>`;
+
+  document.getElementById('mainContent').innerHTML = html;
+
+  const dateEl = document.getElementById('cartDate');
+  if (dateEl) dateEl.addEventListener('blur', () => { if (dateEl.value.trim()) dateEl.value = normalizeDateInput(dateEl.value); });
+
+  setupCartEnterAsTab();
+}
+
+/* ---- Enter key behaves like Tab (moves to next field) in the cartridge entry form ---- */
+function getCartFormFields() {
+  return Array.from(document.querySelectorAll('#cartEntryForm input, #cartEntryForm select'))
+    .filter(el => el.type !== 'file' && !el.disabled && el.offsetParent !== null);
+}
+function focusNextCartField(current) {
+  const fields = getCartFormFields();
+  const idx = fields.indexOf(current);
+  if (idx === -1 || idx === fields.length - 1) return;
+  const next = fields[idx + 1];
+  next.focus();
+  if (typeof next.select === 'function' && next.tagName === 'INPUT') next.select();
+}
+function setupCartEnterAsTab() {
+  document.querySelectorAll('#cartEntryForm input:not([type=file]), #cartEntryForm select').forEach(el => {
+    el.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' || e.isComposing) return;
+      if (e.defaultPrevented) return;
+      e.preventDefault();
+      focusNextCartField(el);
+    });
+  });
+}
+
+function showMarkerDetail(marker) {
+  const el = document.getElementById('markerDetailResults');
+  if (!el) return;
+  let rows = CART_LOG.filter(r => (r.marker || '(마커 미입력)') === marker && matchKw(r));
+  rows = rows.slice().sort((a, b) => {
+    const da = a.date || '', db = b.date || '';
+    if (da !== db) return da < db ? 1 : -1;
+    return 0;
+  });
+  el.innerHTML = `
+  <div class="detail-section" style="margin-top:16px;">
+    <h2>🔍 ${esc(marker)} — 상세 기록 <span class="cnt">${rows.length}건</span>
+      <button type="button" class="detail-back-btn" onclick="closeMarkerDetail()">← 목록으로 돌아가기</button>
+    </h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>플랫폼</th><th>LOT No.</th><th>작성일</th><th>작성자</th><th>키워드</th><th>메일제목/경로</th><th>내용</th><th></th></tr></thead><tbody>` +
+      rows.map(r => `<tr>
+          <td><span class="tag tag-gray">${esc(r.platform || '-')}</span></td>
+          <td style="font-weight:600;">${esc(r.lot || '-')}</td>
+          <td style="white-space:nowrap;">${esc(r.date || '-')}</td>
+          <td style="white-space:nowrap;">${esc(r.author || '-')}</td>
+          <td style="max-width:160px;">${splitKeywords(r.keyword).map(k => `<span class="tag tag-gray">#${esc(k)}</span>`).join(' ') || '-'}</td>
+          <td style="max-width:220px;word-break:break-all;">${esc(r.ref || '-')}</td>
+          <td style="white-space:pre-wrap;max-width:340px;">${esc(r.note || '-')}</td>
+          <td style="white-space:nowrap;">
+            <button type="button" onclick="editCartEntry('${esc(r.id)}')" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:var(--text);margin-right:4px;">수정</button>
+            <button type="button" onclick="deleteCartEntry('${esc(r.id)}', event)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;">✕</button>
+          </td>
+        </tr>`).join('') + `</tbody></table></div>
+    <div style="margin-top:12px;text-align:center;">
+      <button type="button" class="detail-back-btn" style="margin-left:0;" onclick="closeMarkerDetail()">← 목록으로 돌아가기</button>
+    </div>
+  </div>`;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeMarkerDetail() {
+  const el = document.getElementById('markerDetailResults');
+  if (el) el.innerHTML = '';
+  const listEl = document.getElementById('cartMarkerListSection');
+  if (listEl) listEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ============ 검색 (Enter 전용) ============ */
+document.getElementById('searchInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    kw = this.value.trim();
+    render();
+  }
+});
+
+function render() {
+  if (mode === 'device') renderDeviceView();
+  else renderCartridgeView();
+}
+render();
+loadCartLog();
+</script>
+</body>
+</html>
