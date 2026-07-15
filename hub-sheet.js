@@ -9,7 +9,7 @@
 // (설정 전에도 페이지는 정상 동작)
 // ------------------------------------------------------------------
 
-var HUB_SHEET_API_URL = ''; // 예: 'https://script.google.com/macros/s/AKfycb.../exec'
+var HUB_SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbxkxRmbkTjnzFciIk6p_I9-8rbVzYZVcs7xO2MPEBkp0X4uOUAf8QmXgebpS7FpYkWxFA/exec';
 var HUB_SHEET_TOKEN   = '0p9o8i7u';
 
 var _hubCounter = 0;
