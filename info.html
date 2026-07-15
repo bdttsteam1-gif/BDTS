@@ -40,6 +40,12 @@
   .chip .n { font-size:11px; opacity:.7; margin-left:4px; }
 
   .section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; margin-bottom:16px; }
+  .detail-section { background:#eff6ff; border:2px solid var(--accent); border-radius:var(--radius); padding:18px 20px; margin-bottom:16px; box-shadow:0 4px 14px rgba(37,99,235,.12); }
+  .detail-section h2 { font-size:14px; font-weight:800; color:var(--accent); margin-bottom:12px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .detail-section h2 .cnt { background:var(--accent); border-radius:10px; padding:1px 9px; font-size:11px; color:#fff; }
+  .detail-back-btn { margin-left:auto; background:var(--accent); color:#fff; border:none; border-radius:8px; padding:7px 14px; font-size:12.5px; font-weight:700; cursor:pointer; }
+  .detail-back-btn:hover { background:#1d4ed8; }
+  .detail-section .table-wrap { background:var(--surface); border-radius:8px; }
   .section h2 { font-size:13px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:.8px; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
   .section h2 .cnt { background:var(--surface2); border-radius:10px; padding:1px 9px; font-size:11px; color:var(--accent); }
 
@@ -618,17 +624,19 @@ function renderCartridgeView() {
 
   if (kw) html += `<div style="font-size:13px;color:var(--text2);margin-bottom:10px;">"${esc(kw)}" 검색 결과: <b style="color:var(--accent)">${matched.length}건</b> · <b style="color:var(--accent)">${markers.length}개 마커</b></div>`;
 
-  html += `<div class="section"><h2>마커별 기록 ${kw ? '(검색 결과)' : '(전체)'} <span class="cnt">${markers.length}</span></h2>
+  html += `<div class="section" id="cartMarkerListSection"><h2>마커별 기록 ${kw ? '(검색 결과)' : '(전체)'} <span class="cnt">${markers.length}</span></h2>
   <div class="table-wrap"><table>
-    <thead><tr><th>마커명</th><th>플랫폼</th><th>기록 수</th><th>최근 작성일</th><th>상세</th></tr></thead><tbody>` +
+    <thead><tr><th>마커명</th><th>플랫폼</th><th>키워드</th><th>기록 수</th><th>최근 작성일</th><th>상세</th></tr></thead><tbody>` +
     markers.map(m => {
       const rows = groups[m];
       const platforms = Array.from(new Set(rows.map(r => r.platform || '기타')));
+      const kws = Array.from(new Set(rows.reduce((acc, r) => acc.concat(splitKeywords(r.keyword)), [])));
       const lastDate = rows.reduce((mx, r) => (r.date || '') > mx ? (r.date || '') : mx, '');
       const mKey = esc(m).replace(/'/g, "\\'");
       return `<tr class="clickable" onclick="showMarkerDetail('${mKey}')">
         <td style="font-weight:700;color:var(--accent)">${hl(m)}</td>
         <td>${platforms.map(p => `<span class="tag tag-gray">${esc(p)}</span>`).join(' ')}</td>
+        <td style="max-width:220px;">${kws.slice(0,4).map(k => `<span class="tag tag-gray">#${hl(k)}</span>`).join(' ')}${kws.length > 4 ? ` <span style="color:var(--text2);font-size:11px;">외 ${kws.length-4}</span>` : ''}${kws.length ? '' : '<span style="color:var(--text2);">-</span>'}</td>
         <td><b>${rows.length}</b></td>
         <td>${lastDate || '-'}</td>
         <td><button type="button" onclick="event.stopPropagation();showMarkerDetail('${mKey}')" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;color:var(--accent);font-weight:600;">자세히</button></td>
@@ -681,8 +689,10 @@ function showMarkerDetail(marker) {
     return 0;
   });
   el.innerHTML = `
-  <div class="section" style="margin-top:16px;">
-    <h2>${esc(marker)} <span class="cnt">${rows.length}건</span></h2>
+  <div class="detail-section" style="margin-top:16px;">
+    <h2>🔍 ${esc(marker)} — 상세 기록 <span class="cnt">${rows.length}건</span>
+      <button type="button" class="detail-back-btn" onclick="closeMarkerDetail()">← 목록으로 돌아가기</button>
+    </h2>
     <div class="table-wrap"><table>
       <thead><tr><th>플랫폼</th><th>LOT No.</th><th>작성일</th><th>작성자</th><th>키워드</th><th>메일제목/경로</th><th>내용</th><th></th></tr></thead><tbody>` +
       rows.map(r => `<tr>
@@ -698,8 +708,18 @@ function showMarkerDetail(marker) {
             <button type="button" onclick="deleteCartEntry('${esc(r.id)}', event)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;">✕</button>
           </td>
         </tr>`).join('') + `</tbody></table></div>
+    <div style="margin-top:12px;text-align:center;">
+      <button type="button" class="detail-back-btn" style="margin-left:0;" onclick="closeMarkerDetail()">← 목록으로 돌아가기</button>
+    </div>
   </div>`;
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeMarkerDetail() {
+  const el = document.getElementById('markerDetailResults');
+  if (el) el.innerHTML = '';
+  const listEl = document.getElementById('cartMarkerListSection');
+  if (listEl) listEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 /* ============ 검색 (Enter 전용) ============ */
