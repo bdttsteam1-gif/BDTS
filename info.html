@@ -408,8 +408,27 @@ function normalizeDateInput(str) {
   return str; // 형식 확인 실패 시 원문 그대로 반환 (호출부에서 검증)
 }
 
+/* 구글시트가 'YYYY-MM-DD' 텍스트를 날짜 셀로 자동 변환하면
+   불러올 때 '2026-07-14T15:00:00.000Z' 같은 ISO(UTC) 문자열로 돌아온다.
+   → 다시 한국시간 기준 'YYYY-MM-DD'로 되돌린다. */
+function normalizeSheetDate(v) {
+  if (v == null || v === '') return '';
+  const s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+    const d = new Date(s);
+    if (!isNaN(d)) {
+      // UTC → KST(+9h) 보정 후 날짜만 추출 (어느 브라우저 시간대에서도 동일 결과)
+      const k = new Date(d.getTime() + 9 * 3600 * 1000);
+      return k.getUTCFullYear() + '-' + String(k.getUTCMonth() + 1).padStart(2, '0') + '-' + String(k.getUTCDate()).padStart(2, '0');
+    }
+  }
+  return s;
+}
+
 function loadCartLog() {
   return CartStore.list().then(list => {
+    (list || []).forEach(r => { r.date = normalizeSheetDate(r.date); });
     CART_LOG = (list || []).slice().sort((a, b) => {
       const da = a.date || '', db = b.date || '';
       if (da !== db) return da < db ? 1 : -1;
@@ -426,7 +445,7 @@ function cartMarkerList() {
 }
 
 function splitKeywords(str) {
-  return (str || '').split(',').map(s => s.trim()).filter(Boolean);
+  return String(str == null ? '' : str).split(',').map(s => s.trim()).filter(Boolean);
 }
 
 function cartKeywordList() {
@@ -618,40 +637,6 @@ function renderCartridgeView() {
 
   html += `<div id="markerDetailResults"></div>`;
 
-  // 키워드별 그룹 (한 기록이 키워드 여러 개를 가질 수 있으므로 다중 소속)
-  const kwGroups = {};
-  matched.forEach(r => {
-    const ks = splitKeywords(r.keyword);
-    (ks.length ? ks : ['(키워드 미입력)']).forEach(k => {
-      (kwGroups[k] = kwGroups[k] || []).push(r);
-    });
-  });
-  const keywordsList = Object.keys(kwGroups).sort((a, b) => {
-    const la = kwGroups[a].reduce((mx, r) => (r.date || '') > mx ? (r.date || '') : mx, '');
-    const lb = kwGroups[b].reduce((mx, r) => (r.date || '') > mx ? (r.date || '') : mx, '');
-    if (la !== lb) return la < lb ? 1 : -1;
-    return a.localeCompare(b, 'ko');
-  });
-
-  html += `<div class="section"><h2>키워드별 기록 ${kw ? '(검색 결과)' : '(전체)'} <span class="cnt">${keywordsList.length}</span></h2>
-  <div class="table-wrap"><table>
-    <thead><tr><th>키워드</th><th>관련 마커</th><th>기록 수</th><th>최근 작성일</th><th>상세</th></tr></thead><tbody>` +
-    keywordsList.map(k => {
-      const rows = kwGroups[k];
-      const markersHere = Array.from(new Set(rows.map(r => r.marker || '(마커 미입력)')));
-      const lastDate = rows.reduce((mx, r) => (r.date || '') > mx ? (r.date || '') : mx, '');
-      const kKey = esc(k).replace(/'/g, "\\'");
-      return `<tr class="clickable" onclick="showKeywordDetail('${kKey}')">
-        <td style="font-weight:700;color:var(--accent)">${hl(k)}</td>
-        <td>${markersHere.slice(0,4).map(m => `<span class="tag tag-gray">${esc(m)}</span>`).join(' ')}${markersHere.length > 4 ? ` <span style="color:var(--text2);">외 ${markersHere.length-4}</span>` : ''}</td>
-        <td><b>${rows.length}</b></td>
-        <td>${lastDate || '-'}</td>
-        <td><button type="button" onclick="event.stopPropagation();showKeywordDetail('${kKey}')" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;color:var(--accent);font-weight:600;">자세히</button></td>
-      </tr>`;
-    }).join('') + `</tbody></table></div></div>`;
-
-  html += `<div id="keywordDetailResults"></div>`;
-
   if (!markers.length) html += `<div class="empty-state"><div class="ico">🗒️</div><p>${kw ? `"${esc(kw)}"에 해당하는 기록이 없습니다.` : '아직 등록된 카트리지 기록이 없습니다. 위에서 추가해보세요.'}</p></div>`;
 
   document.getElementById('mainContent').innerHTML = html;
@@ -684,40 +669,6 @@ function setupCartEnterAsTab() {
       focusNextCartField(el);
     });
   });
-}
-
-function showKeywordDetail(keyword) {
-  const el = document.getElementById('keywordDetailResults');
-  if (!el) return;
-  let rows = CART_LOG.filter(r => {
-    const ks = splitKeywords(r.keyword);
-    return (ks.length ? ks : ['(키워드 미입력)']).includes(keyword) && matchKw(r);
-  });
-  rows = rows.slice().sort((a, b) => {
-    const da = a.date || '', db = b.date || '';
-    if (da !== db) return da < db ? 1 : -1;
-    return 0;
-  });
-  el.innerHTML = `
-  <div class="section" style="margin-top:16px;">
-    <h2>#${esc(keyword)} <span class="cnt">${rows.length}건</span></h2>
-    <div class="table-wrap"><table>
-      <thead><tr><th>마커명</th><th>플랫폼</th><th>LOT No.</th><th>작성일</th><th>작성자</th><th>메일제목/경로</th><th>내용</th><th></th></tr></thead><tbody>` +
-      rows.map(r => `<tr>
-          <td style="font-weight:600;color:var(--accent)">${esc(r.marker || '-')}</td>
-          <td><span class="tag tag-gray">${esc(r.platform || '-')}</span></td>
-          <td style="font-weight:600;">${esc(r.lot || '-')}</td>
-          <td style="white-space:nowrap;">${esc(r.date || '-')}</td>
-          <td style="white-space:nowrap;">${esc(r.author || '-')}</td>
-          <td style="max-width:220px;word-break:break-all;">${esc(r.ref || '-')}</td>
-          <td style="white-space:pre-wrap;max-width:340px;">${esc(r.note || '-')}</td>
-          <td style="white-space:nowrap;">
-            <button type="button" onclick="editCartEntry('${esc(r.id)}')" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:var(--text);margin-right:4px;">수정</button>
-            <button type="button" onclick="deleteCartEntry('${esc(r.id)}', event)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;">✕</button>
-          </td>
-        </tr>`).join('') + `</tbody></table></div>
-  </div>`;
-  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function showMarkerDetail(marker) {
