@@ -12,8 +12,9 @@
 body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#fff; color:var(--ink); font-size:14px; }
 .nav { background:#1a1a2e; color:#fff; padding:0 20px; display:flex; align-items:center; height:52px; gap:16px; position:sticky; top:0; z-index:100; }
 .nav-brand { font-size:15px; font-weight:700; } .nav-brand span { color:#2563eb; }
-.nav-home { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); color:#fff; padding:6px 14px; border-radius:6px; text-decoration:none; font-size:13px; margin-left:auto; }
-.nav-home:hover { background:rgba(255,255,255,.2); }
+.nav-home { display:flex; align-items:center; gap:6px; background:#2563eb; border:none; color:#fff; padding:8px 16px; border-radius:8px; text-decoration:none; font-size:15px; font-weight:700; }
+.nav-home:hover { background:#1d4ed8; }
+.nav-home .ico { font-size:17px; }
 .hero { background:#1a1a2e; color:#fff; padding:20px 24px 18px; border-bottom:1px solid #2d3150; }
 .hero h1 { font-size:18px; font-weight:700; } .hero h1 span { color:#2563eb; }
 .hero p { font-size:12.5px; color:#8b90b8; margin-top:4px; }
@@ -95,12 +96,34 @@ body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans
 .g-step .num { flex-shrink:0; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; }
 .table-scroll { max-height:640px; overflow:auto; }
 ::-webkit-scrollbar { width:7px; height:7px; } ::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:3px; }
+
+/* ===== Mobile ===== */
+@media (max-width: 768px) {
+  .nav { padding:0 14px; }
+  .hero { padding:14px; }
+  .tab-bar { padding:8px 10px 0; overflow-x:auto; flex-wrap:nowrap; -webkit-overflow-scrolling:touch; }
+  .tab { padding:8px 12px 10px; white-space:nowrap; font-size:13px; }
+  .content { padding:14px 14px 60px; }
+  .form-card { padding:14px; }
+  .form-grid { grid-template-columns:1fr; }
+  .field input, .field select, .field textarea { font-size:16px; }
+  .btn { padding:12px 18px; }
+  .btn-row .btn { flex:1; }
+  .kpi-row { grid-template-columns:repeat(2,1fr); gap:8px; }
+  .kpi .val { font-size:17px; }
+  .chart-wrap { height:210px; }
+  .toolbar input { font-size:16px; }
+  .g-search { flex-wrap:wrap; }
+  .g-search input { flex:1 1 100%; font-size:16px; }
+  .table-scroll { -webkit-overflow-scrolling:touch; }
+  .rec { padding:12px; }
+}
 </style>
 </head>
 <body>
 <nav class="nav">
+  <a href="index.html" class="nav-home"><span class="ico">🏠</span>홈</a>
   <div class="nav-brand">Boditech <span>MED</span></div>
-  <a href="index.html" class="nav-home">홈으로</a>
 </nav>
 <div class="hero">
   <h1>CSC <span>·</span> 클레임 진행상황 <span style="font-size:12px;color:#8b90b8;font-weight:400;">Customer Service Check</span></h1>
@@ -125,8 +148,10 @@ body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans
 
       <div class="section-label" style="border-top:none;padding-top:0;">접수 정보</div>
       <div class="form-grid">
-        <div class="field"><label>접수일시 <span class="req">*</span></label>
-          <input id="f_recvAt" placeholder="예: 7/8 14:30, 2026-07-08 14:30" autocomplete="off"></div>
+        <div class="field"><label>접수일자 <span class="req">*</span></label>
+          <input id="f_recvDate" placeholder="예: 7/8, 2026-07-08" autocomplete="off"></div>
+        <div class="field"><label>접수시각</label>
+          <input id="f_recvTime" placeholder="예: 14:30" autocomplete="off"></div>
         <div class="field"><label>접수담당자 <span class="req">*</span></label><input id="f_writer" placeholder="예: 박은지" autocomplete="off"></div>
         <div class="field"><label>접수 경로</label>
           <select id="f_via"><option>CSC</option><option>메일</option><option>전화</option><option>QR</option><option>SNS</option><option>기타</option></select></div>
@@ -170,7 +195,8 @@ body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans
       <div class="section-label reply">회신 처리 <span style="font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0;">— 접수 시엔 비워두고, 회신 후 [진행상황]에서 채우세요</span></div>
       <div class="form-grid">
         <div class="field"><label>회신자</label><input id="f_replier" placeholder="예: 김병주" autocomplete="off"></div>
-        <div class="field"><label>회신일시</label><input id="f_replyAt" placeholder="예: 7/8 16:05, 2026-07-08 16:05" autocomplete="off"></div>
+        <div class="field"><label>회신일자</label><input id="f_replyDate" placeholder="예: 7/8, 2026-07-08" autocomplete="off"></div>
+        <div class="field"><label>회신시각</label><input id="f_replyTime" placeholder="예: 16:05" autocomplete="off"></div>
         <div class="field"><label>회신 경로</label>
           <select id="f_replyVia"><option value="">-</option><option>전화</option><option>메일</option><option>CSC</option><option>QR</option><option>SNS</option><option>기타</option></select></div>
         <div class="field"><label>1차 답변 상태</label>
@@ -181,11 +207,11 @@ body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans
 
       <div class="btn-row">
         <button class="btn btn-primary" id="saveBtn" onclick="saveRecord()">저장</button>
-        <button class="btn btn-ghost" id="cancelBtn" onclick="cancelEdit()" style="display:none;">취소</button>
+        <button class="btn btn-ghost" id="cancelBtn" onclick="newEntry()" style="display:none;">취소</button>
         <button class="btn btn-ghost" onclick="exportXlsx()">⬇ 엑셀 내보내기</button>
         <label class="btn btn-ghost" style="cursor:pointer;">⬆ 엑셀 가져오기<input type="file" id="importFile" accept=".xlsx,.xls" style="display:none;"></label>
       </div>
-      <div style="font-size:11.5px;color:#9ca3af;margin-top:8px;">※ 병원명 입력/선택 시 거래처 이력 기준으로 지역·전화 자동 완성. 날짜는 7/8 14:30 처럼 입력. 목록·자동완성은 키보드(↑↓/Enter)로.</div>
+      <div style="font-size:11.5px;color:#9ca3af;margin-top:8px;">※ 병원명 입력/선택 시 거래처 이력 기준으로 지역·전화 자동 완성. 날짜는 7/8, 2026-07-08처럼, 시각은 14:30처럼 입력(시각은 비워도 됨). 목록·자동완성은 키보드(↑↓/Enter)로, 필드 이동은 Tab 또는 Enter로.</div>
     </div>
   </div>
 
@@ -250,7 +276,7 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(m){retu
 function showMsg(cls,txt){ var el=document.getElementById('statusMsg'); el.className='status-msg '+cls; el.textContent=txt; if(cls!=='err') setTimeout(function(){el.className='status-msg';},4000); }
 function pad2(n){ return String(n).padStart(2,'0'); }
 
-/* 날짜+시간 자유입력 → 'YYYY-MM-DD HH:MM' */
+/* 날짜+시간 자유입력 → 'YYYY-MM-DD HH:MM' (구버전 호환용) */
 function normalizeDateTimeInput(str){
   str=(str||'').trim(); if(!str) return '';
   var parts=str.split(/\s+/); var dpart=parts[0], tpart=parts[1]||'';
@@ -262,7 +288,62 @@ function normalizeDateTimeInput(str){
   var t=''; var tm=tpart.match(/^(\d{1,2}):(\d{1,2})$/); if(tm) t=pad2(tm[1])+':'+pad2(tm[2]);
   return t? d+' '+t : d;
 }
+/* 날짜만 자유입력 → 'YYYY-MM-DD' (파싱 실패 시 원문 그대로 반환, 저장 전 검증에서 걸러짐) */
+function normalizeDateOnlyInput(str){
+  str=(str||'').trim(); if(!str) return '';
+  var m=str.match(/^(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})$/); if(m) return m[1]+'-'+pad2(m[2])+'-'+pad2(m[3]);
+  m=str.match(/^(\d{1,2})[.\-\/](\d{1,2})$/); if(m){ var y=new Date().getFullYear(); return y+'-'+pad2(m[1])+'-'+pad2(m[2]); }
+  m=str.match(/^(\d{4})(\d{2})(\d{2})$/); if(m) return m[1]+'-'+m[2]+'-'+m[3];
+  return str;
+}
+/* 시각만 자유입력 → 'HH:MM' */
+function normalizeTimeOnlyInput(str){
+  str=(str||'').trim(); if(!str) return '';
+  var m=str.match(/^(\d{1,2}):(\d{1,2})$/); if(m) return pad2(m[1])+':'+pad2(m[2]);
+  m=str.match(/^(\d{1,2})(\d{2})$/); if(m) return pad2(m[1])+':'+pad2(m[2]);
+  return str;
+}
+/* 날짜칸 + 시각칸 → 저장용 'YYYY-MM-DD HH:MM' (또는 시각 없으면 'YYYY-MM-DD') */
+function combineDateTime(dateStr, timeStr){
+  var d = normalizeDateOnlyInput(dateStr);
+  var t = normalizeTimeOnlyInput(timeStr);
+  if(!d) return '';
+  return t? d+' '+t : d;
+}
+/* 저장된 'YYYY-MM-DD HH:MM' → [날짜, 시각] 로 분리 (편집 폼에 채울 때 사용) */
+function splitDateTime(s){
+  s = (s||'').trim(); if(!s) return ['',''];
+  var parts = s.split(/\s+/);
+  return [parts[0]||'', parts[1]||''];
+}
 function nowStr(){ var d=new Date(); return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())+' '+pad2(d.getHours())+':'+pad2(d.getMinutes()); }
+function todayStr(){ var d=new Date(); return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+function nowTimeStr(){ var d=new Date(); return pad2(d.getHours())+':'+pad2(d.getMinutes()); }
+
+/* ---- Enter key behaves like Tab (moves to next field) in the entry form ---- */
+function getEntryFormFields(){
+  return Array.prototype.slice.call(document.querySelectorAll('#view-entry input, #view-entry select, #view-entry textarea'))
+    .filter(function(el){ return el.type !== 'file' && !el.disabled && el.offsetParent !== null; });
+}
+function focusNextEntryField(current){
+  var fields = getEntryFormFields();
+  var idx = fields.indexOf(current);
+  if(idx === -1 || idx === fields.length-1) return;
+  var next = fields[idx+1];
+  next.focus();
+  if(typeof next.select === 'function' && next.tagName === 'INPUT') next.select();
+}
+function setupEnterAsTab(){
+  document.querySelectorAll('#view-entry input:not([type=file]), #view-entry select').forEach(function(el){
+    el.addEventListener('keydown', function(e){
+      if(e.key !== 'Enter' || e.isComposing) return;
+      // 자동완성 제안 선택 등 다른 핸들러가 이미 처리했다면 중복 이동하지 않음
+      if(e.defaultPrevented) return;
+      e.preventDefault();
+      focusNextEntryField(el);
+    });
+  });
+}
 function parseDT(s){ if(!s) return null; var d=new Date(String(s).replace(' ','T')); return isNaN(d.getTime())?null:d; }
 function isDone(r){ return String(r.status||'').indexOf('완료')!==-1; }
 function durMs(r){ if(!isDone(r)) return null; var a=parseDT(r.recvAt), b=parseDT(r.replyAt); if(!a||!b) return null; var d=b-a; return d>=0?d:null; }
@@ -335,20 +416,20 @@ document.querySelectorAll('.tab').forEach(function(t){ t.addEventListener('click
 /* ===== 소요시간 미리보기 ===== */
 function computeDurPreview(){
   var r={ status:document.getElementById('f_status').value,
-    recvAt:normalizeDateTimeInput(document.getElementById('f_recvAt').value),
-    replyAt:normalizeDateTimeInput(document.getElementById('f_replyAt').value) };
+    recvAt: combineDateTime(document.getElementById('f_recvDate').value, document.getElementById('f_recvTime').value),
+    replyAt: combineDateTime(document.getElementById('f_replyDate').value, document.getElementById('f_replyTime').value) };
   var el=document.getElementById('durPreview'); var ms=durMs(r);
   if(ms!=null) el.textContent='⏱ 응답 소요시간: '+fmtDur(ms);
   else if(isDone(r)&&r.recvAt&&r.replyAt) el.textContent='⚠ 회신일시가 접수일시보다 빠릅니다. 확인해주세요.';
-  else if(document.getElementById('f_replyAt').value.trim() && document.getElementById('f_status').value.indexOf('완료')===-1) el.textContent='ℹ 상태를 완료로 바꾸면 소요시간이 계산됩니다.';
+  else if(document.getElementById('f_replyDate').value.trim() && document.getElementById('f_status').value.indexOf('완료')===-1) el.textContent='ℹ 상태를 완료로 바꾸면 소요시간이 계산됩니다.';
   else el.textContent='';
 }
-['f_recvAt','f_replyAt','f_status'].forEach(function(id){ document.getElementById(id).addEventListener('input', computeDurPreview); });
+['f_recvDate','f_recvTime','f_replyDate','f_replyTime','f_status'].forEach(function(id){ document.getElementById(id).addEventListener('input', computeDurPreview); });
 
 /* ===== 저장 ===== */
 function saveRecord(){
   var rec = {
-    recvAt: normalizeDateTimeInput(document.getElementById('f_recvAt').value),
+    recvAt: combineDateTime(document.getElementById('f_recvDate').value, document.getElementById('f_recvTime').value),
     writer: document.getElementById('f_writer').value.trim(),
     via: document.getElementById('f_via').value,
     kind: document.getElementById('f_kind').value,
@@ -368,12 +449,12 @@ function saveRecord(){
     anticoag: document.getElementById('f_anticoag').value.trim(),
     complaint: document.getElementById('f_complaint').value.trim(),
     replier: document.getElementById('f_replier').value.trim(),
-    replyAt: normalizeDateTimeInput(document.getElementById('f_replyAt').value),
+    replyAt: combineDateTime(document.getElementById('f_replyDate').value, document.getElementById('f_replyTime').value),
     replyVia: document.getElementById('f_replyVia').value,
     status: document.getElementById('f_status').value,
     note: document.getElementById('f_note').value.trim()
   };
-  if(!rec.recvAt || !rec.writer || !rec.hospital){ showMsg('err','접수일시, 접수담당자, 병원명은 필수입니다.'); return; }
+  if(!rec.recvAt || !rec.writer || !rec.hospital){ showMsg('err','접수일자, 접수담당자, 병원명은 필수입니다.'); return; }
   rec.title = titleOf(rec);
   var btn=document.getElementById('saveBtn'); btn.disabled=true; btn.textContent='저장 중…';
   var op;
@@ -388,7 +469,9 @@ function saveRecord(){
 }
 
 function fillForm(rec){
-  document.getElementById('f_recvAt').value = fmtDT(rec.recvAt);
+  var recvParts = splitDateTime(fmtDT(rec.recvAt)==='-'?'':fmtDT(rec.recvAt));
+  document.getElementById('f_recvDate').value = recvParts[0];
+  document.getElementById('f_recvTime').value = recvParts[1];
   document.getElementById('f_writer').value = rec.writer||'';
   document.getElementById('f_via').value = rec.via||'CSC';
   document.getElementById('f_kind').value = rec.kind||'TS';
@@ -409,7 +492,9 @@ function fillForm(rec){
   document.getElementById('f_anticoag').value = rec.anticoag||'';
   document.getElementById('f_complaint').value = rec.complaint||'';
   document.getElementById('f_replier').value = rec.replier||'';
-  document.getElementById('f_replyAt').value = fmtDT(rec.replyAt)==='-'?'':fmtDT(rec.replyAt);
+  var replyParts = splitDateTime(fmtDT(rec.replyAt)==='-'?'':fmtDT(rec.replyAt));
+  document.getElementById('f_replyDate').value = replyParts[0];
+  document.getElementById('f_replyTime').value = replyParts[1];
   document.getElementById('f_replyVia').value = rec.replyVia||'';
   document.getElementById('f_status').value = isDone(rec)?'완료':'진행중';
   document.getElementById('f_note').value = rec.note||'';
@@ -422,16 +507,21 @@ function editRecord(id){
   computeDurPreview();
   switchTab('entry'); window.scrollTo({top:0,behavior:'smooth'});
 }
-function newEntry(){ cancelEdit(); switchTab('entry'); window.scrollTo({top:0,behavior:'smooth'}); }
+function newEntry(){
+  cancelEdit();
+  document.getElementById('f_recvDate').value = todayStr();
+  document.getElementById('f_recvTime').value = nowTimeStr();
+  switchTab('entry'); window.scrollTo({top:0,behavior:'smooth'});
+}
 function cancelEdit(){
   editId=null;
-  ['f_writer','f_hospital','f_region','f_phone','f_contact','f_device','f_sampleOther','f_item','f_itemLot','f_ctrlItem','f_ctrlLot','f_serial','f_sw','f_anticoag','f_complaint','f_replier','f_replyAt','f_note'].forEach(function(id){ document.getElementById(id).value=''; });
+  ['f_writer','f_hospital','f_region','f_phone','f_contact','f_device','f_sampleOther','f_item','f_itemLot','f_ctrlItem','f_ctrlLot','f_serial','f_sw','f_anticoag','f_complaint','f_replier','f_replyDate','f_replyTime','f_note'].forEach(function(id){ document.getElementById(id).value=''; });
   document.getElementById('f_via').value='CSC'; document.getElementById('f_kind').value='TS';
   document.getElementById('f_sample').value=''; document.getElementById('f_store').value='';
   document.getElementById('f_replyVia').value=''; document.getElementById('f_status').value='진행중';
   delete document.getElementById('f_region').dataset.auto; delete document.getElementById('f_phone').dataset.auto;
   document.getElementById('regionHint').style.display='none'; document.getElementById('durPreview').textContent='';
-  document.getElementById('f_recvAt').value=nowStr();
+  document.getElementById('f_recvDate').value=''; document.getElementById('f_recvTime').value='';
   document.getElementById('formTitle').textContent='Customer Service Check list — 신규 접수';
   document.getElementById('cancelBtn').style.display='none';
 }
@@ -517,7 +607,22 @@ function renderStats(){
   mkChart('chKind',{ type:'doughnut', data:{ labels:kK, datasets:[{ data:kK.map(function(k){return kindCnt[k];}), backgroundColor:['#2563eb','#cbd5e1','#f59e0b'] }]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'right',labels:{boxWidth:11,font:{size:11}}}} } });
   var slow=recs.map(function(r){ return {r:r,d:durMs(r)}; }).filter(function(x){return x.d!=null;}).sort(function(a,b){return b.d-a.d;}).slice(0,8);
   document.getElementById('slowest').innerHTML = slow.length? slow.map(function(x,i){
-    return '<div style="padding:7px 0;border-bottom:1px solid #f1f5f9;display:flex;gap:10px;align-items:baseline;"><span style="color:#9ca3af;min-width:18px;">'+(i+1)+'.</span><span class="dur-slow" style="min-width:96px;">'+fmtDur(x.d)+'</span><span>'+esc(titleOf(x.r))+' <span style="color:#9ca3af;font-size:11px;">('+esc(x.r.via||'')+' · '+esc(x.r.writer||'')+')</span></span></div>';
+    var r=x.r;
+    var meta=[];
+    if(r.hospital) meta.push(esc(r.hospital));
+    if(r.region) meta.push(esc(r.region));
+    if(r.item) meta.push(esc(r.item)+(r.itemLot?' ('+esc(r.itemLot)+')':''));
+    var complaintPreview=(r.complaint||'').split('\n')[0];
+    return '<div class="rec" style="padding:10px 12px;margin-bottom:6px;cursor:pointer;" onclick="editRecord(\''+r.id+'\')">'+
+      '<div style="display:flex;gap:10px;align-items:baseline;">'+
+        '<span style="color:#9ca3af;min-width:18px;">'+(i+1)+'.</span>'+
+        '<span class="dur-slow" style="min-width:96px;">'+fmtDur(x.d)+'</span>'+
+        '<span style="flex:1;">'+esc(titleOf(r))+' <span style="color:#9ca3af;font-size:11px;">('+esc(r.via||'')+' · '+esc(r.writer||'')+')</span></span>'+
+        '<button type="button" onclick="event.stopPropagation();editRecord(\''+r.id+'\')" style="background:var(--accent-soft);border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;color:var(--accent);cursor:pointer;white-space:nowrap;">자세히</button>'+
+      '</div>'+
+      (meta.length || complaintPreview ? '<div style="margin-top:4px;font-size:11.5px;color:#6b7280;padding-left:28px;">'+
+        (meta.length? meta.join(' · ')+(complaintPreview?' — ':'') : '')+esc(complaintPreview)+'</div>' : '')+
+    '</div>';
   }).join('') : '<div style="color:#9ca3af;padding:10px 0;">완료된 기록이 없습니다.</div>';
 }
 
@@ -612,7 +717,9 @@ setupAutocomplete('f_device', function(){ return DEVICES; }, null);
 document.getElementById('f_hospital').addEventListener('blur', function(){ setTimeout(autofillHospital,180); });
 document.getElementById('f_region').addEventListener('input', function(){ delete this.dataset.auto; });
 document.getElementById('f_phone').addEventListener('input', function(){ delete this.dataset.auto; });
-document.getElementById('f_recvAt').value=nowStr();
+document.getElementById('f_recvDate').value=todayStr();
+document.getElementById('f_recvTime').value=nowTimeStr();
+setupEnterAsTab();
 (function initMode(){
   var hero=document.getElementById('heroSub');
   if(STORE.shared) hero.innerHTML+=' <span style="color:#4ade80;">· 🟢 전 직원 실시간 공유(구글 시트)</span>';

@@ -11,8 +11,9 @@ body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI',
 .nav { background: #1a1a2e; color: #fff; padding: 0 20px; display: flex; align-items: center; height: 52px; gap: 16px; position: sticky; top: 0; z-index: 100; }
 .nav-brand { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
 .nav-brand span { color: #2563eb; }
-.nav-home { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 6px 14px; border-radius: 6px; text-decoration: none; font-size: 13px; margin-left: auto; }
-.nav-home:hover { background: rgba(255,255,255,0.2); }
+.nav-home { display:flex; align-items:center; gap:6px; background: #2563eb; border: none; color: #fff; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-size: 15px; font-weight:700; }
+.nav-home:hover { background: #1d4ed8; }
+.nav-home .ico { font-size:17px; }
 
 .search-bar { background: #1a1a2e; padding: 20px 24px 18px; border-bottom: 1px solid #2d3150; }
 .search-bar h1 { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 14px; }
@@ -52,7 +53,6 @@ body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI',
 .source-claim { background: #dbeafe; color: #1d4ed8; }
 .source-guide { background: #d1fae5; color: #065f46; }
 .source-client { background: #fef3c7; color: #92400e; }
-.source-doc { background: #ede9fe; color: #5b21b6; }
 .rc-trace { font-size: 11.5px; color: #6b7280; margin-bottom: 6px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .rc-trace .sep { color: #d1d5db; }
 .rc-trace a { color: #2563eb; text-decoration: none; }
@@ -87,6 +87,27 @@ body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI',
 .section-divider { font-size: 11px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 1px; margin: 18px 0 8px; grid-column: 1 / -1; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+
+/* ===== Mobile ===== */
+@media (max-width: 768px) {
+  .nav { padding: 0 14px; }
+  .search-bar { padding: 14px; }
+  .search-row { flex-wrap: wrap; gap: 8px; }
+  .search-input-wrap { flex: 1 1 100%; }
+  .search-input-wrap input { font-size: 16px; }
+  .search-btn { flex: 1; }
+  .clear-btn { flex: 1; }
+  .tab-bar { padding: 8px 10px 0; gap: 0; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+  .tab { padding: 8px 12px 10px; white-space: nowrap; font-size: 13px; }
+  .content { padding: 14px 14px 60px; }
+  .stats-row { gap: 8px; }
+  .stat-card { min-width: calc(50% - 4px); padding: 10px 12px; }
+  .stat-card .val { font-size: 19px; }
+  .result-card { padding: 12px; }
+  .modal-overlay.open { align-items: stretch; }
+  .modal-panel { width: 100vw; padding: 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .detail-grid { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
@@ -98,8 +119,8 @@ body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI',
 <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 
 <nav class="nav">
+  <a href="index.html" class="nav-home"><span class="ico">🏠</span>홈</a>
   <div class="nav-brand">Boditech <span>MED</span></div>
-  <a href="index.html" class="nav-home">홈으로</a>
 </nav>
 
 <div class="search-bar">
@@ -120,7 +141,6 @@ body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI',
   <button class="tab" data-tab="claim" onclick="switchTab('claim')">클레임 <span class="cnt" id="cnt-claim">0</span></button>
   <button class="tab" data-tab="guide" onclick="switchTab('guide')">가이드 <span class="cnt" id="cnt-guide">0</span></button>
   <button class="tab" data-tab="client" onclick="switchTab('client')">거래처 이력 <span class="cnt" id="cnt-client">0</span></button>
-  <button class="tab" data-tab="doc" onclick="switchTab('doc')">자료 <span class="cnt" id="cnt-doc">0</span></button>
 </div>
 
 <div class="content" id="mainContent">
@@ -227,17 +247,6 @@ function buildIndex(claimExtras) {
     });
   });
 
-  // ---- 업무가이드 자료(파일 인덱스) ----
-  var D = (typeof GUIDE_DOCS !== 'undefined') ? GUIDE_DOCS : [];
-  D.forEach(function(d) {
-    SOURCES.push({
-      src: 'doc', data: d, date: '',
-      trace: ['업무가이드 자료', d.pack, d.device, d.category],
-      link: 'info.html', linkLabel: '정보 페이지',
-      keyFields: [d.name, d.device],
-      text: (d.name + ' ' + d.device + ' ' + d.category + ' ' + d.pack + ' ' + d.path).toLowerCase()
-    });
-  });
 }
 
 Promise.all([
@@ -245,7 +254,6 @@ Promise.all([
   loadScript('claim-sheet.js'),
   loadScript('guide-data.js'),
   loadScript('client-data.js'),
-  loadScript('info-docs.js'),
   loadScript('sales-data.js').catch(function(){ /* sales-data.js 없어도 검색은 동작 */ })
 ]).then(function() {
   return fetchAllClaimExtras();
@@ -441,13 +449,12 @@ function runSearch() {
     return 0;
   });
 
-  var cnt = { claim: 0, guide: 0, client: 0, doc: 0 };
+  var cnt = { claim: 0, guide: 0, client: 0 };
   allResults.forEach(function(r) { cnt[r.entry.src]++; });
   document.getElementById('cnt-all').textContent = allResults.length.toLocaleString();
   document.getElementById('cnt-claim').textContent = cnt.claim.toLocaleString();
   document.getElementById('cnt-guide').textContent = cnt.guide.toLocaleString();
   document.getElementById('cnt-client').textContent = cnt.client.toLocaleString();
-  document.getElementById('cnt-doc').textContent = cnt.doc.toLocaleString();
   document.getElementById('tabBar').style.display = 'flex';
   currentTab = 'all';
   displayCount = 20;
@@ -492,7 +499,7 @@ function termTag(s) {
   if (s === 'On Going') return '<span class="tag tag-yellow">On Going</span>';
   return '<span class="tag tag-blue">' + esc(s) + '</span>';
 }
-var SRC_LABEL = { claim: ['Claim','source-claim'], guide: ['Guide','source-guide'], client: ['거래처','source-client'], doc: ['자료','source-doc'] };
+var SRC_LABEL = { claim: ['Claim','source-claim'], guide: ['Guide','source-guide'], client: ['거래처','source-client'] };
 
 function traceHtml(entry) {
   var parts = entry.trace.filter(Boolean).map(function(t){ return esc(t); });
@@ -508,7 +515,7 @@ function renderResults() {
     return;
   }
   var shown = filtered.slice(0, displayCount);
-  var cnt = { claim: 0, guide: 0, client: 0, doc: 0 };
+  var cnt = { claim: 0, guide: 0, client: 0 };
   allResults.forEach(function(r) { cnt[r.entry.src]++; });
 
   var statsHtml = '<div class="stats-row">' +
@@ -516,7 +523,6 @@ function renderResults() {
     '<div class="stat-card"><div class="val" style="color:#1d4ed8">' + cnt.claim.toLocaleString() + '</div><div class="lbl">클레임</div></div>' +
     '<div class="stat-card"><div class="val" style="color:#065f46">' + cnt.guide.toLocaleString() + '</div><div class="lbl">가이드</div></div>' +
     '<div class="stat-card"><div class="val" style="color:#92400e">' + cnt.client.toLocaleString() + '</div><div class="lbl">거래처 이력</div></div>' +
-    '<div class="stat-card"><div class="val" style="color:#5b21b6">' + cnt.doc.toLocaleString() + '</div><div class="lbl">자료</div></div>' +
     '</div>';
 
   // LOT 정확 일치 시 정보 페이지 안내

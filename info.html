@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>정보 페이지 — Boditech MED</title>
+<title>정보조회 (비공식) — Boditech MED</title>
 <style>
   :root {
     --bg:#ffffff; --surface:#ffffff; --surface2:#f8fafc; --border:#d1d5db;
@@ -15,8 +15,9 @@
   body { background:var(--bg); color:var(--text); font-family:'Pretendard','Segoe UI',system-ui,sans-serif; min-height:100vh; }
   .app { display:flex; flex-direction:column; height:100vh; }
   .header { padding:14px 24px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
-  .home-btn { text-decoration:none; color:var(--text2); font-size:13px; font-weight:600; }
-  .home-btn:hover { color:var(--accent); }
+  .home-btn { display:flex; align-items:center; gap:6px; text-decoration:none; color:#fff; background:var(--accent); font-size:15px; font-weight:700; padding:8px 14px; border-radius:8px; white-space:nowrap; }
+  .home-btn:hover { background:#1d4ed8; }
+  .home-btn .ico { font-size:17px; }
   .header h1 { font-size:18px; font-weight:700; letter-spacing:-.3px; }
   .header h1 span { color:var(--accent); }
   .mode-tabs { display:flex; gap:6px; }
@@ -78,86 +79,52 @@
 
   ::-webkit-scrollbar { width:6px; height:6px; }
   ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+  /* ===== Mobile ===== */
+  @media (max-width: 768px) {
+    .app { height:auto; min-height:100vh; }
+    .header { padding:12px 14px; gap:10px; position:sticky; top:0; z-index:50; background:var(--surface); }
+    .header h1 { font-size:16px; }
+    .mode-tabs { width:100%; order:5; }
+    .mode-btn { flex:1; padding:10px 8px; }
+    .search-wrap { flex:1 1 100%; max-width:none; order:6; }
+    .search-wrap input { font-size:16px; padding:11px 14px 11px 36px; }
+    .search-note { order:7; }
+    .content { padding:14px; overflow-y:visible; }
+    .section { padding:14px; }
+    .chips { gap:6px; }
+    .chip { padding:9px 14px; }
+    th, td { padding:8px 10px; }
+    .table-wrap { -webkit-overflow-scrolling:touch; max-height:none; }
+    .detail-overlay.open { align-items:stretch; }
+    .detail-panel { width:100vw; border-left:none; padding:16px; padding-bottom:calc(16px + env(safe-area-inset-bottom)); }
+    .detail-grid { grid-template-columns:1fr; }
+  }
 </style>
-<script src="claim-data.js"></script>
-<script src="claim-sheet.js"></script>
 <script src="guide-data.js"></script>
 <script src="info-docs.js"></script>
 <script src="device-data.js"></script>
+<script src="hub-sheet.js"></script>
 </head>
 <body>
 <div class="app">
   <div class="header">
-    <a href="index.html" class="home-btn">← 홈</a>
-    <h1>정보 <span>페이지</span></h1>
+    <a href="index.html" class="home-btn"><span class="ico">🏠</span>홈</a>
+    <h1>정보<span>조회</span> <span style="font-size:11px;font-weight:700;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:2px 9px;margin-left:4px;vertical-align:middle;">비공식</span></h1>
     <div class="mode-tabs">
       <button class="mode-btn active" id="tabDevice" onclick="switchMode('device')">🔧 장비</button>
-      <button class="mode-btn" id="tabCart" onclick="switchMode('cartridge')">🧪 카트리지 (LOT NO.)</button>
+      <button class="mode-btn" id="tabCart" onclick="switchMode('cartridge')">🧪 카트리지</button>
     </div>
     <div class="search-wrap">
       <span class="icon">🔍</span>
       <input type="text" id="searchInput" placeholder="검색어 입력 후 Enter (전체 장비 검색 · 2개 이상은 쉼표(,)로 구분)" autocomplete="off">
     </div>
-    <div class="search-note">⏎ Enter를 눌러야 검색이 실행됩니다. 장비 탭 검색은 <b>모든 장비</b>를 대상으로 합니다. 키워드 2개 이상은 쉼표(,)로 구분(AND). 검색어를 지우고 Enter를 누르면 전체 보기로 돌아갑니다.</div>
+    <div class="search-note" id="searchNote">⏎ Enter를 눌러야 검색이 실행됩니다. 장비 탭 검색은 <b>모든 장비</b>를 대상으로 합니다. 키워드 2개 이상은 쉼표(,)로 구분(AND). 검색어를 지우고 Enter를 누르면 전체 보기로 돌아갑니다.</div>
   </div>
   <div class="content" id="mainContent"></div>
 </div>
 
-<div class="detail-overlay" id="detailOverlay">
-  <div class="detail-panel">
-    <button class="detail-close" onclick="closeDetail()">✕ 닫기</button>
-    <div id="detailContent"></div>
-  </div>
-</div>
-
 <script>
-/* ============ 클레임 데이터 통합 (전 연도) ============ */
-function normalizeRaw(arr) {
-  return (arr || []).map(r => {
-    const o = {};
-    for (const [k, v] of Object.entries(r)) o[k] = (v === null || v === undefined) ? '' : String(v).trim();
-    return o;
-  });
-}
-let ALL_CLAIMS = [], CLAIM_MAP = {}, LOT_INDEX = {}, LOT_LIST = [];
-
-function rebuildClaimAggregates(extras) {
-  extras = extras || { '2024': [], '2025': [], '2026': [] };
-  const base = [].concat(
-    normalizeRaw(typeof RAW_2024 !== 'undefined' ? RAW_2024 : []),
-    normalizeRaw(typeof RAW_2025 !== 'undefined' ? RAW_2025 : []),
-    normalizeRaw(typeof RAW_2026 !== 'undefined' ? RAW_2026 : [])
-  );
-  const seen = new Set(base.map(r => r.no));
-  const extraFlat = normalizeRaw([].concat(extras['2024'] || [], extras['2025'] || [], extras['2026'] || []))
-    .filter(r => r.no && !seen.has(r.no));
-  ALL_CLAIMS = base.concat(extraFlat);
-
-  CLAIM_MAP = {};
-  for (const r of ALL_CLAIMS) CLAIM_MAP[r.no] = r;
-
-  /* ---- 카트리지: LOT NO.별 집계 ---- */
-  LOT_INDEX = {};
-  for (const r of ALL_CLAIMS) {
-    const lot = (r.lot || '').trim();
-    if (!lot || lot.toUpperCase() === 'N/A' || lot === '-') continue;
-    if (!LOT_INDEX[lot]) LOT_INDEX[lot] = { lot: lot, items: {}, claims: [], countries: {}, c3: {}, first: '', last: '' };
-    const L = LOT_INDEX[lot];
-    L.claims.push(r.no);
-    if (r.item) L.items[r.item] = (L.items[r.item] || 0) + 1;
-    if (r.country) L.countries[r.country] = (L.countries[r.country] || 0) + 1;
-    if (r.c3 && r.c3.indexOf('Inquiry') === -1) L.c3[r.c3] = (L.c3[r.c3] || 0) + 1;
-    const d = r.recv_date || '';
-    if (d) {
-      if (!L.first || d < L.first) L.first = d;
-      if (!L.last || d > L.last) L.last = d;
-    }
-  }
-  LOT_LIST = Object.values(LOT_INDEX);
-  LOT_LIST.sort((a, b) => (a.last || '') < (b.last || '') ? 1 : -1); // 최신순
-}
-rebuildClaimAggregates(); // 기본 데이터로 1차 렌더 (업로드 공유분은 아래에서 비동기로 반영)
-
 /* ============ 장비 목록 & 매칭 ============ */
 const DEVICES = [
   { id:'afias1',  label:'AFIAS-1',  family:'afias', num:1 },
@@ -233,6 +200,15 @@ function switchMode(m) {
   document.getElementById('searchInput').value = '';
   document.getElementById('tabDevice').classList.toggle('active', m === 'device');
   document.getElementById('tabCart').classList.toggle('active', m === 'cartridge');
+  const input = document.getElementById('searchInput');
+  const note = document.getElementById('searchNote');
+  if (m === 'cartridge') {
+    input.placeholder = '검색어 입력 후 Enter (마커명·LOT·내용 등 전체 검색 · 2개 이상은 쉼표(,)로 구분)';
+    note.innerHTML = '⏎ Enter를 눌러야 검색이 실행됩니다. 플랫폼·마커명·LOT·날짜·내용을 모두 검색하며, 결과는 <b>마커명 기준</b>으로 묶여 표시됩니다. 검색어를 지우고 Enter를 누르면 전체 보기로 돌아갑니다.';
+  } else {
+    input.placeholder = '검색어 입력 후 Enter (전체 장비 검색 · 2개 이상은 쉼표(,)로 구분)';
+    note.innerHTML = '⏎ Enter를 눌러야 검색이 실행됩니다. 장비 탭 검색은 <b>모든 장비</b>를 대상으로 합니다. 키워드 2개 이상은 쉼표(,)로 구분(AND). 검색어를 지우고 Enter를 누르면 전체 보기로 돌아갑니다.';
+  }
   render();
 }
 
@@ -405,101 +381,380 @@ function clearDeviceSearch(id) {
   render();
 }
 
-/* ============ 카트리지 뷰 ============ */
-let expandedLot = null;
+/* ============ 카트리지 (수기 기록) ============ */
+var CART_PLATFORMS = ['AFIAS', 'ichroma', 'ALCIS', '기타'];
+var CartStore = makeHubStore('cartridge_log', 'tsHub_cartridgeLog');
+var CART_LOG = [];
+var cartEditId = null;
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+/* 날짜 자유입력 → 'YYYY-MM-DD' (거래처이력카드와 동일한 방식) */
+function normalizeDateInput(str) {
+  str = (str || '').trim();
+  if (!str) return '';
+  let m = str.match(/^(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})$/);
+  if (m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  m = str.match(/^(\d{1,2})[.\-\/](\d{1,2})$/);
+  if (m) {
+    const year = new Date().getFullYear();
+    return `${year}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+  }
+  m = str.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  return str; // 형식 확인 실패 시 원문 그대로 반환 (호출부에서 검증)
+}
+
+function loadCartLog() {
+  return CartStore.list().then(list => {
+    CART_LOG = (list || []).slice().sort((a, b) => {
+      const da = a.date || '', db = b.date || '';
+      if (da !== db) return da < db ? 1 : -1;
+      return String(b.id).localeCompare(String(a.id));
+    });
+    if (mode === 'cartridge') renderCartridgeView();
+  }).catch(() => { /* hub-sheet.js가 이미 localStorage 폴백 처리함 */ });
+}
+
+function cartMarkerList() {
+  const set = {};
+  CART_LOG.forEach(r => { if (r.marker) set[r.marker] = true; });
+  return Object.keys(set).sort((a,b) => a.localeCompare(b,'ko'));
+}
+
+function splitKeywords(str) {
+  return (str || '').split(',').map(s => s.trim()).filter(Boolean);
+}
+
+function cartKeywordList() {
+  const set = {};
+  CART_LOG.forEach(r => splitKeywords(r.keyword).forEach(k => { set[k] = true; }));
+  return Object.keys(set).sort((a,b) => a.localeCompare(b,'ko'));
+}
+
+function submitCartEntry() {
+  const platformSel = document.getElementById('cartPlatform').value;
+  const platformOther = document.getElementById('cartPlatformOther').value.trim();
+  const platform = (platformSel === '기타' && platformOther) ? platformOther : platformSel;
+  const marker = document.getElementById('cartMarker').value.trim();
+  const lot = document.getElementById('cartLot').value.trim();
+  const dateInput = document.getElementById('cartDate').value.trim();
+  const author = document.getElementById('cartAuthor').value.trim();
+  const ref = document.getElementById('cartRef').value.trim();
+  const keyword = document.getElementById('cartKeyword').value.trim();
+  const note = document.getElementById('cartNote').value.trim();
+  const hint = document.getElementById('cartHint');
+  if (!author) { hint.textContent = '⚠ 작성자를 입력해주세요.'; hint.style.color = 'var(--red)'; document.getElementById('cartAuthor').focus(); return; }
+  const date = dateInput ? normalizeDateInput(dateInput) : todayStr();
+  if (dateInput && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    hint.textContent = '⚠ 작성한 날짜 형식을 확인해주세요 (예: 7/8, 2026-07-08).';
+    hint.style.color = 'var(--red)';
+    document.getElementById('cartDate').focus();
+    return;
+  }
+  document.getElementById('cartDate').value = date;
+  hint.textContent = '저장 중…'; hint.style.color = 'var(--text2)';
+  const rec = { platform, marker, lot, date, author, ref, keyword, note };
+  let op;
+  if (cartEditId) { rec.id = cartEditId; op = CartStore.update(rec); }
+  else { rec.id = 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,6); op = CartStore.add(rec); }
+  op.then(() => {
+    hint.textContent = (cartEditId ? '수정되었습니다.' : '저장되었습니다.') + (CartStore.shared ? ' (전 직원 공유)' : ' (이 브라우저)');
+    hint.style.color = 'var(--accent3)';
+    cartEditId = null;
+    document.getElementById('cartMarker').value = '';
+    document.getElementById('cartLot').value = '';
+    document.getElementById('cartRef').value = '';
+    document.getElementById('cartKeyword').value = '';
+    document.getElementById('cartNote').value = '';
+    document.getElementById('cartDate').value = todayStr();
+    document.getElementById('cartPlatformOther').value = '';
+    document.getElementById('cartPlatformOther').style.display = 'none';
+    document.getElementById('cartSubmitBtn').textContent = '저장';
+    return loadCartLog();
+  }).catch(err => {
+    hint.textContent = '⚠ 저장 중 오류: ' + err.message; hint.style.color = 'var(--red)';
+  });
+}
+
+function onCartPlatformChange() {
+  const sel = document.getElementById('cartPlatform').value;
+  const other = document.getElementById('cartPlatformOther');
+  other.style.display = sel === '기타' ? 'block' : 'none';
+  if (sel === '기타') other.focus();
+}
+
+function cancelCartEdit() {
+  cartEditId = null;
+  document.getElementById('cartMarker').value = '';
+  document.getElementById('cartLot').value = '';
+  document.getElementById('cartAuthor').value = '';
+  document.getElementById('cartRef').value = '';
+  document.getElementById('cartKeyword').value = '';
+  document.getElementById('cartNote').value = '';
+  document.getElementById('cartDate').value = todayStr();
+  document.getElementById('cartPlatform').value = 'AFIAS';
+  document.getElementById('cartPlatformOther').value = '';
+  document.getElementById('cartPlatformOther').style.display = 'none';
+  document.getElementById('cartSubmitBtn').textContent = '저장';
+  document.getElementById('cartHint').textContent = '';
+}
+
+function editCartEntry(id) {
+  const r = CART_LOG.find(x => String(x.id) === String(id));
+  if (!r) return;
+  cartEditId = id;
+  const known = CART_PLATFORMS.includes(r.platform);
+  document.getElementById('cartPlatform').value = known ? (r.platform || 'AFIAS') : '기타';
+  document.getElementById('cartPlatformOther').style.display = known ? 'none' : 'block';
+  document.getElementById('cartPlatformOther').value = known ? '' : (r.platform || '');
+  document.getElementById('cartMarker').value = r.marker || '';
+  document.getElementById('cartLot').value = r.lot || '';
+  document.getElementById('cartDate').value = r.date || todayStr();
+  document.getElementById('cartAuthor').value = r.author || '';
+  document.getElementById('cartRef').value = r.ref || '';
+  document.getElementById('cartKeyword').value = r.keyword || '';
+  document.getElementById('cartNote').value = r.note || '';
+  document.getElementById('cartSubmitBtn').textContent = '수정 완료';
+  document.getElementById('cartHint').textContent = '기존 기록을 수정하는 중입니다.';
+  document.getElementById('cartHint').style.color = 'var(--accent)';
+  document.getElementById('cartAuthor').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function deleteCartEntry(id, ev) {
+  if (ev) ev.stopPropagation();
+  if (!confirm('이 기록을 삭제할까요?')) return;
+  CartStore.remove(id).then(() => loadCartLog());
+}
 
 function renderCartridgeView() {
-  let list = LOT_LIST;
-  if (kw) {
-    const terms = kwTerms().map(t => t.toLowerCase());
-    const k = terms[0] || '';
-    const hay = L => {
-      const s = (L.lot + ' ' + Object.keys(L.items).join(' ') + ' ' +
-        Object.keys(L.countries).join(' ') + ' ' + Object.keys(L.c3).join(' ')).toLowerCase();
-      return terms.every(t => s.indexOf(t) !== -1);
-    };
-    list = LOT_LIST.filter(hay);
-    // 정확 일치 LOT 상단 배치
-    list = list.slice().sort((a, b) => {
-      const ax = a.lot.toLowerCase() === k ? 1 : 0, bx = b.lot.toLowerCase() === k ? 1 : 0;
-      if (ax !== bx) return bx - ax;
-      return (a.last || '') < (b.last || '') ? 1 : -1;
-    });
-  }
-  const shown = list.slice(0, 300);
+  const matched = CART_LOG.filter(matchKw);
 
-  let html = `<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
-    <div class="section" style="flex:1;min-width:160px;margin:0;padding:14px 16px;"><div style="font-size:24px;font-weight:800;color:var(--accent)">${LOT_LIST.length.toLocaleString()}</div><div style="font-size:12px;color:var(--text2)">클레임 접수 LOT 수 (2024–2026)</div></div>
-    <div class="section" style="flex:1;min-width:160px;margin:0;padding:14px 16px;"><div style="font-size:24px;font-weight:800;color:var(--accent3)">${ALL_CLAIMS.filter(r=>r.lot && r.lot.toUpperCase()!=='N/A').length.toLocaleString()}</div><div style="font-size:12px;color:var(--text2)">LOT 정보가 있는 클레임 건수</div></div>
+  const groups = {};
+  matched.forEach(r => {
+    const m = r.marker || '(마커 미입력)';
+    (groups[m] = groups[m] || []).push(r);
+  });
+  const markers = Object.keys(groups).sort((a, b) => {
+    const la = groups[a].reduce((mx, r) => (r.date || '') > mx ? (r.date || '') : mx, '');
+    const lb = groups[b].reduce((mx, r) => (r.date || '') > mx ? (r.date || '') : mx, '');
+    if (la !== lb) return la < lb ? 1 : -1;
+    return a.localeCompare(b, 'ko');
+  });
+
+  const markerOptions = cartMarkerList().map(m => `<option value="${esc(m)}">`).join('');
+  const keywordOptions = cartKeywordList().map(k => `<option value="${esc(k)}">`).join('');
+
+  let html = `
+  <div class="section" id="cartEntryForm">
+    <h2>카트리지 기록 추가 <span style="font-size:11px;color:var(--text2);text-transform:none;font-weight:400;">${CartStore.shared ? '· 🟢 전 직원 실시간 공유' : '· 🟡 이 브라우저에만 저장'}</span></h2>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:12px;">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">플랫폼</label>
+        <select id="cartPlatform" onchange="onCartPlatformChange()" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;">
+          ${CART_PLATFORMS.map(p => `<option value="${p}">${p}</option>`).join('')}
+        </select>
+        <input type="text" id="cartPlatformOther" placeholder="플랫폼명을 직접 입력" autocomplete="off" style="display:none;width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;margin-top:6px;">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">마커명</label>
+        <input type="text" id="cartMarker" list="cartMarkerList" placeholder="예: HbA1c" autocomplete="off" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;">
+        <datalist id="cartMarkerList">${markerOptions}</datalist>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">LOT No.</label>
+        <input type="text" id="cartLot" placeholder="예: HB2601A" autocomplete="off" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">작성한 날짜</label>
+        <input type="text" id="cartDate" value="${esc(todayStr())}" placeholder="예: 7/8, 07/08, 2026-07-08" autocomplete="off" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">작성자 <span style="color:var(--red);">*</span></label>
+        <input type="text" id="cartAuthor" placeholder="이름" autocomplete="off" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">메일제목 / 폴더 경로</label>
+        <input type="text" id="cartRef" placeholder="예: [클레임] 2026-01-15 관련 메일 / 공유폴더/문서/경로" autocomplete="off" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">키워드</label>
+        <input type="text" id="cartKeyword" list="cartKeywordList" placeholder="예: 누수, 교체 (쉼표로 여러 개)" autocomplete="off" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;">
+        <datalist id="cartKeywordList">${keywordOptions}</datalist>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">내용</label>
+      <textarea id="cartNote" rows="3" placeholder="내용을 입력하세요" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;font-family:inherit;resize:vertical;"></textarea>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <button type="button" id="cartSubmitBtn" onclick="submitCartEntry()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13.5px;font-weight:700;cursor:pointer;">저장</button>
+      <button type="button" onclick="cancelCartEdit()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:13px;cursor:pointer;color:var(--text2);">취소</button>
+      <span id="cartHint" style="font-size:12.5px;color:var(--text2);"></span>
+    </div>
   </div>`;
-  if (kw) html += `<div style="font-size:13px;color:var(--text2);margin-bottom:10px;">"${esc(kw)}" 검색 결과: <b style="color:var(--accent)">${list.length}개 LOT</b> (최신 접수순, 정확 일치 우선)</div>`;
 
-  html += `<div class="section"><h2>LOT NO.별 클레임 정리 <span class="cnt">${list.length}</span>${list.length > 300 ? ' <span style="font-weight:400;text-transform:none;">— 상위 300개 표시, 검색으로 좁혀주세요</span>' : ''}</h2>
+  if (kw) html += `<div style="font-size:13px;color:var(--text2);margin-bottom:10px;">"${esc(kw)}" 검색 결과: <b style="color:var(--accent)">${matched.length}건</b> · <b style="color:var(--accent)">${markers.length}개 마커</b></div>`;
+
+  html += `<div class="section"><h2>마커별 기록 ${kw ? '(검색 결과)' : '(전체)'} <span class="cnt">${markers.length}</span></h2>
   <div class="table-wrap"><table>
-    <thead><tr><th>LOT No.</th><th>Item</th><th>클레임 수</th><th>최근 접수</th><th>최초 접수</th><th>접수 국가</th><th>주요 분류(3rd CLASS)</th></tr></thead><tbody>` +
-    shown.map(L => {
-      const items = Object.keys(L.items).join(', ');
-      const countries = Object.entries(L.countries).sort((a,b)=>b[1]-a[1]).map(([c,n])=>`${c}(${n})`).slice(0,4).join(', ');
-      const c3 = Object.entries(L.c3).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([c,n])=>`<span class="tag tag-gray">${esc(c)} ${n}</span>`).join('');
-      return `<tr class="clickable" onclick="toggleLot('${esc(L.lot).replace(/'/g,"\\'")}')">
-        <td style="font-weight:700;color:var(--accent)">${hl(L.lot)}</td>
-        <td>${hl(items)}</td>
-        <td><b>${L.claims.length}</b></td>
-        <td>${L.last || '-'}</td><td>${L.first || '-'}</td>
-        <td style="font-size:12px;">${hl(countries)}</td><td>${c3}</td>
-      </tr>` + (expandedLot === L.lot ? `<tr><td colspan="7" style="background:var(--surface2);">${lotClaimTable(L)}</td></tr>` : '');
+    <thead><tr><th>마커명</th><th>플랫폼</th><th>기록 수</th><th>최근 작성일</th><th>상세</th></tr></thead><tbody>` +
+    markers.map(m => {
+      const rows = groups[m];
+      const platforms = Array.from(new Set(rows.map(r => r.platform || '기타')));
+      const lastDate = rows.reduce((mx, r) => (r.date || '') > mx ? (r.date || '') : mx, '');
+      const mKey = esc(m).replace(/'/g, "\\'");
+      return `<tr class="clickable" onclick="showMarkerDetail('${mKey}')">
+        <td style="font-weight:700;color:var(--accent)">${hl(m)}</td>
+        <td>${platforms.map(p => `<span class="tag tag-gray">${esc(p)}</span>`).join(' ')}</td>
+        <td><b>${rows.length}</b></td>
+        <td>${lastDate || '-'}</td>
+        <td><button type="button" onclick="event.stopPropagation();showMarkerDetail('${mKey}')" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;color:var(--accent);font-weight:600;">자세히</button></td>
+      </tr>`;
     }).join('') + `</tbody></table></div></div>`;
 
-  if (!list.length) html += `<div class="empty-state"><div class="ico">🔍</div><p>"${esc(kw)}"에 해당하는 LOT이 없습니다.</p></div>`;
+  html += `<div id="markerDetailResults"></div>`;
+
+  // 키워드별 그룹 (한 기록이 키워드 여러 개를 가질 수 있으므로 다중 소속)
+  const kwGroups = {};
+  matched.forEach(r => {
+    const ks = splitKeywords(r.keyword);
+    (ks.length ? ks : ['(키워드 미입력)']).forEach(k => {
+      (kwGroups[k] = kwGroups[k] || []).push(r);
+    });
+  });
+  const keywordsList = Object.keys(kwGroups).sort((a, b) => {
+    const la = kwGroups[a].reduce((mx, r) => (r.date || '') > mx ? (r.date || '') : mx, '');
+    const lb = kwGroups[b].reduce((mx, r) => (r.date || '') > mx ? (r.date || '') : mx, '');
+    if (la !== lb) return la < lb ? 1 : -1;
+    return a.localeCompare(b, 'ko');
+  });
+
+  html += `<div class="section"><h2>키워드별 기록 ${kw ? '(검색 결과)' : '(전체)'} <span class="cnt">${keywordsList.length}</span></h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>키워드</th><th>관련 마커</th><th>기록 수</th><th>최근 작성일</th><th>상세</th></tr></thead><tbody>` +
+    keywordsList.map(k => {
+      const rows = kwGroups[k];
+      const markersHere = Array.from(new Set(rows.map(r => r.marker || '(마커 미입력)')));
+      const lastDate = rows.reduce((mx, r) => (r.date || '') > mx ? (r.date || '') : mx, '');
+      const kKey = esc(k).replace(/'/g, "\\'");
+      return `<tr class="clickable" onclick="showKeywordDetail('${kKey}')">
+        <td style="font-weight:700;color:var(--accent)">${hl(k)}</td>
+        <td>${markersHere.slice(0,4).map(m => `<span class="tag tag-gray">${esc(m)}</span>`).join(' ')}${markersHere.length > 4 ? ` <span style="color:var(--text2);">외 ${markersHere.length-4}</span>` : ''}</td>
+        <td><b>${rows.length}</b></td>
+        <td>${lastDate || '-'}</td>
+        <td><button type="button" onclick="event.stopPropagation();showKeywordDetail('${kKey}')" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;color:var(--accent);font-weight:600;">자세히</button></td>
+      </tr>`;
+    }).join('') + `</tbody></table></div></div>`;
+
+  html += `<div id="keywordDetailResults"></div>`;
+
+  if (!markers.length) html += `<div class="empty-state"><div class="ico">🗒️</div><p>${kw ? `"${esc(kw)}"에 해당하는 기록이 없습니다.` : '아직 등록된 카트리지 기록이 없습니다. 위에서 추가해보세요.'}</p></div>`;
+
   document.getElementById('mainContent').innerHTML = html;
+
+  const dateEl = document.getElementById('cartDate');
+  if (dateEl) dateEl.addEventListener('blur', () => { if (dateEl.value.trim()) dateEl.value = normalizeDateInput(dateEl.value); });
+
+  setupCartEnterAsTab();
 }
 
-function lotClaimTable(L) {
-  const rows = L.claims.map(no => CLAIM_MAP[no]).filter(Boolean)
-    .sort((a, b) => (a.recv_date || '') < (b.recv_date || '') ? 1 : -1);
-  return `<table style="margin:4px 0;"><thead><tr><th>Complaint No.</th><th>수신일</th><th>국가</th><th>Device</th><th>3rd CLASS</th><th>제목/내용</th><th>상태</th></tr></thead><tbody>` +
-    rows.map(r => `<tr class="clickable" onclick="event.stopPropagation();showClaim('${esc(r.no).replace(/'/g,"\\'")}')">
-      <td style="font-weight:600;color:var(--accent)">${esc(r.no)}</td><td>${esc(r.recv_date)}</td><td>${esc(r.country)}</td>
-      <td>${esc(r.device)}</td><td>${esc(r.c3)}</td>
-      <td style="max-width:340px;">${esc((r.title || r.complaint || '').slice(0, 80))}</td>
-      <td>${r.term === 'Closed' ? '<span class="tag tag-green">Closed</span>' : '<span class="tag tag-red">On Going</span>'}</td>
-    </tr>`).join('') + `</tbody></table>`;
+/* ---- Enter key behaves like Tab (moves to next field) in the cartridge entry form ---- */
+function getCartFormFields() {
+  return Array.from(document.querySelectorAll('#cartEntryForm input, #cartEntryForm select'))
+    .filter(el => el.type !== 'file' && !el.disabled && el.offsetParent !== null);
+}
+function focusNextCartField(current) {
+  const fields = getCartFormFields();
+  const idx = fields.indexOf(current);
+  if (idx === -1 || idx === fields.length - 1) return;
+  const next = fields[idx + 1];
+  next.focus();
+  if (typeof next.select === 'function' && next.tagName === 'INPUT') next.select();
+}
+function setupCartEnterAsTab() {
+  document.querySelectorAll('#cartEntryForm input:not([type=file]), #cartEntryForm select').forEach(el => {
+    el.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' || e.isComposing) return;
+      if (e.defaultPrevented) return;
+      e.preventDefault();
+      focusNextCartField(el);
+    });
+  });
 }
 
-function toggleLot(lot) {
-  expandedLot = (expandedLot === lot) ? null : lot;
-  renderCartridgeView();
+function showKeywordDetail(keyword) {
+  const el = document.getElementById('keywordDetailResults');
+  if (!el) return;
+  let rows = CART_LOG.filter(r => {
+    const ks = splitKeywords(r.keyword);
+    return (ks.length ? ks : ['(키워드 미입력)']).includes(keyword) && matchKw(r);
+  });
+  rows = rows.slice().sort((a, b) => {
+    const da = a.date || '', db = b.date || '';
+    if (da !== db) return da < db ? 1 : -1;
+    return 0;
+  });
+  el.innerHTML = `
+  <div class="section" style="margin-top:16px;">
+    <h2>#${esc(keyword)} <span class="cnt">${rows.length}건</span></h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>마커명</th><th>플랫폼</th><th>LOT No.</th><th>작성일</th><th>작성자</th><th>메일제목/경로</th><th>내용</th><th></th></tr></thead><tbody>` +
+      rows.map(r => `<tr>
+          <td style="font-weight:600;color:var(--accent)">${esc(r.marker || '-')}</td>
+          <td><span class="tag tag-gray">${esc(r.platform || '-')}</span></td>
+          <td style="font-weight:600;">${esc(r.lot || '-')}</td>
+          <td style="white-space:nowrap;">${esc(r.date || '-')}</td>
+          <td style="white-space:nowrap;">${esc(r.author || '-')}</td>
+          <td style="max-width:220px;word-break:break-all;">${esc(r.ref || '-')}</td>
+          <td style="white-space:pre-wrap;max-width:340px;">${esc(r.note || '-')}</td>
+          <td style="white-space:nowrap;">
+            <button type="button" onclick="editCartEntry('${esc(r.id)}')" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:var(--text);margin-right:4px;">수정</button>
+            <button type="button" onclick="deleteCartEntry('${esc(r.id)}', event)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;">✕</button>
+          </td>
+        </tr>`).join('') + `</tbody></table></div>
+  </div>`;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-/* ============ 클레임 상세 ============ */
-function showClaim(no) {
-  const r = CLAIM_MAP[no];
-  if (!r) return;
-  const fields = [
-    ['Complaint No.', r.no], ['수신일', r.recv_date], ['담당자', r.receiver], ['상태', r.term],
-    ['국가 / 지역', (r.country || '') + ' / ' + (r.area || '')], ['Distributor', r.dist],
-    ['---분류'], ['1st CLASS', r.c1], ['2nd CLASS', r.c2], ['3rd CLASS', r.c3],
-    ['---기기/제품'], ['Item', r.item], ['LOT No.', r.lot], ['Device', r.device], ['Serial', r.serial],
-    ['---내용'], ['제목', r.title, 1], ['클레임 내용', r.complaint, 1], ['조사 내용', r.invest, 1],
-    ['Reply', r.reply, 1], ['회신일', r.replied], ['처리기간(일)', r.dur]
-  ];
-  let html = `<h3 style="margin-bottom:2px;">${esc(r.title || r.no)}</h3><div style="font-size:12px;color:var(--text2);margin-bottom:16px;">${esc(r.no)}</div><div class="detail-grid">`;
-  for (const f of fields) {
-    if (f[0].startsWith('---')) html += `<div class="section-divider">${f[0].slice(3)}</div>`;
-    else html += `<div class="detail-field ${f[2] ? 'full' : ''}"><label>${f[0]}</label><p>${esc(f[1]) || '-'}</p></div>`;
-  }
-  html += '</div>';
-  document.getElementById('detailContent').innerHTML = html;
-  document.getElementById('detailOverlay').classList.add('open');
+function showMarkerDetail(marker) {
+  const el = document.getElementById('markerDetailResults');
+  if (!el) return;
+  let rows = CART_LOG.filter(r => (r.marker || '(마커 미입력)') === marker && matchKw(r));
+  rows = rows.slice().sort((a, b) => {
+    const da = a.date || '', db = b.date || '';
+    if (da !== db) return da < db ? 1 : -1;
+    return 0;
+  });
+  el.innerHTML = `
+  <div class="section" style="margin-top:16px;">
+    <h2>${esc(marker)} <span class="cnt">${rows.length}건</span></h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>플랫폼</th><th>LOT No.</th><th>작성일</th><th>작성자</th><th>키워드</th><th>메일제목/경로</th><th>내용</th><th></th></tr></thead><tbody>` +
+      rows.map(r => `<tr>
+          <td><span class="tag tag-gray">${esc(r.platform || '-')}</span></td>
+          <td style="font-weight:600;">${esc(r.lot || '-')}</td>
+          <td style="white-space:nowrap;">${esc(r.date || '-')}</td>
+          <td style="white-space:nowrap;">${esc(r.author || '-')}</td>
+          <td style="max-width:160px;">${splitKeywords(r.keyword).map(k => `<span class="tag tag-gray">#${esc(k)}</span>`).join(' ') || '-'}</td>
+          <td style="max-width:220px;word-break:break-all;">${esc(r.ref || '-')}</td>
+          <td style="white-space:pre-wrap;max-width:340px;">${esc(r.note || '-')}</td>
+          <td style="white-space:nowrap;">
+            <button type="button" onclick="editCartEntry('${esc(r.id)}')" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:var(--text);margin-right:4px;">수정</button>
+            <button type="button" onclick="deleteCartEntry('${esc(r.id)}', event)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;">✕</button>
+          </td>
+        </tr>`).join('') + `</tbody></table></div>
+  </div>`;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-function closeDetail() { document.getElementById('detailOverlay').classList.remove('open'); }
-document.getElementById('detailOverlay').addEventListener('click', function(e) { if (e.target === this) closeDetail(); });
 
 /* ============ 검색 (Enter 전용) ============ */
 document.getElementById('searchInput').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') {
     kw = this.value.trim();
-    expandedLot = null;
     render();
   }
 });
@@ -509,15 +764,7 @@ function render() {
   else renderCartridgeView();
 }
 render();
-
-// 엑셀 업로드로 추가된 공유분(구글 시트, 미설정 시 이 브라우저 전용)을 반영해 재집계
-(async function refreshWithSharedExtras() {
-  try {
-    const extras = await fetchAllClaimExtras();
-    rebuildClaimAggregates(extras);
-    render();
-  } catch (e) { /* claim-sheet.js가 이미 폴백 처리함 */ }
-})();
+loadCartLog();
 </script>
 </body>
 </html>

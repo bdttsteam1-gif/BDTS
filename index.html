@@ -97,6 +97,16 @@
     #authGate button:hover { background: #1d4ed8; }
     #authError { color: #f87171; font-size: 13px; margin-top: 10px; min-height: 18px; }
     #appBody { display: none; }
+
+    /* ===== Mobile ===== */
+    @media (max-width: 768px) {
+      .nav { padding: 0 16px; }
+      .hero { padding: 32px 16px 36px; }
+      .hero h1 { font-size: 22px; }
+      .cards { margin: 24px auto; padding: 0 14px; grid-template-columns: 1fr; gap: 12px; }
+      .card { padding: 18px; }
+      #authGate input { font-size: 16px; }
+    }
   </style>
 </head>
 <body>
@@ -150,13 +160,13 @@
   <a class="card" href="search.html">
     <div class="card-label">Search</div>
     <h2>통합 검색</h2>
-    <p>클레임·가이드·거래처 이력·자료 인덱스를 한 번에 검색하고 출처를 추적합니다.</p>
+    <p>클레임·가이드·거래처 이력을 한 번에 검색하고 출처를 추적합니다.</p>
     <div class="card-arrow">바로가기 →</div>
   </a>
   <a class="card" href="info.html">
-    <div class="card-label">Info</div>
-    <h2>정보 페이지</h2>
-    <p>장비별 가이드 정리와 카트리지 LOT NO.별 클레임 정보를 확인합니다.</p>
+    <div class="card-label">Info · 비공식</div>
+    <h2>정보조회</h2>
+    <p>장비별 가이드 정리와 카트리지 마커별 수기 기록(플랫폼·LOT·내용)을 확인합니다.</p>
     <div class="card-arrow">바로가기 →</div>
   </a>
 </div>

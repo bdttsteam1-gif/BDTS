@@ -34,6 +34,9 @@
     border-radius:14px; margin-bottom:16px;
   }
   .masthead .brand{display:flex; align-items:baseline; gap:10px;}
+  .home-btn{display:flex; align-items:center; gap:6px; text-decoration:none; color:#fff; background:var(--accent); font-size:15px; font-weight:700; padding:8px 14px; border-radius:8px; white-space:nowrap;}
+  .home-btn:hover{background:var(--accent-dark);}
+  .home-btn .ico{font-size:17px;}
   .masthead .brand .mark{
     font-family:var(--mono); font-size:11px; letter-spacing:.14em;
     background:rgba(255,255,255,.14); padding:3px 8px; border-radius:5px;
@@ -138,6 +141,14 @@
   .btn-ghost.danger:hover{background:var(--warn-soft); border-color:var(--warn) !important;}
 
   .no-result{padding:40px 10px; text-align:center; color:var(--ink-soft); font-size:13.5px;}
+  .province-group{margin-bottom:10px;}
+  .province-group-toggle{width:100%; display:flex; align-items:center; gap:8px; background:var(--accent-soft); border:1px solid var(--line); border-radius:10px; padding:10px 14px; cursor:pointer; font-family:inherit; text-align:left;}
+  .province-group-toggle:hover{border-color:var(--accent);}
+  .province-group-toggle .chev{font-size:12px; color:var(--accent-dark); width:12px; flex-shrink:0;}
+  .province-group-toggle .pname{font-size:13.5px; font-weight:800; color:var(--accent-dark); flex:1;}
+  .province-group-toggle .pcount{font-size:11.5px; font-weight:700; color:var(--accent); background:#fff; border-radius:20px; padding:2px 10px;}
+  .province-group-body{padding:10px 2px 0 2px; display:flex; flex-direction:column; gap:8px;}
+  .province-group-body .hospital-list-row{margin-left:6px;}
   .toolbar-row{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;}
   .toolbar-row .count-label{font-size:12.5px; color:var(--ink-soft);}
 
@@ -151,7 +162,26 @@
     .form-grid{grid-template-columns:1fr;}
     .field.span2, .field.span3{grid-column:span 1;}
     .masthead{flex-direction:column; gap:8px;}
-    .tabs{flex-direction:column;}
+    .tabs{flex-direction:row; flex-wrap:wrap;}
+    .tab-btn{flex:1 1 calc(50% - 3px); padding:11px 8px; font-size:13px;}
+  }
+  /* ===== Mobile 공통 보강 ===== */
+  @media (max-width:768px){
+    .app{padding:12px 12px 50px;}
+    .masthead{padding:14px 16px;}
+    .masthead .stats{text-align:left;}
+    .panel{padding:14px;}
+    .search-bar{flex-wrap:wrap;}
+    .search-bar input{flex:1 1 100%; font-size:16px;}
+    .search-bar button{flex:1; padding:11px 0;}
+    input[type=text], input[type=date], select, textarea{font-size:16px;}
+    .detail-grid{grid-template-columns:1fr;}
+    .btn-row{flex-wrap:wrap;}
+    .btn-row .hint-inline{flex-basis:100%; margin-right:0; margin-bottom:4px;}
+    .btn-row button{flex:1;}
+    .result-row{padding:12px;}
+    .detail-actions{flex-wrap:wrap;}
+    .agg-card{padding:14px;}
   }
   ::-webkit-scrollbar{width:8px; height:8px;}
   ::-webkit-scrollbar-thumb{background:#c7d3cd; border-radius:8px;}
@@ -196,7 +226,7 @@
 
   <div class="masthead">
     <div class="brand">
-      <a href="index.html" style="color:#b9d8cd;text-decoration:none;font-size:12.5px;margin-right:6px;">← 홈</a>
+      <a href="index.html" class="home-btn"><span class="ico">🏠</span>홈</a>
       <div>
         <h1>거래처 이력 카드</h1>
         <div class="sub">병원별 장비 · 시약 · 컨택 히스토리 통합 관리</div>
@@ -248,8 +278,8 @@
         </div>
 
         <div class="field">
-          <label>지역명 (도 + 시)</label>
-          <input type="text" id="f_region" placeholder="예: 강원도 춘천시" autocomplete="off">
+          <label>지역명 (도 + 시) <span class="req">*</span></label>
+          <input type="text" id="f_region" placeholder="예: 강원도 춘천시" required autocomplete="off">
           <div id="regionHint" style="font-size:11px; color:var(--accent); margin-top:3px; display:none;"></div>
         </div>
         <div class="field">
@@ -391,6 +421,7 @@ const SEED_RECORDS = [{"id":1,"manager":"김대영","contact":"방문","date":"2
 let RECORDS = [];
 let editingId = null;   // set when editing an existing record
 let selectedImageFiles = [];  // File objects picked but not yet uploaded
+let expandedProvinces = new Set();  // 병원 리스트 - 펼쳐진 시/도 그룹
 let existingImageUrls = [];   // Drive URLs already attached (edit mode) or just uploaded
 
 const FIELD_LABELS = {
@@ -887,6 +918,16 @@ function renderAllHospitalsList(filterQuery){
     if(!stats[r.hospital].region && regionOf(r)) stats[r.hospital].region = regionOf(r);
   });
   const total = Object.keys(stats).length;
+
+  // 지역(시/도) 필드를 별도로 분리 - "OO도 OO시" 형태의 앞 단어만 시/도로 취급
+  const REGION_ORDER = ['서울특별시','부산광역시','대구광역시','인천광역시','광주광역시','대전광역시','울산광역시','세종특별자치시','경기도','강원도','충청북도','충청남도','전라북도','전라남도','경상북도','경상남도','제주특별자치도'];
+  Object.keys(stats).forEach(n=>{
+    const full = (stats[n].region || '').trim();
+    const sp = full.indexOf(' ');
+    stats[n].province = sp > -1 ? full.slice(0, sp) : full;
+    stats[n].city = sp > -1 ? full.slice(sp + 1) : '';
+  });
+
   let names = Object.keys(stats).sort((a,b)=>a.localeCompare(b,'ko'));
 
   const filterEl = document.getElementById('hospitalListFilterInput');
@@ -895,19 +936,55 @@ function renderAllHospitalsList(filterQuery){
 
   if(countEl) countEl.textContent = `총 ${total.toLocaleString()}개 병원` + (q ? ` · ${names.length.toLocaleString()}개 표시` : '');
 
-  box.innerHTML = names.length
-    ? names.map(n=>`
-      <div class="result-row hospital-list-row" data-hospital="${escapeHtml(n)}" style="cursor:pointer;">
-        <div class="result-top">
-          <div class="result-title">${escapeHtml(n)}</div>
-          <div class="result-meta">
-            ${stats[n].region ? `<span class="tag">📍 ${escapeHtml(stats[n].region)}</span>` : ''}
-            <span class="tag">${stats[n].count}건</span>
-            ${stats[n].lastDate ? `<span class="tag">최근 ${escapeHtml(stats[n].lastDate)}</span>` : ''}
+  // 시/도 단위로 그룹핑
+  const groups = {};
+  names.forEach(n=>{
+    const province = stats[n].province || '미분류';
+    if(!groups[province]) groups[province] = [];
+    groups[province].push(n);
+  });
+  const provinces = Object.keys(groups).sort((a,b)=>{
+    const ia = REGION_ORDER.indexOf(a), ib = REGION_ORDER.indexOf(b);
+    const oa = ia > -1 ? ia : REGION_ORDER.length + (a === '미분류' ? 1 : 0);
+    const ob = ib > -1 ? ib : REGION_ORDER.length + (b === '미분류' ? 1 : 0);
+    return oa - ob;
+  });
+
+  box.innerHTML = provinces.length
+    ? provinces.map(province=>{
+        const list = groups[province];
+        const isOpen = q ? true : expandedProvinces.has(province);
+        return `<div class="province-group">
+          <button type="button" class="province-group-toggle" data-province="${escapeHtml(province)}">
+            <span class="chev">${isOpen ? '▾' : '▸'}</span>
+            <span class="pname">${escapeHtml(province)}</span>
+            <span class="pcount">${list.length}개</span>
+          </button>
+          <div class="province-group-body" style="${isOpen ? '' : 'display:none;'}">
+            ${list.map(n=>`
+            <div class="result-row hospital-list-row" data-hospital="${escapeHtml(n)}" style="cursor:pointer;">
+              <div class="result-top">
+                <div class="result-title">${escapeHtml(n)}</div>
+                <div class="result-meta">
+                  ${stats[n].city ? `<span class="tag">📍 ${escapeHtml(stats[n].city)}</span>` : (stats[n].region ? `<span class="tag">📍 ${escapeHtml(stats[n].region)}</span>` : '')}
+                  <span class="tag">${stats[n].count}건</span>
+                  ${stats[n].lastDate ? `<span class="tag">최근 ${escapeHtml(stats[n].lastDate)}</span>` : ''}
+                </div>
+              </div>
+            </div>`).join('')}
           </div>
-        </div>
-      </div>`).join('')
+        </div>`;
+      }).join('')
     : `<div class="no-result">${q ? '검색 결과가 없습니다.' : '등록된 병원이 없습니다.'}</div>`;
+
+  box.querySelectorAll('.province-group-toggle').forEach(btn=>{
+    btn.onclick = ()=>{
+      const province = btn.dataset.province;
+      if(expandedProvinces.has(province)) expandedProvinces.delete(province);
+      else expandedProvinces.add(province);
+      renderAllHospitalsList();
+    };
+  });
 
   box.querySelectorAll('.hospital-list-row').forEach(row=>{
     row.onclick = ()=>{
@@ -1025,6 +1102,14 @@ async function saveEntry(){
     document.getElementById('saveHint').textContent = '⚠ 고객명(병원)을 입력해주세요.';
     document.getElementById('saveHint').style.color = '#b5581f';
     document.getElementById('f_hospital').focus();
+    return;
+  }
+
+  const regionVal = val('f_region');
+  if(!regionVal){
+    document.getElementById('saveHint').textContent = '⚠ 지역명을 입력해주세요 (예: 강원도 춘천시).';
+    document.getElementById('saveHint').style.color = '#b5581f';
+    document.getElementById('f_region').focus();
     return;
   }
 

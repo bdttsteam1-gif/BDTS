@@ -13,8 +13,9 @@ body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI',
 .nav { background: #1a1a2e; color: #fff; padding: 0 20px; display: flex; align-items: center; height: 52px; gap: 16px; position: sticky; top: 0; z-index: 100; }
 .nav-brand { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
 .nav-brand span { color: #2563eb; }
-.nav-home { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 6px 14px; border-radius: 6px; text-decoration: none; font-size: 13px; margin-left: auto; }
-.nav-home:hover { background: rgba(255,255,255,0.2); }
+.nav-home { display:flex; align-items:center; gap:6px; background: #2563eb; border: none; color: #fff; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-size: 15px; font-weight:700; }
+.nav-home:hover { background: #1d4ed8; }
+.nav-home .ico { font-size:17px; }
 
 .head-bar { background: #1a1a2e; padding: 20px 24px 18px; border-bottom: 1px solid #2d3150; color: #fff; }
 .head-bar h1 { font-size: 18px; font-weight: 700; }
@@ -80,13 +81,36 @@ body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI',
 .step-list li { margin-bottom: 4px; }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+
+/* ===== Mobile ===== */
+@media (max-width: 768px) {
+  .nav { padding: 0 14px; }
+  .head-bar { padding: 14px; }
+  .tab-bar { padding: 8px 10px 0; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+  .tab { padding: 8px 12px 10px; white-space: nowrap; font-size: 13px; }
+  .content { padding: 14px 14px 60px; }
+  .year-chips { gap: 6px; }
+  .ychip { padding: 8px 14px; }
+  .data-note { flex-basis: 100%; margin-left: 0; }
+  .stats-row { gap: 8px; }
+  .stat-card { min-width: calc(50% - 4px); padding: 10px 12px; }
+  .stat-card .val { font-size: 18px; }
+  .chart-wrap { height: 220px; }
+  .chart-card.wide .chart-wrap { height: 240px; }
+  .search-row { flex-wrap: wrap; gap: 8px; }
+  .search-input-wrap { flex: 1 1 100%; }
+  .search-input-wrap input { font-size: 16px; }
+  .search-btn { flex: 1; }
+  .sum-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+  .upload-zone { padding: 28px 14px; }
+}
 </style>
 </head>
 <body>
 
 <nav class="nav">
+  <a href="index.html" class="nav-home"><span class="ico">🏠</span>홈</a>
   <div class="nav-brand">Boditech <span>MED</span></div>
-  <a href="index.html" class="nav-home">홈으로</a>
 </nav>
 
 <div class="head-bar">
