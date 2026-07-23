@@ -105,6 +105,7 @@ body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans
 .add-row-btn:hover { background:var(--accent-soft); }
 .wk-table { width:100%; border-collapse:collapse; font-size:12.5px; }
 .wk-table th, .wk-table td { border:1px solid var(--line); padding:6px 8px; text-align:center; white-space:nowrap; }
+#userlistTable th, #userlistTable td { white-space:normal; word-break:break-word; font-size:11.5px; padding:5px 6px; text-align:left; }
 .wk-table th { background:#f8fafc; color:#374151; font-weight:700; position:sticky; top:0; }
 .wk-table td.wk-week { text-align:left; color:#374151; font-weight:600; }
 .wk-table tfoot td { font-weight:800; background:#f8fafc; }
@@ -419,7 +420,7 @@ body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans
         </select>
       </div>
       <div class="g-sub" id="userlistMeta" style="font-size:11.5px;color:#9ca3af;margin-bottom:8px;"></div>
-      <div class="table-scroll" style="max-height:600px;"><table class="wk-table" id="userlistTable"></table></div>
+      <div class="table-scroll" style="max-height:600px;overflow-x:hidden;"><table class="wk-table" id="userlistTable" style="table-layout:fixed;width:100%;"></table></div>
     </div>
   </div>
 </div>
@@ -1770,11 +1771,14 @@ function renderUserlist(){
   } else {
     document.getElementById('userlistMeta').textContent = metaLine('userlist')+' · 전체 리스트 · 총 '+EXT_USERLIST.length+'건';
     var rows2 = EXT_USERLIST.filter(function(r){ return rowMatch([r.hospital,r.sido,r.sigungu,r.agency,r.salesRep,r.device,r.items,r.serial], kw); });
-    var head2 = '<thead><tr><th>영업담당자</th><th>대리점</th><th>시도</th><th>시군구</th><th>의료기관명</th><th>장비</th><th>사용 항목</th><th>임대여부</th><th>설치일</th><th>Serial</th></tr></thead>';
+    var head2 = '<colgroup><col style="width:12%"><col style="width:9%"><col style="width:19%"><col style="width:12%"><col style="width:14%"><col style="width:8%"><col style="width:10%"><col style="width:16%"></colgroup>'+
+      '<thead><tr><th>영업담당자/대리점</th><th>지역</th><th>의료기관명</th><th>장비</th><th>사용 항목</th><th>임대여부</th><th>설치일</th><th>Serial</th></tr></thead>';
     var body2 = rows2.map(function(r){
-      return '<tr><td>'+esc(r.salesRep)+'</td><td>'+esc(r.agency)+'</td><td>'+esc(r.sido)+'</td><td>'+esc(r.sigungu)+'</td><td>'+esc(r.hospital)+'</td><td>'+esc(r.device)+'</td><td>'+esc(r.items)+'</td><td>'+esc(r.rental)+'</td><td>'+esc(r.installDate)+'</td><td>'+esc(r.serial)+'</td></tr>';
+      return '<tr><td>'+esc(r.salesRep)+(r.agency?'<br><span style="color:#9ca3af;">'+esc(r.agency)+'</span>':'')+'</td>'+
+        '<td>'+esc(r.sido)+' '+esc(r.sigungu)+'</td><td>'+esc(r.hospital)+'</td><td>'+esc(r.device)+'</td><td>'+esc(r.items)+'</td>'+
+        '<td>'+esc(r.rental)+'</td><td>'+esc(r.installDate)+'</td><td>'+esc(r.serial)+'</td></tr>';
     }).join('');
-    document.getElementById('userlistTable').innerHTML = head2+'<tbody>'+(body2||'<tr><td class="empty" colspan="10">검색 결과가 없습니다.</td></tr>')+'</tbody>';
+    document.getElementById('userlistTable').innerHTML = head2+'<tbody>'+(body2||'<tr><td class="empty" colspan="8">검색 결과가 없습니다.</td></tr>')+'</tbody>';
   }
 }
 
