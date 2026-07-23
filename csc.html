@@ -21,6 +21,8 @@ body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans
 .tab-bar { display:flex; gap:4px; padding:12px 24px 0; border-bottom:1px solid var(--line); background:#fff; position:sticky; top:52px; z-index:90; flex-wrap:wrap; }
 .tab { background:none; border:none; border-bottom:2px solid transparent; padding:8px 15px 10px; font-size:14px; font-weight:600; color:var(--ink-soft); cursor:pointer; font-family:inherit; }
 .tab:hover { color:var(--accent); } .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.agi-subtab { background:none; border:none; border-bottom:2px solid transparent; padding:8px 15px 10px; font-size:13.5px; font-weight:600; color:var(--ink-soft); cursor:pointer; font-family:inherit; }
+.agi-subtab:hover { color:var(--accent); } .agi-subtab.active { color:var(--accent); border-bottom-color:var(--accent); }
 .content { max-width:1000px; margin:0 auto; padding:20px 24px 60px; }
 .view { display:none; } .view.active { display:block; }
 .form-card { background:#f8fafc; border:1px solid var(--line); border-radius:12px; padding:20px; }
@@ -171,6 +173,8 @@ body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans
   <button class="tab" data-tab="error">⚠ 에러코드</button>
   <button class="tab" data-tab="faq">💬 FAQ</button>
   <button class="tab" data-tab="ref">📝 참고사항</button>
+  <button class="tab" data-tab="unisearch">🔎 통합검색</button>
+  <button class="tab" data-tab="agencyinfo">📇 대리점·사용자 정보</button>
 </div>
 
 <div class="content">
@@ -248,6 +252,7 @@ body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans
       <button class="btn btn-primary" onclick="newEntry()">➕ 신규 접수</button>
       <input id="searchList" placeholder="검색: 병원·이슈·담당자·경로·장비·아이템 (실시간)">
       <button class="btn btn-ghost" id="searchResetBtn" onclick="resetListSearch()" style="display:none;">✕ 검색 초기화</button>
+      <button class="btn btn-ghost" onclick="openUnifyModal()" style="margin-left:auto;white-space:nowrap;">🔧 장비·아이템 이름 통일</button>
       <span class="count-note" id="countNote"></span>
     </div>
     <div class="table-scroll" id="listBody"></div>
@@ -377,6 +382,46 @@ body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans
     </div>
     <div id="refDetail"></div>
   </div>
+
+  <!-- 통합검색 -->
+  <div class="view" id="view-unisearch">
+    <div class="toolbar"><input id="uniSearch" placeholder="병원명·대리점·영업담당자·장비·아이템 등 통합 검색 후 Enter" style="flex:1;"></div>
+    <div style="font-size:11.5px;color:#9ca3af;margin-bottom:10px;">검색 대상: 진행상황(CSC)·참고사항·거래처이력·TS 대표 소통담당자·국내 대리점 리스트·AFIAS 사용자 리스트 (클레임로그는 용량이 커서 별도 페이지 <b>claim.html</b>에서 검색해주세요)</div>
+    <div id="uniSearchBody"></div>
+  </div>
+
+  <!-- 대리점·사용자 정보 (대표 소통담당자 + 대리점 리스트 + AFIAS 사용자 리스트) -->
+  <div class="view" id="view-agencyinfo">
+    <div style="display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid var(--line);flex-wrap:wrap;">
+      <button class="agi-subtab active" data-agi="contacts" onclick="switchAgiSub('contacts')">☎ 대표 소통담당자</button>
+      <button class="agi-subtab" data-agi="agencylist" onclick="switchAgiSub('agencylist')">🏪 대리점 리스트</button>
+      <button class="agi-subtab" data-agi="userlist" onclick="switchAgiSub('userlist')">🗂 AFIAS 사용자 리스트</button>
+    </div>
+
+    <div class="agi-pane" id="agi-contacts">
+      <div class="toolbar"><input id="contactsSearch" placeholder="대리점명·담당자명·연락처 검색 후 Enter" style="flex:1;"></div>
+      <div class="g-sub" id="contactsMeta" style="font-size:11.5px;color:#9ca3af;margin-bottom:8px;"></div>
+      <div class="table-scroll"><table class="wk-table" id="contactsTable"></table></div>
+    </div>
+
+    <div class="agi-pane" id="agi-agencylist" style="display:none;">
+      <div class="toolbar"><input id="agencySearch" placeholder="대리점명·영업담당자·취급제품 검색 후 Enter" style="flex:1;"></div>
+      <div class="g-sub" id="agencyMeta" style="font-size:11.5px;color:#9ca3af;margin-bottom:8px;"></div>
+      <div class="table-scroll"><table class="wk-table" id="agencyTable"></table></div>
+    </div>
+
+    <div class="agi-pane" id="agi-userlist" style="display:none;">
+      <div class="toolbar">
+        <input id="userlistSearch" placeholder="병원명·지역·대리점·장비·사용항목 검색 후 Enter" style="flex:1;">
+        <select id="userlistMode" onchange="renderUserlist()" style="margin-left:8px;">
+          <option value="full">전체 리스트</option>
+          <option value="ext">대표 외부용(Top)</option>
+        </select>
+      </div>
+      <div class="g-sub" id="userlistMeta" style="font-size:11.5px;color:#9ca3af;margin-bottom:8px;"></div>
+      <div class="table-scroll" style="max-height:600px;"><table class="wk-table" id="userlistTable"></table></div>
+    </div>
+  </div>
 </div>
 
 <!-- 상세 보기 모달 -->
@@ -398,10 +443,32 @@ body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans
   </div>
 </div>
 
+<!-- 이름 통일 모달 -->
+<div class="modal-overlay" id="unifyModal" onclick="if(event.target===this) closeUnifyModal()">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div style="flex:1;min-width:0;">
+        <h3>🔧 장비·아이템 이름 통일</h3>
+        <div class="sub">저장된 진행상황/참고사항 기록 중 표준 목록(master-list.js)과 대소문자·공백만 다른 값을 찾아 표준 표기로 맞춥니다.</div>
+      </div>
+      <button class="modal-close" onclick="closeUnifyModal()" title="닫기">✕</button>
+    </div>
+    <div class="modal-body" id="unifyBody"><div style="padding:20px;color:#6b7280;">검사 중…</div></div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" id="unifyApplyBtn" onclick="applyUnifyPlan()" style="display:none;">선택한 항목 적용</button>
+      <button class="btn btn-ghost" onclick="closeUnifyModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
 <script src="csc-base.js"></script>
 <script src="guide-data.js"></script>
 <script src="claim-progress-seed.js"></script>
 <script src="hub-sheet.js"></script>
+<script src="master-list.js"></script>
+<script src="strict-list.js"></script>
+<script src="external-data.js"></script>
+<script src="client-data.js"></script>
 <script>
 var LS_KEY = 'ts_log';
 var STORE = makeHubStore('claim_progress', LS_KEY);
@@ -416,6 +483,10 @@ var charts = {};
 var HOSPITALS = (typeof CSC_HOSPITALS!=='undefined')?CSC_HOSPITALS:[];
 var ITEMS = (typeof CSC_ITEMS!=='undefined')?CSC_ITEMS:[];
 var DEVICES = (typeof CSC_DEVICES!=='undefined')?CSC_DEVICES:[];
+/* Device/Item 신규 입력은 master-list.js의 표준 목록만 사용하도록 강제합니다.
+   (참고사항/에러코드/FAQ 쪽의 옛 CSC_ITEMS·CSC_DEVICES 자동완성은 그대로 유지) */
+var STRICT_ITEMS = (typeof MASTER_ITEM!=='undefined')?MASTER_ITEM:ITEMS;
+var STRICT_DEVICES = (typeof MASTER_DEVICE!=='undefined')?MASTER_DEVICE:DEVICES;
 var GUIDE = (typeof GUIDE_DATA!=='undefined')?GUIDE_DATA:{};
 var hospByName = {}; HOSPITALS.forEach(function(h){ hospByName[h.name]=h; });
 var PAL = ['#2563eb','#16a34a','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#64748b'];
@@ -628,14 +699,14 @@ function currentItemRows(){
 function renderDeviceRows(rows){
   if(!rows||!rows.length) rows=[{device:'',sample:'',sampleOther:'',store:''}];
   document.getElementById('deviceRows').innerHTML = rows.map(function(r,i){ return deviceRowHtml(r,i,rows.length); }).join('');
-  document.querySelectorAll('#deviceRows .f_device').forEach(function(el){ setupAutocomplete(el, function(){return DEVICES;}, null); });
+  document.querySelectorAll('#deviceRows .f_device').forEach(function(el){ StrictList.attach(el, function(){return STRICT_DEVICES;}); });
   setupEnterAsTab();
 }
 function renderItemRows(rows){
   if(!rows||!rows.length) rows=[{item:'',itemLot:'',unit:'',ctrlItem:'',ctrlLot:''}];
   document.getElementById('itemRows').innerHTML = rows.map(function(r,i){ return itemRowHtml(r,i,rows.length); }).join('');
-  document.querySelectorAll('#itemRows .f_item').forEach(function(el){ setupAutocomplete(el, function(){return ITEMS;}, null); });
-  document.querySelectorAll('#itemRows .f_ctrlItem').forEach(function(el){ setupAutocomplete(el, function(){return ITEMS;}, null); });
+  document.querySelectorAll('#itemRows .f_item').forEach(function(el){ StrictList.attach(el, function(){return STRICT_ITEMS;}); });
+  document.querySelectorAll('#itemRows .f_ctrlItem').forEach(function(el){ StrictList.attach(el, function(){return STRICT_ITEMS;}); });
   setupEnterAsTab();
 }
 function addDeviceRow(){
@@ -678,6 +749,8 @@ function switchTab(t){
   else if(t==='error'){ document.getElementById('errSearch').value=''; errFilter='all'; loadGuideExtras().then(renderError); }
   else if(t==='faq'){ document.getElementById('faqSearch').value=''; loadGuideExtras().then(renderFaq); }
   else if(t==='ref'){ document.getElementById('refSearch').value=''; refKw=''; loadRefLog(); }
+  else if(t==='unisearch'){ document.getElementById('uniSearch').value=''; renderUniSearch(); }
+  else if(t==='agencyinfo'){ switchAgiSub('contacts'); }
 }
 document.querySelectorAll('.tab').forEach(function(t){ t.addEventListener('click', function(){ switchTab(t.dataset.tab); }); });
 
@@ -743,6 +816,11 @@ function saveRecord(){
   if(rec.via==='메일'){
     if(!rec.mailSubject && !rec.hospital){ showMsg('err','경로가 메일인 경우 메일 제목을 입력해주세요. (병원명은 생략 가능)'); return; }
   } else if(!rec.hospital){ showMsg('err','병원명은 필수입니다. (경로가 메일인 경우에만 생략 가능)'); return; }
+  var devInputs = Array.prototype.slice.call(document.querySelectorAll('#deviceRows .f_device'));
+  var itmInputs = Array.prototype.slice.call(document.querySelectorAll('#itemRows .f_item, #itemRows .f_ctrlItem'));
+  var devOk = StrictList.validateAll(devInputs, STRICT_DEVICES);
+  var itmOk = StrictList.validateAll(itmInputs, STRICT_ITEMS);
+  if(!devOk || !itmOk){ showMsg('err','장비명·아이템명은 표준 목록에 있는 이름만 선택할 수 있습니다. 빨갛게 표시된 칸을 확인해주세요.'); return; }
   rec.title = titleOf(rec);
   var btn=document.getElementById('saveBtn'); btn.disabled=true; btn.textContent='저장 중…';
   var op;
@@ -1323,6 +1401,7 @@ function submitRefEntry(){
   var keyword=document.getElementById('refKeyword').value.trim();
   var note=document.getElementById('refNote').value.trim();
   if(!author){ refHint('⚠ 작성자를 입력해주세요.','#dc2626'); document.getElementById('refAuthor').focus(); return; }
+  if(!StrictList.validateAll([document.getElementById('refMarker')], STRICT_ITEMS)){ refHint('⚠ 마커명은 표준 목록에 있는 이름만 선택할 수 있습니다.','#dc2626'); document.getElementById('refMarker').focus(); return; }
   var date = dateInput? normalizeRefDateInput(dateInput) : todayStr();
   if(dateInput && !/^\d{4}-\d{2}-\d{2}$/.test(date)){ refHint('⚠ 작성한 날짜 형식을 확인해주세요 (예: 7/8, 2026-07-08).','#dc2626'); document.getElementById('refDate').focus(); return; }
   document.getElementById('refDate').value=date;
@@ -1503,8 +1582,243 @@ document.getElementById('importFile').addEventListener('change', function(e){
   reader.readAsArrayBuffer(file); e.target.value='';
 });
 
+/* ===== 장비·아이템 이름 통일 (기존 저장 데이터 정리) ===== */
+var UNIFY_PLAN = [];
+var UNIFY_RECORDS = [];
+var UNIFY_REFS = [];
+
+function openUnifyModal(){
+  document.getElementById('unifyModal').classList.add('show');
+  document.getElementById('unifyBody').innerHTML = '<div style="padding:20px;color:#6b7280;">검사 중…</div>';
+  document.getElementById('unifyApplyBtn').style.display='none';
+  buildUnifyPlan();
+}
+function closeUnifyModal(){ document.getElementById('unifyModal').classList.remove('show'); }
+
+function buildUnifyPlan(){
+  Promise.all([STORE.list(), REF_STORE.list()]).then(function(results){
+    var records = results[0]||[], refs = results[1]||[];
+    var plan = [];
+    var unmatched = {};
+
+    records.forEach(function(r){
+      var devs = deviceRowsOf(r);
+      var itms = itemRowsOf(r);
+      var devChanged=false, itmChanged=false;
+      var newDevs = devs.map(function(d){
+        var nd = Object.assign({}, d);
+        if(d.device){
+          var canon = StrictList.findCanonical(STRICT_DEVICES, d.device);
+          if(canon && canon!==d.device){ plan.push({recType:'csc', id:r.id, field:'장비', old:d.device, val:canon}); nd.device=canon; devChanged=true; }
+          else if(!canon){ unmatched[d.device]=(unmatched[d.device]||0)+1; }
+        }
+        return nd;
+      });
+      var newItms = itms.map(function(it){
+        var ni = Object.assign({}, it);
+        if(it.item){
+          var c1 = StrictList.findCanonical(STRICT_ITEMS, it.item);
+          if(c1 && c1!==it.item){ plan.push({recType:'csc', id:r.id, field:'아이템', old:it.item, val:c1}); ni.item=c1; itmChanged=true; }
+          else if(!c1){ unmatched[it.item]=(unmatched[it.item]||0)+1; }
+        }
+        if(it.ctrlItem){
+          var c2 = StrictList.findCanonical(STRICT_ITEMS, it.ctrlItem);
+          if(c2 && c2!==it.ctrlItem){ plan.push({recType:'csc', id:r.id, field:'Control Item', old:it.ctrlItem, val:c2}); ni.ctrlItem=c2; itmChanged=true; }
+          else if(!c2){ unmatched[it.ctrlItem]=(unmatched[it.ctrlItem]||0)+1; }
+        }
+        return ni;
+      });
+      if(devChanged||itmChanged){ r.__newDevs=newDevs; r.__newItms=newItms; }
+    });
+
+    refs.forEach(function(r){
+      if(r.marker){
+        var canon = StrictList.findCanonical(STRICT_ITEMS, r.marker);
+        if(canon && canon!==r.marker){ plan.push({recType:'ref', id:r.id, field:'마커명', old:r.marker, val:canon}); r.__newMarker=canon; }
+        else if(!canon){ unmatched[r.marker]=(unmatched[r.marker]||0)+1; }
+      }
+    });
+
+    UNIFY_PLAN = plan;
+    UNIFY_RECORDS = records;
+    UNIFY_REFS = refs;
+    renderUnifyPlan(plan, unmatched);
+  }).catch(function(err){
+    document.getElementById('unifyBody').innerHTML = '<div style="padding:20px;color:#dc2626;">확인 중 오류: '+esc(err.message)+'</div>';
+  });
+}
+
+function renderUnifyPlan(plan, unmatched){
+  var body = document.getElementById('unifyBody');
+  var html = '';
+  if(!plan.length){
+    html += '<div style="padding:20px;color:#16a34a;">✅ 표준 표기와 다르게 저장된 항목이 없습니다.</div>';
+  } else {
+    var rows = plan.map(function(p,i){
+      return '<tr><td><input type="checkbox" class="unify-chk" data-idx="'+i+'" checked></td><td>'+(p.recType==='csc'?'진행상황':'참고사항')+'</td><td>'+esc(p.field)+'</td><td>'+esc(p.old)+'</td><td>→</td><td style="font-weight:700;color:#0f6e5c;">'+esc(p.val)+'</td></tr>';
+    }).join('');
+    html += '<div style="margin-bottom:10px;font-size:12.5px;color:#374151;">대소문자·공백만 다르게 저장된 '+plan.length+'건을 찾았습니다. 적용할 항목을 선택 후 [선택한 항목 적용]을 눌러주세요.</div>';
+    html += '<table class="wk-table"><thead><tr><th></th><th>구분</th><th>필드</th><th>기존 값</th><th></th><th>표준 값</th></tr></thead><tbody>'+rows+'</tbody></table>';
+    document.getElementById('unifyApplyBtn').style.display='';
+  }
+  var unmatchedKeys = Object.keys(unmatched);
+  if(unmatchedKeys.length){
+    html += '<div style="margin-top:14px;padding:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:12.5px;color:#92400e;">'+
+      '⚠ 표준 목록에 없는 값(자동 수정 대상 아님, 필요시 목록에 추가하거나 직접 수정하세요) — '+unmatchedKeys.length+'개<br>'+
+      unmatchedKeys.slice(0,40).map(function(k){ return esc(k)+' ('+unmatched[k]+'건)'; }).join(', ') +
+      (unmatchedKeys.length>40? ' … 외 '+(unmatchedKeys.length-40)+'개':'') + '</div>';
+  }
+  body.innerHTML = html;
+}
+
+function applyUnifyPlan(){
+  var checks = document.querySelectorAll('.unify-chk:checked');
+  if(!checks.length){ return; }
+  var idxSet = {}; checks.forEach(function(c){ idxSet[c.getAttribute('data-idx')]=true; });
+  var toApplyCsc = {}, toApplyRef = {};
+  UNIFY_PLAN.forEach(function(p,i){
+    if(!idxSet[i]) return;
+    if(p.recType==='csc') toApplyCsc[p.id]=true; else toApplyRef[p.id]=true;
+  });
+  var btn=document.getElementById('unifyApplyBtn'); btn.disabled=true; btn.textContent='적용 중…';
+  var ops=[];
+  UNIFY_RECORDS.forEach(function(r){
+    if(toApplyCsc[r.id] && (r.__newDevs||r.__newItms)){
+      var devs = r.__newDevs||deviceRowsOf(r);
+      var itms = r.__newItms||itemRowsOf(r);
+      var rec = Object.assign({}, r);
+      rec.devices=devs; rec.devicesJson=JSON.stringify(devs);
+      rec.items=itms; rec.itemsJson=JSON.stringify(itms);
+      rec.device=devs[0]?devs[0].device:''; rec.sample=devs[0]?devs[0].sample:''; rec.sampleOther=devs[0]?devs[0].sampleOther:''; rec.store=devs[0]?devs[0].store:'';
+      rec.item=itms[0]?itms[0].item:''; rec.itemLot=itms[0]?itms[0].itemLot:''; rec.itemUnit=itms[0]?itms[0].unit:''; rec.ctrlItem=itms[0]?itms[0].ctrlItem:''; rec.ctrlLot=itms[0]?itms[0].ctrlLot:'';
+      ops.push(STORE.update(rec));
+    }
+  });
+  UNIFY_REFS.forEach(function(r){
+    if(toApplyRef[r.id] && r.__newMarker){
+      var rec = Object.assign({}, r); rec.marker=r.__newMarker;
+      ops.push(REF_STORE.update(rec));
+    }
+  });
+  Promise.all(ops).then(function(){
+    document.getElementById('unifyBody').innerHTML = '<div style="padding:20px;color:#16a34a;">✅ '+ops.length+'건 업데이트했습니다.</div>';
+    btn.style.display='none';
+    return reload();
+  }).catch(function(err){
+    showMsg('err','적용 중 오류: '+err.message);
+    btn.disabled=false; btn.textContent='선택한 항목 적용';
+  });
+}
+document.addEventListener('keydown', function(e){ if(e.key==='Escape' && document.getElementById('unifyModal').classList.contains('show')) closeUnifyModal(); });
+
+function switchAgiSub(name){
+  document.querySelectorAll('.agi-subtab').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-agi')===name); });
+  document.querySelectorAll('.agi-pane').forEach(function(p){ p.style.display = (p.id==='agi-'+name) ? '' : 'none'; });
+  if(name==='contacts'){ document.getElementById('contactsSearch').value=''; renderContacts(); }
+  else if(name==='agencylist'){ document.getElementById('agencySearch').value=''; renderAgencyList(); }
+  else if(name==='userlist'){ document.getElementById('userlistSearch').value=''; renderUserlist(); }
+}
+
+/* ===== 대표 소통담당자 / 대리점 리스트 / AFIAS 사용자 리스트 / 통합검색 ===== */
+var EXT_CONTACTS = (typeof AGENCY_CONTACTS!=='undefined')?AGENCY_CONTACTS:[];
+var EXT_AGENCIES = (typeof AGENCY_LIST!=='undefined')?AGENCY_LIST:[];
+var EXT_USERLIST = (typeof AFIAS_USERLIST!=='undefined')?AFIAS_USERLIST:[];
+var EXT_USERLIST_X = (typeof AFIAS_USERLIST_EXTERNAL!=='undefined')?AFIAS_USERLIST_EXTERNAL:[];
+var EXT_META = (typeof EXTERNAL_DATA_META!=='undefined')?EXTERNAL_DATA_META:{};
+
+function metaLine(key){
+  var m = EXT_META[key]; if(!m) return '';
+  return '업데이트: '+esc(m.updated)+' · 원본 파일: '+esc(m.file);
+}
+function rowMatch(hayArr, kw){
+  if(!kw) return true;
+  var hay = hayArr.join(' ').toLowerCase();
+  return kw.toLowerCase().split(',').map(function(s){return s.trim();}).filter(Boolean).every(function(t){ return hay.indexOf(t)!==-1; });
+}
+function renderContacts(){
+  var kw = document.getElementById('contactsSearch').value.trim();
+  document.getElementById('contactsMeta').textContent = metaLine('contacts')+' · 총 '+EXT_CONTACTS.length+'건';
+  var rows = EXT_CONTACTS.filter(function(r){ return rowMatch([r.agency,r.contactName,r.phone,r.email,r.salesRep,r.type], kw); });
+  var head = '<thead><tr><th>영업담당자</th><th>대리점</th><th>구분</th><th>담당자</th><th>휴대전화</th><th>Email</th></tr></thead>';
+  var body = rows.map(function(r){
+    return '<tr><td>'+esc(r.salesRep)+'</td><td>'+esc(r.agency)+'</td><td>'+esc(r.type)+'</td><td>'+esc(r.contactName)+'</td><td>'+esc(r.phone)+'</td><td>'+esc(r.email)+'</td></tr>';
+  }).join('');
+  document.getElementById('contactsTable').innerHTML = head+'<tbody>'+(body||'<tr><td class="empty" colspan="6">검색 결과가 없습니다.</td></tr>')+'</tbody>';
+}
+function renderAgencyList(){
+  var kw = document.getElementById('agencySearch').value.trim();
+  document.getElementById('agencyMeta').textContent = metaLine('agencies')+' · 총 '+EXT_AGENCIES.length+'건';
+  var rows = EXT_AGENCIES.filter(function(r){ return rowMatch([r.agency,r.salesRep,r.type,r.note,(r.products||[]).join(' ')], kw); });
+  var head = '<thead><tr><th>영업담당자</th><th>대리점</th><th>구분</th><th>비고</th><th>취급제품</th></tr></thead>';
+  var body = rows.map(function(r){
+    var prod = (r.products||[]).map(function(p){ return '<span class="tag">'+esc(p)+'</span>'; }).join(' ');
+    return '<tr><td>'+esc(r.salesRep)+'</td><td>'+esc(r.agency)+'</td><td>'+esc(r.type)+'</td><td>'+esc(r.note)+'</td><td>'+prod+'</td></tr>';
+  }).join('');
+  document.getElementById('agencyTable').innerHTML = head+'<tbody>'+(body||'<tr><td class="empty" colspan="5">검색 결과가 없습니다.</td></tr>')+'</tbody>';
+}
+function renderUserlist(){
+  var kw = document.getElementById('userlistSearch').value.trim();
+  var mode = document.getElementById('userlistMode').value;
+  if(mode==='ext'){
+    document.getElementById('userlistMeta').textContent = metaLine('userlist')+' · 대표 외부용(Top) · 총 '+EXT_USERLIST_X.length+'건';
+    var rows = EXT_USERLIST_X.filter(function(r){ return rowMatch([r.hospital,r.sido,r.sigungu,r.items,r.hospitalType], kw); });
+    var head = '<thead><tr><th>시도</th><th>시군구</th><th>의료기관명</th><th>사용 항목</th><th>일반입원실</th><th>병원 구분</th></tr></thead>';
+    var body = rows.map(function(r){
+      return '<tr><td>'+esc(r.sido)+'</td><td>'+esc(r.sigungu)+'</td><td>'+esc(r.hospital)+'</td><td>'+esc(r.items)+'</td><td>'+esc(r.beds)+'</td><td>'+esc(r.hospitalType)+'</td></tr>';
+    }).join('');
+    document.getElementById('userlistTable').innerHTML = head+'<tbody>'+(body||'<tr><td class="empty" colspan="6">검색 결과가 없습니다.</td></tr>')+'</tbody>';
+  } else {
+    document.getElementById('userlistMeta').textContent = metaLine('userlist')+' · 전체 리스트 · 총 '+EXT_USERLIST.length+'건';
+    var rows2 = EXT_USERLIST.filter(function(r){ return rowMatch([r.hospital,r.sido,r.sigungu,r.agency,r.salesRep,r.device,r.items,r.serial], kw); });
+    var head2 = '<thead><tr><th>영업담당자</th><th>대리점</th><th>시도</th><th>시군구</th><th>의료기관명</th><th>장비</th><th>사용 항목</th><th>임대여부</th><th>설치일</th><th>Serial</th></tr></thead>';
+    var body2 = rows2.map(function(r){
+      return '<tr><td>'+esc(r.salesRep)+'</td><td>'+esc(r.agency)+'</td><td>'+esc(r.sido)+'</td><td>'+esc(r.sigungu)+'</td><td>'+esc(r.hospital)+'</td><td>'+esc(r.device)+'</td><td>'+esc(r.items)+'</td><td>'+esc(r.rental)+'</td><td>'+esc(r.installDate)+'</td><td>'+esc(r.serial)+'</td></tr>';
+    }).join('');
+    document.getElementById('userlistTable').innerHTML = head2+'<tbody>'+(body2||'<tr><td class="empty" colspan="10">검색 결과가 없습니다.</td></tr>')+'</tbody>';
+  }
+}
+
+function renderUniSearch(){
+  var kw = document.getElementById('uniSearch').value.trim();
+  var body = document.getElementById('uniSearchBody');
+  if(!kw){ body.innerHTML = '<div style="padding:20px;color:#9ca3af;">검색어를 입력해주세요.</div>'; return; }
+  var sections = [];
+
+  var cscRows = RECORDS.filter(function(r){ return rowMatch([r.hospital,r.region,r.complaint,r.via,r.writer,deviceRowsOf(r).map(function(d){return d.device;}).join(' '),itemRowsOf(r).map(function(it){return it.item;}).join(' ')], kw); }).slice(0,50);
+  if(cscRows.length) sections.push({title:'고객지원센터(진행상황) · '+cscRows.length+'건', rows:cscRows.map(function(r){ return [fmtDT(r.recvAt), r.hospital||'-', r.via||'-', titleOf(r)]; }), cols:['접수일시','병원','경로','제목']});
+
+  var refRows = REF_LOG.filter(function(r){ return rowMatch([r.marker,r.platform,r.note,r.keyword,r.author], kw); }).slice(0,50);
+  if(refRows.length) sections.push({title:'참고사항 · '+refRows.length+'건', rows:refRows.map(function(r){ return [r.date||'-', r.platform||'-', r.marker||'-', (r.note||'').slice(0,60)]; }), cols:['날짜','플랫폼','마커명','내용']});
+
+  var CR = (typeof CLIENT_RECORDS!=='undefined')?CLIENT_RECORDS:[];
+  var cliRows = CR.filter(function(r){ return rowMatch([r.hospital,r.region,r.agency,r.manager,r.device,r.request], kw); }).slice(0,50);
+  if(cliRows.length) sections.push({title:'거래처이력 · '+cliRows.length+'건', rows:cliRows.map(function(r){ return [r.date||'-', r.hospital||'-', r.device||'-', (r.request||'').slice(0,60)]; }), cols:['날짜','병원','장비','접수사항']});
+
+  var conRows = EXT_CONTACTS.filter(function(r){ return rowMatch([r.agency,r.contactName,r.phone,r.email,r.salesRep], kw); });
+  if(conRows.length) sections.push({title:'TS 대표 소통담당자 · '+conRows.length+'건', rows:conRows.map(function(r){ return [r.salesRep||'-', r.agency||'-', r.contactName||'-', r.phone||'-']; }), cols:['영업담당자','대리점','담당자','휴대전화']});
+
+  var agRows = EXT_AGENCIES.filter(function(r){ return rowMatch([r.agency,r.salesRep,(r.products||[]).join(' ')], kw); });
+  if(agRows.length) sections.push({title:'국내 대리점 리스트 · '+agRows.length+'건', rows:agRows.map(function(r){ return [r.salesRep||'-', r.agency||'-', r.type||'-', (r.products||[]).join(', ')]; }), cols:['영업담당자','대리점','구분','취급제품']});
+
+  var ulRows = EXT_USERLIST.filter(function(r){ return rowMatch([r.hospital,r.sido,r.sigungu,r.agency,r.device,r.items], kw); }).slice(0,50);
+  if(ulRows.length) sections.push({title:'AFIAS 사용자 리스트 · '+ulRows.length+'건 (최대 50건 표시)', rows:ulRows.map(function(r){ return [r.sido||'-', r.hospital||'-', r.device||'-', r.agency||'-']; }), cols:['시도','의료기관명','장비','대리점']});
+
+  if(!sections.length){ body.innerHTML = '<div style="padding:20px;color:#9ca3af;">검색 결과가 없습니다.</div>'; return; }
+  body.innerHTML = sections.map(function(s){
+    var head = '<thead><tr>'+s.cols.map(function(c){return '<th>'+esc(c)+'</th>';}).join('')+'</tr></thead>';
+    var rows = s.rows.map(function(row){ return '<tr>'+row.map(function(v){return '<td>'+esc(v)+'</td>';}).join('')+'</tr>'; }).join('');
+    return '<div class="chart-card" style="margin-bottom:14px;"><h3>'+esc(s.title)+'</h3><div class="table-scroll"><table class="wk-table">'+head+'<tbody>'+rows+'</tbody></table></div></div>';
+  }).join('');
+}
+
+document.getElementById('contactsSearch').addEventListener('keydown', function(e){ if(e.key==='Enter') renderContacts(); });
+document.getElementById('agencySearch').addEventListener('keydown', function(e){ if(e.key==='Enter') renderAgencyList(); });
+document.getElementById('userlistSearch').addEventListener('keydown', function(e){ if(e.key==='Enter') renderUserlist(); });
+document.getElementById('uniSearch').addEventListener('keydown', function(e){ if(e.key==='Enter') renderUniSearch(); });
+
 /* ===== 초기화 ===== */
 setupAutocomplete('f_hospital', function(){ return HOSPITALS.map(function(h){return h.name;}); }, autofillHospital);
+StrictList.attach(document.getElementById('refMarker'), function(){ return STRICT_ITEMS; });
 renderDeviceRows([{device:'',sample:'',sampleOther:'',store:''}]);
 renderItemRows([{item:'',itemLot:'',unit:'',ctrlItem:'',ctrlLot:''}]);
 document.getElementById('f_hospital').addEventListener('blur', function(){ setTimeout(autofillHospital,180); });

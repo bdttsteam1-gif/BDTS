@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>거래처 이력 카드</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="master-list.js"></script>
+<script src="strict-list.js"></script>
 <style>
   :root{
     --bg: #f2f4f3;
@@ -252,6 +254,7 @@
     <button class="tab-btn" data-tab="hospital">🏥 병원별 조회</button>
     <button class="tab-btn" data-tab="hospitalList">📋 전체 병원 리스트</button>
     <button class="tab-btn" data-tab="search">🔎 전체 검색</button>
+    <button type="button" onclick="openUnifyModal()" style="margin-left:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-size:12.5px;cursor:pointer;color:var(--ink-soft);white-space:nowrap;">🔧 기기명 이름 통일</button>
   </div>
 
   <!-- ENTRY TAB -->
@@ -689,6 +692,70 @@ async function deleteRecordRemote(id){
   }
 }
 
+/* ============ 기기명 이름 통일 (기존 저장 데이터 정리) ============ */
+let UNIFY_PLAN = [];
+function openUnifyModal(){
+  document.getElementById('unifyModal').style.display = 'flex';
+  document.getElementById('unifyBody').innerHTML = '<div style="color:var(--ink-soft);">검사 중…</div>';
+  document.getElementById('unifyApplyBtn').style.display = 'none';
+  buildUnifyPlan();
+}
+function closeUnifyModal(){ document.getElementById('unifyModal').style.display = 'none'; }
+
+function buildUnifyPlan(){
+  const list = (typeof MASTER_DEVICE!=='undefined') ? MASTER_DEVICE : [];
+  const plan = [];
+  const unmatched = {};
+  RECORDS.forEach(r=>{
+    if(!r.device) return;
+    const canon = StrictList.findCanonical(list, r.device);
+    if(canon && canon!==r.device){ plan.push({id:r.id, old:r.device, val:canon}); }
+    else if(!canon){ unmatched[r.device] = (unmatched[r.device]||0)+1; }
+  });
+  UNIFY_PLAN = plan;
+  renderUnifyPlan(plan, unmatched);
+}
+
+function renderUnifyPlan(plan, unmatched){
+  const body = document.getElementById('unifyBody');
+  let html = '';
+  if(!plan.length){
+    html += '<div style="color:#0f6e5c;">✅ 표준 표기와 다르게 저장된 기기명이 없습니다.</div>';
+  } else {
+    html += `<div style="margin-bottom:10px;font-size:12.5px;color:var(--ink);">대소문자·공백만 다르게 저장된 ${plan.length}건을 찾았습니다. 적용할 항목을 선택 후 [선택한 항목 적용]을 눌러주세요.</div>`;
+    html += '<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="text-align:left;border-bottom:1px solid var(--line);"><th></th><th>기존 값</th><th></th><th>표준 값</th></tr></thead><tbody>' +
+      plan.map((p,i)=>`<tr style="border-bottom:1px solid var(--line);"><td style="padding:6px 4px;"><input type="checkbox" class="unify-chk" data-idx="${i}" checked></td><td style="padding:6px 4px;">${escapeHtml(p.old)}</td><td style="padding:6px 4px;">→</td><td style="padding:6px 4px;font-weight:700;color:var(--accent);">${escapeHtml(p.val)}</td></tr>`).join('') +
+      '</tbody></table>';
+    document.getElementById('unifyApplyBtn').style.display = '';
+  }
+  const unmatchedKeys = Object.keys(unmatched);
+  if(unmatchedKeys.length){
+    html += `<div style="margin-top:14px;padding:12px;background:#fbe9dd;border:1px solid #f0c39e;border-radius:8px;font-size:12.5px;color:#b5581f;">
+      ⚠ 표준 목록에 없는 값(자동 수정 대상 아님) — ${unmatchedKeys.length}개<br>
+      ${unmatchedKeys.slice(0,40).map(k=>`${escapeHtml(k)} (${unmatched[k]}건)`).join(', ')}${unmatchedKeys.length>40?` … 외 ${unmatchedKeys.length-40}개`:''}</div>`;
+  }
+  body.innerHTML = html;
+}
+
+async function applyUnifyPlan(){
+  const checks = document.querySelectorAll('.unify-chk:checked');
+  if(!checks.length) return;
+  const idxSet = {}; checks.forEach(c=>{ idxSet[c.getAttribute('data-idx')] = true; });
+  const btn = document.getElementById('unifyApplyBtn'); btn.disabled = true; btn.textContent = '적용 중…';
+  let done = 0, fail = 0;
+  for(let i=0;i<UNIFY_PLAN.length;i++){
+    if(!idxSet[i]) continue;
+    const p = UNIFY_PLAN[i];
+    const rec = RECORDS.find(r=>r.id===p.id);
+    if(!rec) continue;
+    const updated = Object.assign({}, rec, {device: p.val});
+    const ok = await updateRecord(p.id, updated);
+    if(ok) done++; else fail++;
+  }
+  document.getElementById('unifyBody').innerHTML = `<div style="color:${fail?'#b5581f':'#0f6e5c'};">✅ ${done}건 업데이트했습니다.${fail?` (${fail}건 실패 — 다시 시도해주세요)`:''}</div>`;
+  btn.style.display = 'none';
+}
+
 /* ============ INIT UI ============ */
 function fillSelect(sel, list){
   sel.innerHTML = '<option value="">선택</option>' + list.map(v=>`<option>${escapeHtml(v)}</option>`).join('');
@@ -973,12 +1040,13 @@ function addDeviceBlockUI(prefill){
   document.getElementById('deviceBlocks').appendChild(wrap);
 
   const sel = wrap.querySelector(`#f_deviceSel_${idx}`);
-  sel.innerHTML = '<option value="">선택</option>' + LIST_DEVICE.filter(v=>v!=='기타').map(v=>`<option>${escapeHtml(v)}</option>`).join('');
+  const deviceListForSel = (typeof MASTER_DEVICE!=='undefined')?MASTER_DEVICE:LIST_DEVICE;
+  sel.innerHTML = '<option value="">선택</option>' + deviceListForSel.map(v=>`<option>${escapeHtml(v)}</option>`).join('');
   const deviceInput = wrap.querySelector(`#f_device_${idx}`);
-  sel.addEventListener('change', ()=>{ if(sel.value){ deviceInput.value = sel.value; } });
+  sel.addEventListener('change', ()=>{ if(sel.value){ deviceInput.value = sel.value; deviceInput.dispatchEvent(new Event('input',{bubbles:true})); } });
 
-  setupAutocomplete(`f_device_${idx}`, 'device');
-  setupAutocomplete(`f_reagent_${idx}`, 'reagent');
+  StrictList.attach(deviceInput, function(){ return (typeof MASTER_DEVICE!=='undefined')?MASTER_DEVICE:[]; });
+  StrictList.attach(wrap.querySelector(`#f_reagent_${idx}`), function(){ return (typeof MASTER_ITEM!=='undefined')?MASTER_ITEM:[]; });
   wrap.querySelectorAll('input:not([type=file]), select').forEach(attachEnterAsTabTo);
   wrap.querySelector('.device-block-remove').addEventListener('click', ()=>{
     wrap.remove();
@@ -987,7 +1055,9 @@ function addDeviceBlockUI(prefill){
 
   if(prefill){
     deviceInput.value = prefill.device || '';
+    StrictList.validate(deviceInput, function(){ return (typeof MASTER_DEVICE!=='undefined')?MASTER_DEVICE:[]; });
     wrap.querySelector(`#f_reagent_${idx}`).value = prefill.reagent || '';
+    StrictList.validate(wrap.querySelector(`#f_reagent_${idx}`), function(){ return (typeof MASTER_ITEM!=='undefined')?MASTER_ITEM:[]; });
     wrap.querySelector(`#f_reagentLot_${idx}`).value = prefill.reagentLot || '';
     wrap.querySelector(`#f_request_${idx}`).value = prefill.request || '';
     wrap.querySelector(`#f_action_${idx}`).value = prefill.action || '';
@@ -1237,6 +1307,16 @@ async function saveEntry(){
     return;
   }
   document.getElementById('f_date').value = normalizedDate;
+
+  const deviceInputsForCheck = Array.prototype.slice.call(document.querySelectorAll('#deviceBlocks .field input[id^="f_device_"]'));
+  const devicesOk = StrictList.validateAll(deviceInputsForCheck, function(){ return (typeof MASTER_DEVICE!=='undefined')?MASTER_DEVICE:[]; });
+  const reagentInputsForCheck = Array.prototype.slice.call(document.querySelectorAll('#deviceBlocks .field input[id^="f_reagent_"]'));
+  const reagentsOk = StrictList.validateAll(reagentInputsForCheck, function(){ return (typeof MASTER_ITEM!=='undefined')?MASTER_ITEM:[]; });
+  if(!devicesOk || !reagentsOk){
+    document.getElementById('saveHint').textContent = '⚠ 기기명·시약명은 표준 목록에 있는 이름만 선택할 수 있습니다. 빨갛게 표시된 칸을 확인해주세요.';
+    document.getElementById('saveHint').style.color = '#b5581f';
+    return;
+  }
 
   document.getElementById('btnSave').disabled = true;
   document.getElementById('saveHint').style.color = 'var(--ink-soft)';
@@ -1632,5 +1712,21 @@ document.addEventListener('DOMContentLoaded', ()=>{
   showApp();
 });
 </script>
+<div class="modal-overlay" id="unifyModal" onclick="if(event.target===this) closeUnifyModal()" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:1000;padding:24px 14px;overflow-y:auto;align-items:flex-start;justify-content:center;">
+  <div style="background:#fff;border-radius:14px;max-width:760px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);">
+    <div style="display:flex;gap:10px;align-items:flex-start;padding:16px 18px;border-bottom:1px solid var(--line);">
+      <div style="flex:1;min-width:0;">
+        <h3 style="margin:0 0 4px;font-size:16px;">🔧 기기명 이름 통일</h3>
+        <div style="font-size:12.5px;color:var(--ink-soft);">거래처 이력에 저장된 기기명 중 표준 목록(master-list.js)과 대소문자·공백만 다른 값을 찾아 표준 표기로 맞춥니다.</div>
+      </div>
+      <button onclick="closeUnifyModal()" style="border:none;background:none;font-size:18px;cursor:pointer;color:var(--ink-soft);">✕</button>
+    </div>
+    <div id="unifyBody" style="padding:16px 18px;max-height:60vh;overflow:auto;"><div style="color:var(--ink-soft);">검사 중…</div></div>
+    <div style="padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:10px;">
+      <button id="unifyApplyBtn" onclick="applyUnifyPlan()" style="display:none;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;cursor:pointer;font-weight:600;">선택한 항목 적용</button>
+      <button onclick="closeUnifyModal()" style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 16px;font-size:13px;cursor:pointer;">닫기</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
