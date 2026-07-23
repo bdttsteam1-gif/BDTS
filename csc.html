@@ -1778,6 +1778,20 @@ function renderUserlist(){
   }
 }
 
+function goToRefDetail(marker){
+  switchTab('ref');
+  loadRefLog().then(function(){ showRefMarkerDetail(marker); });
+}
+function goToAgencyInfo(sub, kw){
+  switchTab('agencyinfo');
+  document.querySelectorAll('.agi-subtab').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-agi')===sub); });
+  document.querySelectorAll('.agi-pane').forEach(function(p){ p.style.display = (p.id==='agi-'+sub) ? '' : 'none'; });
+  if(sub==='contacts'){ document.getElementById('contactsSearch').value=kw||''; renderContacts(); }
+  else if(sub==='agencylist'){ document.getElementById('agencySearch').value=kw||''; renderAgencyList(); }
+  else { document.getElementById('userlistSearch').value=kw||''; renderUserlist(); }
+}
+function goToClientSearch(kw){ window.open('search.html?q='+encodeURIComponent(kw||''), '_blank'); }
+
 function renderUniSearch(){
   var kw = document.getElementById('uniSearch').value.trim();
   var body = document.getElementById('uniSearchBody');
@@ -1785,28 +1799,34 @@ function renderUniSearch(){
   var sections = [];
 
   var cscRows = RECORDS.filter(function(r){ return rowMatch([r.hospital,r.region,r.complaint,r.via,r.writer,deviceRowsOf(r).map(function(d){return d.device;}).join(' '),itemRowsOf(r).map(function(it){return it.item;}).join(' ')], kw); }).slice(0,50);
-  if(cscRows.length) sections.push({title:'고객지원센터(진행상황) · '+cscRows.length+'건', rows:cscRows.map(function(r){ return [fmtDT(r.recvAt), r.hospital||'-', r.via||'-', titleOf(r)]; }), cols:['접수일시','병원','경로','제목']});
+  if(cscRows.length) sections.push({title:'고객지원센터(진행상황) · '+cscRows.length+'건 · 클릭하면 상세 팝업', cols:['접수일시','병원','경로','제목'],
+    rows:cscRows.map(function(r){ return {cells:[fmtDT(r.recvAt), r.hospital||'-', r.via||'-', titleOf(r)], onclick:"viewRecord('"+String(r.id).replace(/'/g,"\\'")+"')"}; })});
 
   var refRows = REF_LOG.filter(function(r){ return rowMatch([r.marker,r.platform,r.note,r.keyword,r.author], kw); }).slice(0,50);
-  if(refRows.length) sections.push({title:'참고사항 · '+refRows.length+'건', rows:refRows.map(function(r){ return [r.date||'-', r.platform||'-', r.marker||'-', (r.note||'').slice(0,60)]; }), cols:['날짜','플랫폼','마커명','내용']});
+  if(refRows.length) sections.push({title:'참고사항 · '+refRows.length+'건 · 클릭하면 마커 상세로 이동', cols:['날짜','플랫폼','마커명','내용'],
+    rows:refRows.map(function(r){ return {cells:[r.date||'-', r.platform||'-', r.marker||'-', (r.note||'').slice(0,60)], onclick:"goToRefDetail('"+String(r.marker||'').replace(/'/g,"\\'")+"')"}; })});
 
   var CR = (typeof CLIENT_RECORDS!=='undefined')?CLIENT_RECORDS:[];
   var cliRows = CR.filter(function(r){ return rowMatch([r.hospital,r.region,r.agency,r.manager,r.device,r.request], kw); }).slice(0,50);
-  if(cliRows.length) sections.push({title:'거래처이력 · '+cliRows.length+'건', rows:cliRows.map(function(r){ return [r.date||'-', r.hospital||'-', r.device||'-', (r.request||'').slice(0,60)]; }), cols:['날짜','병원','장비','접수사항']});
+  if(cliRows.length) sections.push({title:'거래처이력 · '+cliRows.length+'건 · 클릭하면 통합검색(search.html)으로 이동', cols:['날짜','병원','장비','접수사항'],
+    rows:cliRows.map(function(r){ return {cells:[r.date||'-', r.hospital||'-', r.device||'-', (r.request||'').slice(0,60)], onclick:"goToClientSearch('"+String(r.hospital||'').replace(/'/g,"\\'")+"')"}; })});
 
   var conRows = EXT_CONTACTS.filter(function(r){ return rowMatch([r.agency,r.contactName,r.phone,r.email,r.salesRep], kw); });
-  if(conRows.length) sections.push({title:'TS 대표 소통담당자 · '+conRows.length+'건', rows:conRows.map(function(r){ return [r.salesRep||'-', r.agency||'-', r.contactName||'-', r.phone||'-']; }), cols:['영업담당자','대리점','담당자','휴대전화']});
+  if(conRows.length) sections.push({title:'TS 대표 소통담당자 · '+conRows.length+'건 · 클릭하면 상세 탭으로 이동', cols:['영업담당자','대리점','담당자','휴대전화'],
+    rows:conRows.map(function(r){ return {cells:[r.salesRep||'-', r.agency||'-', r.contactName||'-', r.phone||'-'], onclick:"goToAgencyInfo('contacts','"+String(r.agency||'').replace(/'/g,"\\'")+"')"}; })});
 
   var agRows = EXT_AGENCIES.filter(function(r){ return rowMatch([r.agency,r.salesRep,(r.products||[]).join(' ')], kw); });
-  if(agRows.length) sections.push({title:'국내 대리점 리스트 · '+agRows.length+'건', rows:agRows.map(function(r){ return [r.salesRep||'-', r.agency||'-', r.type||'-', (r.products||[]).join(', ')]; }), cols:['영업담당자','대리점','구분','취급제품']});
+  if(agRows.length) sections.push({title:'국내 대리점 리스트 · '+agRows.length+'건 · 클릭하면 상세 탭으로 이동', cols:['영업담당자','대리점','구분','취급제품'],
+    rows:agRows.map(function(r){ return {cells:[r.salesRep||'-', r.agency||'-', r.type||'-', (r.products||[]).join(', ')], onclick:"goToAgencyInfo('agencylist','"+String(r.agency||'').replace(/'/g,"\\'")+"')"}; })});
 
   var ulRows = EXT_USERLIST.filter(function(r){ return rowMatch([r.hospital,r.sido,r.sigungu,r.agency,r.device,r.items], kw); }).slice(0,50);
-  if(ulRows.length) sections.push({title:'AFIAS 사용자 리스트 · '+ulRows.length+'건 (최대 50건 표시)', rows:ulRows.map(function(r){ return [r.sido||'-', r.hospital||'-', r.device||'-', r.agency||'-']; }), cols:['시도','의료기관명','장비','대리점']});
+  if(ulRows.length) sections.push({title:'AFIAS 사용자 리스트 · '+ulRows.length+'건 (최대 50건 표시) · 클릭하면 상세 탭으로 이동', cols:['시도','의료기관명','장비','대리점'],
+    rows:ulRows.map(function(r){ return {cells:[r.sido||'-', r.hospital||'-', r.device||'-', r.agency||'-'], onclick:"goToAgencyInfo('userlist','"+String(r.hospital||'').replace(/'/g,"\\'")+"')"}; })});
 
   if(!sections.length){ body.innerHTML = '<div style="padding:20px;color:#9ca3af;">검색 결과가 없습니다.</div>'; return; }
   body.innerHTML = sections.map(function(s){
     var head = '<thead><tr>'+s.cols.map(function(c){return '<th>'+esc(c)+'</th>';}).join('')+'</tr></thead>';
-    var rows = s.rows.map(function(row){ return '<tr>'+row.map(function(v){return '<td>'+esc(v)+'</td>';}).join('')+'</tr>'; }).join('');
+    var rows = s.rows.map(function(row){ return '<tr style="cursor:pointer;" onclick="'+row.onclick+'">'+row.cells.map(function(v){return '<td>'+esc(v)+'</td>';}).join('')+'</tr>'; }).join('');
     return '<div class="chart-card" style="margin-bottom:14px;"><h3>'+esc(s.title)+'</h3><div class="table-scroll"><table class="wk-table">'+head+'<tbody>'+rows+'</tbody></table></div></div>';
   }).join('');
 }
