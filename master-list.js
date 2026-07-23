@@ -47,7 +47,9 @@ var MASTER_DEVICE = [
   "Chemichroma",
   "CBChroma",
   "AFIAS V1",
-  "ichroma 50 Plus"
+  "ichroma 50 Plus",
+  "AH600",
+  "AH600 PRO"
 ];
 
 var MASTER_ITEM = [
