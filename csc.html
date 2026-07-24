@@ -139,6 +139,7 @@ body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans
 .dv-long { grid-column:1/-1; background:#f8fafc; border-radius:8px; padding:10px 12px; white-space:pre-wrap; }
 .modal-foot { display:flex; gap:8px; padding:12px 20px 16px; border-top:1px solid var(--line); background:#fafbfc; }
 .modal-foot .btn { flex:0 0 auto; }
+@media (max-width:768px){ #wrBreakdownRow { grid-template-columns:1fr !important; } }
 @media (max-width:768px){ .modal-overlay{ padding:12px 8px; } .modal-body{ padding:12px 14px 14px; } .modal-foot .btn{ flex:1; } }
 
 /* ===== Mobile ===== */
@@ -492,11 +493,11 @@ body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans
       <div id="wrCaptureArea" style="background:#fff;">
         <div style="font-size:15px;font-weight:800;color:#111827;margin-bottom:10px;">CSC 주간업무보고 · <span id="wrWeekLabel2"></span></div>
         <div class="kpi-row" id="wrKpiRow" style="margin-bottom:12px;"></div>
+        <div class="kpi-row" id="wrBreakdownRow" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px;"></div>
         <div class="table-scroll" id="wrTableBody" style="max-height:52vh;"></div>
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn btn-ghost" onclick="copyWeeklyReportText()">📝 업무보고 텍스트 복사</button>
       <button class="btn btn-ghost" onclick="UICommon.downloadDashboard(document.getElementById('wrCaptureArea'),'CSC_주간업무보고_'+wrFileTag())">📷 대시보드 이미지 다운로드</button>
       <button class="btn btn-primary" onclick="exportWeeklyReportXlsx()">⬇ 엑셀로 다운로드</button>
       <button class="btn btn-ghost" onclick="closeWeeklyReportModal()">닫기</button>
@@ -1617,6 +1618,34 @@ function wrShiftWeek(delta) {
   else { _wrWeekStart = new Date(_wrWeekStart.getFullYear(), _wrWeekStart.getMonth(), _wrWeekStart.getDate() + delta * 7); }
   renderWeeklyReport();
 }
+// 접수경로/접수담당자/회신자별 건수 막대 그래프
+function wrBarsHtml(counts) {
+  var entries = Object.keys(counts).map(function (k) { return { k: k, v: counts[k] }; })
+    .sort(function (a, b) { return b.v - a.v; }).slice(0, 6);
+  if (!entries.length) return '<div style="color:#9ca3af;font-size:12px;">데이터 없음</div>';
+  var max = Math.max.apply(null, entries.map(function (e) { return e.v; }));
+  return entries.map(function (e) {
+    var pct = Math.round(e.v / max * 100);
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+      '<span style="width:56px;font-size:12px;color:#1a1a2e;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(e.k) + '</span>' +
+      '<div style="flex:1;background:#f1f5f9;border-radius:4px;height:14px;overflow:hidden;">' +
+      '<div style="width:' + pct + '%;height:100%;background:var(--accent);border-radius:4px;"></div></div>' +
+      '<span style="width:22px;text-align:right;font-size:12px;font-weight:700;color:#1a1a2e;">' + e.v + '</span>' +
+      '</div>';
+  }).join('');
+}
+function renderWrBreakdown(recs) {
+  var viaCnt = {}, writerCnt = {}, replierCnt = {};
+  recs.forEach(function (r) {
+    var v = r.via || '기타'; viaCnt[v] = (viaCnt[v] || 0) + 1;
+    var w = r.writer || '미지정'; writerCnt[w] = (writerCnt[w] || 0) + 1;
+    if (isDone(r)) { var rp = r.replier || '미지정'; replierCnt[rp] = (replierCnt[rp] || 0) + 1; }
+  });
+  document.getElementById('wrBreakdownRow').innerHTML =
+    '<div class="kpi" style="text-align:left;"><div class="lbl" style="margin-bottom:8px;">접수경로별</div>' + wrBarsHtml(viaCnt) + '</div>' +
+    '<div class="kpi" style="text-align:left;"><div class="lbl" style="margin-bottom:8px;">접수담당자별</div>' + wrBarsHtml(writerCnt) + '</div>' +
+    '<div class="kpi" style="text-align:left;"><div class="lbl" style="margin-bottom:8px;">회신자별 <span style="font-weight:400;">(완료 건)</span></div>' + wrBarsHtml(replierCnt) + '</div>';
+}
 function renderWeeklyReport() {
   var sat = _wrWeekStart;
   var label = wrRangeLabel(sat);
@@ -1635,6 +1664,7 @@ function renderWeeklyReport() {
     '<div class="kpi"><div class="val">' + (fmtDur(avg) || '-') + '</div><div class="lbl">평균 응답시간</div><div class="sub">완료 ' + durs.length + '건 기준</div></div>';
 
   var body = document.getElementById('wrTableBody');
+  renderWrBreakdown(recs);
   if (!recs.length) {
     body.innerHTML = '<div style="padding:24px;color:#9ca3af;text-align:center;">해당 주에 접수된 기록이 없습니다.</div>';
     return;
@@ -1661,46 +1691,6 @@ function renderWeeklyReport() {
   });
   html += '</tbody></table>';
   body.innerHTML = html;
-}
-// 업무보고 문서에 바로 붙여넣을 수 있는 텍스트 요약 생성
-function buildWeeklyReportText() {
-  var sat = _wrWeekStart || wrSaturday(new Date());
-  var recs = wrWeekRecords(sat);
-  var done = recs.filter(isDone).length;
-  var pending = recs.length - done;
-  var lines = [];
-  lines.push('[CSC 주간업무보고] ' + wrRangeLabel(sat));
-  lines.push('총 ' + recs.length + '건 (완료 ' + done + ' · 미완료 ' + pending + ')');
-  lines.push('');
-  recs.forEach(function (r, i) {
-    var d = isDone(r);
-    var status = d ? '완료' : '진행중';
-    var dur = d ? (fmtDur(durMs(r)) || '-') : '회신대기';
-    var replier = r.replier ? (' → ' + r.replier) : '';
-    var place = r.hospital ? (r.hospital + ' - ') : '';
-    lines.push((i + 1) + '. [' + status + '] ' + (r.via || '-') + ' · ' + (r.writer || '-') + replier + ' · ' + dur + ' · ' + place + titleOf(r));
-  });
-  return lines.join('\n');
-}
-function copyWeeklyReportText() {
-  var recs = wrWeekRecords(_wrWeekStart || wrSaturday(new Date()));
-  if (!recs.length) { showMsg('err', '해당 주에 내보낼 기록이 없습니다.'); return; }
-  var text = buildWeeklyReportText();
-  function fallbackDownload() {
-    var blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'CSC_주간업무보고_' + wrFileTag() + '.txt';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    showMsg('ok', '클립보드 복사를 사용할 수 없어 텍스트 파일로 다운로드했습니다.');
-  }
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(function () {
-      showMsg('ok', '업무보고용 텍스트가 클립보드에 복사되었습니다. 문서에 붙여넣기(Ctrl+V) 하세요.');
-    }).catch(fallbackDownload);
-  } else {
-    fallbackDownload();
-  }
 }
 function exportWeeklyReportXlsx() {
   var sat = _wrWeekStart || wrSaturday(new Date());
