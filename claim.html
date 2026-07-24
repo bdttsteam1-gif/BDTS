@@ -108,6 +108,13 @@
   .empty-state { text-align: center; padding: 60px 20px; color: var(--text2); }
   .empty-state .ico { font-size: 48px; margin-bottom: 12px; }
 
+  /* 화면 전체 드래그 업로드 오버레이 */
+  #dropOverlay { display: none; position: fixed; inset: 0; z-index: 9998; background: rgba(37,99,235,.12);
+    border: 3px dashed var(--accent); align-items: center; justify-content: center; pointer-events: none; }
+  #dropOverlay.on { display: flex; }
+  #dropOverlay .msg { background: #fff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 22px 34px;
+    font-size: 16px; font-weight: 700; color: #1d4ed8; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+
   /* Top bar item list */
   .mini-list { display: flex; flex-direction: column; gap: 4px; max-height: 280px; overflow-y: auto; }
   .mini-item { display: flex; justify-content: space-between; padding: 8px 10px; border-radius: 6px; font-size: 13px; }
@@ -148,7 +155,10 @@
     .chart-wrap { height: 210px; }
   }
 </style>
+<script src="ui-common.js"></script>
+<script src="search-utils.js"></script>
 <script src="claim-data.js"></script>
+<script src="data-sync.js"></script>
 <script src="claim-sheet.js"></script>
 </head>
 <body>
@@ -165,11 +175,13 @@
       <span class="icon">🔍</span>
       <input type="text" id="searchInput" placeholder="국가·대리점·아이템·LOT 입력 후 Enter (2개 이상은 쉼표(,)로 구분 → 상세 목록)" autocomplete="off">
     </div>
-    <button class="year-btn" id="uploadBtn" onclick="document.getElementById('excelFile').click()" title="현재 선택된 연도 시트에 신규 클레임만 추가됩니다">⬆ 엑셀 업로드</button>
+    <button class="year-btn" id="uploadBtn" onclick="document.getElementById('excelFile').click()" title="현재 선택된 연도 시트에 신규 클레임만 추가됩니다 (화면 아무 곳에나 파일을 드래그해도 됩니다)">⬆ 엑셀 업로드</button>
     <input type="file" id="excelFile" accept=".xlsx,.xlsm" style="display:none" onchange="handleExcelUpload(this)">
     <button class="year-btn" id="resetExtraBtn" onclick="resetExtras()" title="업로드로 추가된 데이터를 삭제합니다" style="display:none">↺ 업로드 초기화</button>
+    <button class="year-btn" onclick="UICommon.downloadDashboard(document.getElementById('mainContent'),'클레임_대시보드_'+currentYear)" title="현재 화면을 PNG 이미지로 저장합니다">📷 다운로드</button>
     <div class="badge" id="totalBadge">0 건</div>
   </div>
+  <div id="dropOverlay"><div class="msg">📥 여기에 놓으면 엑셀 파일이 업로드됩니다</div></div>
   <div id="uploadStatus" style="display:none; padding:8px 24px; font-size:13px; background:#eff6ff; border-bottom:1px solid #bfdbfe; color:#1d4ed8;"></div>
   <div class="content" id="mainContent">
     <!-- Filled by JS -->
@@ -233,6 +245,7 @@ function updateUploadUI() {
 
 function switchYear(year) {
   currentYear = year;
+  _claimAcItems = null;
   DATA = buildYearData(year);
   rebuildDataMap();
   document.querySelectorAll('.year-btn').forEach(b => {
@@ -267,6 +280,9 @@ function handleExcelUpload(input) {
   const file = input.files && input.files[0];
   input.value = '';
   if (!file) return;
+  handleClaimFile(file);
+}
+function handleClaimFile(file) {
   const status = document.getElementById('uploadStatus');
   status.style.display = 'block';
   status.textContent = '⏳ "' + file.name + '" 읽는 중... (파일이 크면 1분 이상 걸릴 수 있습니다)';
@@ -326,8 +342,11 @@ function handleExcelUpload(input) {
           return;
         }
         status.textContent = '⏳ 신규 클레임 ' + newRecs.length + '건 저장 중...' + (isClaimSheetConfigured() ? ' (전 직원 공유 저장소로 업로드)' : '');
-        postClaimExtras(currentYear, newRecs).then(function(res) {
+        postClaimExtras(currentYear, newRecs, function(d, t) {
+          status.textContent = '⏳ 신규 클레임 ' + newRecs.length + '건 저장 중... (전 직원 공유 저장소 업로드 ' + d + '/' + t + ')';
+        }).then(function(res) {
           EXTRAS_ALL[currentYear] = (EXTRAS_ALL[currentYear] || []).concat(newRecs);
+          _claimAcItems = null;
           DATA = buildYearData(currentYear);
           rebuildDataMap();
           renderDashboard();
@@ -354,6 +373,7 @@ function resetExtras() {
   status.textContent = '⏳ 삭제 중...';
   resetClaimExtras(currentYear).then(function() {
     EXTRAS_ALL[currentYear] = [];
+    _claimAcItems = null;
     DATA = buildYearData(currentYear);
     rebuildDataMap();
     updateUploadUI();
@@ -794,6 +814,7 @@ rebuildDataMap();
 // ---- SEARCH LOGIC ----
 function detectSearchType(keyword, matchedRows) {
   const kl = keyword.toLowerCase();
+  const sm = SearchUtils.makeMatcher(keyword); // 한↔영 스마트 매칭 포함
   // Check if majority match on country
   const countries = new Set(DATA.map(r => r.country.toLowerCase()));
   if (countries.has(kl)) return 'country';
@@ -808,9 +829,9 @@ function detectSearchType(keyword, matchedRows) {
   const items = new Set(DATA.map(r => r.item.toLowerCase()).filter(Boolean));
   if (items.has(kl)) return 'item';
 
-  // Partial matches
-  const countryMatch = matchedRows.filter(r => r.country.toLowerCase().includes(kl)).length;
-  const distMatch = matchedRows.filter(r => r.dist.toLowerCase().includes(kl)).length;
+  // Partial matches (스마트 매칭 — 한글 국가명·이름도 인식)
+  const countryMatch = matchedRows.filter(r => sm(r.country)).length;
+  const distMatch = matchedRows.filter(r => sm(r.dist)).length;
   const lotMatch = matchedRows.filter(r => r.lot.toLowerCase().includes(kl)).length;
   const itemMatch = matchedRows.filter(r => r.item.toLowerCase().includes(kl)).length;
 
@@ -832,9 +853,17 @@ function doSearch(rawKeyword) {
   if (terms.length === 0) { renderDashboard(); return; }
 
   // 모든 키워드가 매칭되어야 함(AND)
+  // 1차: 전체 필드 부분일치 / 2차: 국가·대리점·담당자 등 핵심 필드에 한↔영 스마트 매칭
+  //      (예: "체코" → Czech republic, "장명선" → Myoungseon JANG)
+  const SMART_FIELDS = ['country', 'dist', 'receiver', 'contact', 'item', 'area'];
+  const matchers = terms.map(t => SearchUtils.makeMatcher(t));
   const matched = DATA.filter(r => {
     const vals = Object.values(r).map(v => v.toLowerCase());
-    return terms.every(t => vals.some(v => v.includes(t.toLowerCase())));
+    return terms.every((t, ti) => {
+      const tl = t.toLowerCase();
+      if (vals.some(v => v.includes(tl))) return true;
+      return SMART_FIELDS.some(f => r[f] && matchers[ti](r[f]));
+    });
   });
   matched.sort(byNewest); // 검색 결과 최신순 정렬
 
@@ -977,7 +1006,29 @@ function goBack() {
   }
 }
 
+// ---- 국가·대리점·담당자 자동완성 ----
+let _claimAcItems = null;
+function claimAcItems() {
+  if (_claimAcItems) return _claimAcItems;
+  const c = {}, d = {}, rv = {};
+  for (const r of DATA) {
+    if (r.country) c[r.country] = 1;
+    if (r.dist) d[r.dist] = 1;
+    if (r.receiver) rv[r.receiver] = 1;
+  }
+  _claimAcItems = Object.keys(c).sort().map(n => {
+      const ko = SearchUtils.koNameOf(n);
+      return { value: n, label: n, sub: (ko ? ko + ' · ' : '') + '국가' };
+    })
+    .concat(Object.keys(d).sort().map(n => ({ value: n, label: n, sub: '대리점' })))
+    .concat(Object.keys(rv).sort().map(n => ({ value: n, label: n, sub: '담당자' })));
+  return _claimAcItems;
+}
+
 // ---- SEARCH INPUT (Enter를 눌러야만 검색 실행) ----
+SearchUtils.attachAutocomplete(document.getElementById('searchInput'), claimAcItems, {
+  onSelect: function(it) { doSearch(it.value); }
+});
 document.getElementById('searchInput').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') {
     const val = this.value.trim();
@@ -989,15 +1040,42 @@ document.getElementById('searchInput').addEventListener('input', function() {
   if (!this.value.trim() && currentView !== 'dashboard') renderDashboard();
 });
 
+// ---- 화면 어디에나 파일을 드래그하면 업로드 ----
+(function() {
+  const overlay = document.getElementById('dropOverlay');
+  let dragDepth = 0;
+  function hasFiles(e) {
+    return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') !== -1;
+  }
+  document.addEventListener('dragenter', function(e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault(); dragDepth++;
+    overlay.classList.add('on');
+  });
+  document.addEventListener('dragover', function(e) { if (hasFiles(e)) e.preventDefault(); });
+  document.addEventListener('dragleave', function(e) {
+    if (!hasFiles(e)) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0) overlay.classList.remove('on');
+  });
+  document.addEventListener('drop', function(e) {
+    e.preventDefault(); dragDepth = 0;
+    overlay.classList.remove('on');
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) handleClaimFile(f);
+  });
+})();
+
 // ---- INIT ----
 (async function initClaim() {
   const status = document.getElementById('uploadStatus');
   status.style.display = 'block';
-  status.textContent = '⏳ 데이터 불러오는 중...';
+  status.textContent = '⏳ 데이터 불러오는 중...' + (isClaimSheetConfigured() ? ' (전 직원 공유 저장소 확인)' : '');
   try {
     EXTRAS_ALL = await fetchAllClaimExtras();
   } catch (e) { /* claim-sheet.js가 이미 폴백 처리함 */ }
   DATA = buildYearData(currentYear);
+  _claimAcItems = null;
   rebuildDataMap();
   updateUploadUI();
   renderDashboard();

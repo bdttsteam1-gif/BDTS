@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>통합검색 — Boditech MED</title>
+<script src="ui-common.js"></script>
+<script src="search-utils.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #ffffff; color: #1a1a2e; font-size: 14px; min-height: 100vh; }
@@ -251,7 +253,7 @@ function buildIndex(claimExtras) {
 
 Promise.all([
   loadScript('claim-data.js'),
-  loadScript('claim-sheet.js'),
+  loadScript('data-sync.js').then(function(){ return loadScript('claim-sheet.js'); }),
   loadScript('guide-data.js'),
   loadScript('client-data.js'),
   loadScript('sales-data.js').catch(function(){ /* sales-data.js 없어도 검색은 동작 */ })
@@ -268,11 +270,16 @@ Promise.all([
 });
 
 /* ============ 검색 & 랭킹 ============ */
-function scoreEntry(entry, keywords, fullKw) {
+function scoreEntry(entry, keywords, fullKw, kwGroups) {
   var score = 0;
-  // 모든 키워드가 포함되어야 매치 (AND)
+  // 모든 키워드가 포함되어야 매치 (AND) — 국가명은 한↔영 별칭도 허용 (예: 체코 ↔ czech)
   for (var i = 0; i < keywords.length; i++) {
-    if (entry.text.indexOf(keywords[i]) === -1) return -1;
+    var grp = (kwGroups && kwGroups[i]) || [keywords[i]];
+    var hitAny = false;
+    for (var g = 0; g < grp.length; g++) {
+      if (grp[g] && entry.text.indexOf(grp[g]) !== -1) { hitAny = true; break; }
+    }
+    if (!hitAny) return -1;
   }
   var exact = false;
   // 핵심 필드 정확 일치 → 최상단
@@ -321,22 +328,26 @@ function buildInsight(keywords) {
 
   /* 키워드가 실제 '국가명' 또는 '대리점/거래처명'과 일치하는지 판별 */
   var matchedCountries = {}, matchedDists = {};
-  function collect(name, kw, into){
+  function collect(name, match, into){
     var n = String(name || '').trim();
     if (!n) return;
-    if (n.toLowerCase().indexOf(kw) !== -1) into[n] = 1;
+    if (into[n]) return;
+    if (match(n)) into[n] = 1;
   }
   keywords.forEach(function(kw){
     if (kw.length < 2) return;
+    var match = (typeof SearchUtils !== 'undefined')
+      ? SearchUtils.makeMatcher(kw)
+      : function(n){ return String(n).toLowerCase().indexOf(kw) !== -1; };
     Object.keys(claimYears).forEach(function(y){
       claimYears[y].forEach(function(r){
-        collect(r.country, kw, matchedCountries);
-        collect(r.dist, kw, matchedDists);
+        collect(r.country, match, matchedCountries);
+        collect(r.dist, match, matchedDists);
       });
     });
     salesRows.forEach(function(r){
-      collect(r[3], kw, matchedCountries); /* 수출국가 */
-      collect(r[4], kw, matchedDists);     /* 고객(거래처) */
+      collect(r[3], match, matchedCountries); /* 수출국가 */
+      collect(r[4], match, matchedDists);     /* 고객(거래처) */
     });
   });
 
@@ -433,12 +444,17 @@ function runSearch() {
   lastKw = kw;
   var fullKw = kw.toLowerCase();
   var keywords = fullKw.split(/[,\s]+/).filter(Boolean);
+  // 국가명 한↔영 별칭 확장 (체코 → czech republic 등)
+  var kwGroups = keywords.map(function(k){
+    var al = (typeof SearchUtils !== 'undefined') ? SearchUtils.countryAliases(k) : [];
+    return [k].concat(al.map(function(a){ return String(a).toLowerCase(); }));
+  });
 
   buildInsight(keywords);
 
   allResults = [];
   for (var i = 0; i < SOURCES.length; i++) {
-    var s = scoreEntry(SOURCES[i], keywords, fullKw);
+    var s = scoreEntry(SOURCES[i], keywords, fullKw, kwGroups);
     if (s >= 0) allResults.push({ entry: SOURCES[i], score: s });
   }
   // 정렬: 점수(정확 일치) 우선 → 최신순

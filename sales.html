@@ -6,6 +6,9 @@
 <title>Sales Report — Boditech MED</title>
 <script src="chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="ui-common.js"></script>
+<script src="search-utils.js"></script>
+<script src="data-sync.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #ffffff; color: #1a1a2e; font-size: 14px; min-height: 100vh; }
@@ -82,6 +85,21 @@ body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI',
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
 
+/* 대시보드 매출/판매량 전환 */
+.mode-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.mode-switch { display: inline-flex; background: #f1f5f9; border: 1px solid #e5e7eb; border-radius: 10px; padding: 3px; gap: 2px; }
+.mode-btn { border: none; background: none; border-radius: 8px; padding: 8px 20px; font-size: 13.5px; font-weight: 700; color: #6b7280; cursor: pointer; }
+.mode-btn.on { background: #2563eb; color: #fff; box-shadow: 0 1px 4px rgba(37,99,235,.3); }
+.dash-dl-btn { margin-left: auto; background: #fff; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 14px; font-size: 12.5px; font-weight: 700; color: #374151; cursor: pointer; }
+.dash-dl-btn:hover { border-color: #2563eb; color: #2563eb; }
+
+/* 화면 전체 드래그 업로드 오버레이 */
+#dropOverlay { display: none; position: fixed; inset: 0; z-index: 9998; background: rgba(37,99,235,.12);
+  border: 3px dashed #2563eb; align-items: center; justify-content: center; pointer-events: none; }
+#dropOverlay.on { display: flex; }
+#dropOverlay .msg { background: #fff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 22px 34px;
+  font-size: 16px; font-weight: 700; color: #1d4ed8; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+
 /* ===== Mobile ===== */
 @media (max-width: 768px) {
   .nav { padding: 0 14px; }
@@ -129,18 +147,37 @@ body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI',
   <!-- DASHBOARD -->
   <div class="view active" id="view-dash">
     <div class="year-chips" id="yearChips"></div>
+    <div class="mode-row">
+      <div class="mode-switch">
+        <button class="mode-btn on" id="modeRevBtn" onclick="setDashMode('rev')">💰 매출</button>
+        <button class="mode-btn" id="modeQtyBtn" onclick="setDashMode('qty')">📦 판매량</button>
+      </div>
+      <button class="dash-dl-btn" onclick="UICommon.downloadDashboard(document.getElementById('view-dash'),'SalesReport_대시보드')">📷 대시보드 다운로드</button>
+    </div>
     <div class="stats-row" id="kpiRow"></div>
-    <div class="chart-grid">
+
+    <!-- 매출 대시보드 -->
+    <div class="chart-grid" id="dashRev">
       <div class="chart-card wide"><h3 id="ttlMonthly">월별 매출 추이</h3><div class="chart-wrap"><canvas id="chMonthly"></canvas></div></div>
       <div class="chart-card"><h3>Region별 매출</h3><div class="chart-wrap"><canvas id="chRegion"></canvas></div></div>
       <div class="chart-card"><h3>구분별 매출 <small style="color:#9ca3af;font-weight:400;">장비·카트리지·기타</small></h3><div class="chart-wrap"><canvas id="chCat"></canvas></div></div>
-      <div class="chart-card"><h3>Top 10 국가</h3><div class="chart-wrap"><canvas id="chCountry"></canvas></div></div>
-      <div class="chart-card"><h3>Top 10 거래처</h3><div class="chart-wrap"><canvas id="chCust"></canvas></div></div>
+      <div class="chart-card"><h3>Top 10 국가 <small style="color:#9ca3af;font-weight:400;">매출</small></h3><div class="chart-wrap"><canvas id="chCountry"></canvas></div></div>
+      <div class="chart-card"><h3>Top 10 거래처 <small style="color:#9ca3af;font-weight:400;">매출</small></h3><div class="chart-wrap"><canvas id="chCust"></canvas></div></div>
       <div class="chart-card"><h3>장비 세부모델별 매출</h3><div class="chart-wrap"><canvas id="chInstr"></canvas></div></div>
       <div class="chart-card"><h3>카트리지 플랫폼별 매출</h3><div class="chart-wrap"><canvas id="chCartPlat"></canvas></div></div>
       <div class="chart-card wide"><h3>카트리지 마커 Top 12 <small style="color:#9ca3af;font-weight:400;">플랫폼 구분 · 매출 기준</small></h3><div class="chart-wrap"><canvas id="chItem"></canvas></div></div>
-      <div class="chart-card wide"><h3>🔧 장비 판매량 Top 10 <small style="color:#9ca3af;font-weight:400;">세부모델 · 수량(환산) 기준</small></h3><div class="chart-wrap"><canvas id="chInstrQty"></canvas></div></div>
-      <div class="chart-card wide"><h3>🧬 카트리지 판매량 Top 10 <small style="color:#9ca3af;font-weight:400;">마커 · 수량(환산) 기준</small></h3><div class="chart-wrap"><canvas id="chItemQty"></canvas></div></div>
+    </div>
+
+    <!-- 판매량 대시보드 -->
+    <div class="chart-grid" id="dashQty" style="display:none;">
+      <div class="chart-card wide"><h3 id="ttlMonthlyQty">월별 판매량 추이</h3><div class="chart-wrap"><canvas id="qMonthly"></canvas></div></div>
+      <div class="chart-card"><h3>Region별 판매량</h3><div class="chart-wrap"><canvas id="qRegion"></canvas></div></div>
+      <div class="chart-card"><h3>구분별 판매량 <small style="color:#9ca3af;font-weight:400;">장비·카트리지·기타</small></h3><div class="chart-wrap"><canvas id="qCat"></canvas></div></div>
+      <div class="chart-card"><h3>Top 10 국가 <small style="color:#9ca3af;font-weight:400;">수량(환산)</small></h3><div class="chart-wrap"><canvas id="qCountry"></canvas></div></div>
+      <div class="chart-card"><h3>Top 10 거래처 <small style="color:#9ca3af;font-weight:400;">수량(환산)</small></h3><div class="chart-wrap"><canvas id="qCust"></canvas></div></div>
+      <div class="chart-card"><h3>🔧 장비 판매량 Top 10 <small style="color:#9ca3af;font-weight:400;">세부모델</small></h3><div class="chart-wrap"><canvas id="chInstrQty"></canvas></div></div>
+      <div class="chart-card"><h3>🧬 카트리지 플랫폼별 판매량</h3><div class="chart-wrap"><canvas id="qCartPlat"></canvas></div></div>
+      <div class="chart-card wide"><h3>🧬 카트리지 판매량 Top 12 <small style="color:#9ca3af;font-weight:400;">마커 · 수량(환산) 기준</small></h3><div class="chart-wrap"><canvas id="chItemQty"></canvas></div></div>
     </div>
   </div>
 
@@ -163,11 +200,11 @@ body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI',
     <div class="upd-box">
       <b>매달 Sales Report 반영 방법</b>
       <ol class="step-list">
-        <li>아래에 이번 달 <b>_Boditech__Sales_Report_20XX_M_XXX.xlsm</b> 파일을 업로드합니다.</li>
+        <li>아래에 이번 달 <b>_Boditech__Sales_Report_20XX_M_XXX.xlsm</b> 파일을 업로드합니다. (화면 아무 곳에나 드래그해도 됩니다)</li>
         <li>파일 안의 <b>C01 시트</b>를 자동으로 읽어, 파일에 포함된 <b>연도·월 데이터만 교체(증분 업데이트)</b>합니다. 기존 다른 연도·월 데이터는 그대로 유지됩니다.</li>
-        <li>업데이트된 <b>sales-data.js</b> 파일을 다운로드해 GitHub의 <b>html 폴더에 덮어쓰면</b> 모든 직원에게 반영됩니다.</li>
+        <li>업로드가 끝나면 <b>공유 저장소(구글 시트)에 자동 저장</b>되어, 다른 기기·브라우저에서 페이지를 열어도 최신 데이터가 표시됩니다.</li>
       </ol>
-      <div style="margin-top:6px; color:#6b7280;">※ 월 보고서는 연초부터 해당 월까지 누적(YTD) 형식이므로, 파일에 있는 월은 전부 최신 값으로 교체됩니다. 같은 파일을 여러 번 올려도 중복되지 않습니다.</div>
+      <div style="margin-top:6px; color:#6b7280;">※ 월 보고서는 연초부터 해당 월까지 누적(YTD) 형식이므로, 파일에 있는 월은 전부 최신 값으로 교체됩니다. 같은 파일을 여러 번 올려도 중복되지 않습니다.<br>※ (선택) 영구 백업으로 업데이트된 sales-data.js를 내려받아 GitHub에 덮어쓸 수도 있습니다.</div>
     </div>
 
     <div class="upload-zone" id="uploadZone" style="margin-top:16px;">
@@ -180,6 +217,8 @@ body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI',
   </div>
 
 </div>
+
+<div id="dropOverlay"><div class="msg">📥 여기에 놓으면 엑셀 파일이 업로드됩니다</div></div>
 
 <script src="sales-data.js"></script>
 <script>
@@ -261,10 +300,26 @@ function topN(map, n){
     .sort(function(a,b){ return b[1]-a[1]; }).slice(0, n);
 }
 
+/* 대시보드 모드: 'rev'(매출) | 'qty'(판매량) */
+var dashMode = 'rev';
+function setDashMode(m){
+  dashMode = m;
+  document.getElementById('modeRevBtn').classList.toggle('on', m==='rev');
+  document.getElementById('modeQtyBtn').classList.toggle('on', m==='qty');
+  document.getElementById('dashRev').style.display = (m==='rev') ? '' : 'none';
+  document.getElementById('dashQty').style.display = (m==='qty') ? '' : 'none';
+  renderDash();
+}
+
 function renderDash(){
   var yr = ROWS.filter(function(r){ return r[0]===curYear; });
-  var paidRows = yr.filter(function(r){ return r[7]==='유상'; });
+  var dyr = DETAIL.filter(function(r){ return r[D_Y]===curYear; });
+  renderKpi(yr);
+  if(dashMode==='qty') renderDashQty(yr, dyr);
+  else renderDashRev(yr, dyr);
+}
 
+function renderKpi(yr){
   var totKrw = 0, totQty = 0, totCnt = 0;
   var cSet = {}, dSet = {};
   yr.forEach(function(r){ totKrw += +r[8]||0; totQty += +r[9]||0; totCnt += +r[10]||0; cSet[r[3]]=1; dSet[r[4]]=1; });
@@ -289,7 +344,10 @@ function renderDash(){
     '<div class="stat-card"><div class="val">'+Object.keys(cSet).length+'</div><div class="lbl">수출 국가</div></div>' +
     '<div class="stat-card"><div class="val">'+Object.keys(dSet).length+'</div><div class="lbl">거래처</div></div>' +
     '<div class="stat-card"><div class="val">'+totCnt.toLocaleString()+'</div><div class="lbl">매출 라인 건수</div></div>';
+}
 
+/* ---- 💰 매출 대시보드 ---- */
+function renderDashRev(yr, dyr){
   // 월별 (유상/무상 스택 + 전년 매출 라인)
   var months = [1,2,3,4,5,6,7,8,9,10,11,12];
   var mPaid = {}, mFree = {}, mPrev = {};
@@ -330,7 +388,6 @@ function renderDash(){
   mkChart('chCust', hbar(topN(sumBy(yr, 4, 8), 10).map(function(x){ return [String(x[0]).split(';')[0].trim(), x[1]]; }), '#f59e0b'));
 
   // 구분별(장비/카트리지/기타) 매출 — 도넛
-  var dyr = DETAIL.filter(function(r){ return r[D_Y]===curYear; });
   var catMap = {};
   dyr.forEach(function(r){ catMap[r[D_CAT]] = (catMap[r[D_CAT]]||0) + (+r[D_KRW]||0); });
   var catOrder = [CAT_CART, CAT_INSTR, CAT_ETC].filter(function(c){ return catMap[c]; });
@@ -356,16 +413,75 @@ function renderDash(){
   var itemMap = {};
   dyr.forEach(function(r){ if(r[D_CAT]===CAT_CART) itemMap[r[D_ITEM]] = (itemMap[r[D_ITEM]]||0) + (+r[D_KRW]||0); });
   mkChart('chItem', hbar(topN(itemMap, 12).map(function(x){ return [String(x[0]).slice(0,42), x[1]]; }), '#8b5cf6'));
+}
+
+/* ---- 📦 판매량 대시보드 ---- */
+function renderDashQty(yr, dyr){
+  var months = [1,2,3,4,5,6,7,8,9,10,11,12];
+
+  // 월별 판매량 (유상/무상 스택 + 전년 판매량 라인)
+  var mPaid = {}, mFree = {}, mPrev = {};
+  yr.forEach(function(r){
+    var m = r[1], q = +r[9]||0;
+    if(r[7]==='유상') mPaid[m] = (mPaid[m]||0)+q; else mFree[m] = (mFree[m]||0)+q;
+  });
+  ROWS.forEach(function(r){ if(r[0]===curYear-1){ mPrev[r[1]] = (mPrev[r[1]]||0) + (+r[9]||0); } });
+  var hasPrev = Object.keys(mPrev).length>0;
+  document.getElementById('ttlMonthlyQty').textContent = curYear + '년 월별 판매량 추이 (수량 환산)' + (hasPrev? ' · 전년 비교':'');
+  var mDatasets = [
+    {label:'유상', data: months.map(function(m){return mPaid[m]||0;}), backgroundColor:'#2563eb', stack:'s'},
+    {label:'무상/기타', data: months.map(function(m){return mFree[m]||0;}), backgroundColor:'#cbd5e1', stack:'s'}
+  ];
+  if(hasPrev) mDatasets.push({label:(curYear-1)+'년', type:'line', data: months.map(function(m){return mPrev[m]||0;}),
+    borderColor:'#f59e0b', backgroundColor:'#f59e0b', pointRadius:2, tension:.3, fill:false});
+  mkChart('qMonthly', { type:'bar',
+    data:{ labels: months.map(function(m){return m+'월';}), datasets: mDatasets },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{position:'bottom', labels:{boxWidth:12, font:{size:11}}},
+        tooltip:{callbacks:{label:function(c){ return c.dataset.label+': '+Math.round(c.parsed.y).toLocaleString()+'개'; }}}},
+      scales:{ x:{stacked:true, grid:{display:false}}, y:{stacked:true, ticks:{callback:function(v){return Math.round(v).toLocaleString();}}}}}
+  });
+
+  // Region별 판매량 도넛
+  var regTop = topN(sumBy(yr, 2, 9), 8);
+  mkChart('qRegion', { type:'doughnut',
+    data:{ labels: regTop.map(function(x){return x[0];}),
+      datasets:[{data: regTop.map(function(x){return Math.round(x[1]);}), backgroundColor: PAL}]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{position:'right', labels:{boxWidth:11, font:{size:11}}},
+        tooltip:{callbacks:{label:function(c){ return c.label+': '+Math.round(c.parsed).toLocaleString()+'개'; }}}}}
+  });
+
+  // 구분별(장비/카트리지/기타) 판매량 — 도넛
+  var catMap = {};
+  dyr.forEach(function(r){ catMap[r[D_CAT]] = (catMap[r[D_CAT]]||0) + (+r[D_QTY]||0); });
+  var catOrder = [CAT_CART, CAT_INSTR, CAT_ETC].filter(function(c){ return catMap[c]; });
+  mkChart('qCat', { type:'doughnut',
+    data:{ labels: catOrder, datasets:[{ data: catOrder.map(function(c){return Math.round(catMap[c]);}),
+      backgroundColor:['#2563eb','#16a34a','#cbd5e1'] }]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{position:'right', labels:{boxWidth:12, font:{size:11}}},
+        tooltip:{callbacks:{label:function(c){ return c.label+': '+Math.round(c.parsed).toLocaleString()+'개'; }}}}}
+  });
+
+  // Top 국가 / 거래처 (판매량)
+  mkChart('qCountry', hbarNum(topN(sumBy(yr, 3, 9), 10), '#16a34a'));
+  mkChart('qCust', hbarNum(topN(sumBy(yr, 4, 9), 10).map(function(x){ return [String(x[0]).split(';')[0].trim(), x[1]]; }), '#f59e0b'));
 
   // 장비 판매량 Top 10 (세부모델 · 수량 환산)
   var instrQty = {};
   dyr.forEach(function(r){ if(r[D_CAT]===CAT_INSTR) instrQty[r[D_SUB]] = (instrQty[r[D_SUB]]||0) + (+r[D_QTY]||0); });
   mkChart('chInstrQty', hbarNum(topN(instrQty, 10), '#16a34a'));
 
-  // 카트리지 판매량 Top 10 (마커 · 수량 환산)
+  // 카트리지 플랫폼별 판매량
+  var cpQty = {};
+  dyr.forEach(function(r){ if(r[D_CAT]===CAT_CART) cpQty[r[D_SUB]] = (cpQty[r[D_SUB]]||0) + (+r[D_QTY]||0); });
+  mkChart('qCartPlat', hbarNum(topN(cpQty, 10), '#2563eb'));
+
+  // 카트리지 판매량 Top 12 (마커 · 수량 환산)
   var itemQty = {};
   dyr.forEach(function(r){ if(r[D_CAT]===CAT_CART) itemQty[r[D_ITEM]] = (itemQty[r[D_ITEM]]||0) + (+r[D_QTY]||0); });
-  mkChart('chItemQty', hbarNum(topN(itemQty, 10).map(function(x){ return [String(x[0]).slice(0,42), x[1]]; }), '#8b5cf6'));
+  mkChart('chItemQty', hbarNum(topN(itemQty, 12).map(function(x){ return [String(x[0]).slice(0,42), x[1]]; }), '#8b5cf6'));
 }
 function hbarNum(pairs, color){
   return { type:'bar',
@@ -396,8 +512,10 @@ function runFind(){
     box.innerHTML = '<div class="empty-state"><div class="big">🌍</div><p>국가나 거래처명을 입력하고 Enter를 눌러주세요.</p></div>';
     return;
   }
+  // 한글↔영문 스마트 매칭 (예: "체코" → CZECH REPUBLIC, "장명선" → Myoungseon JANG)
+  var match = SearchUtils.makeMatcher(kw);
   var hit = ROWS.filter(function(r){
-    return String(r[3]).toLowerCase().indexOf(kw)!==-1 || String(r[4]).toLowerCase().indexOf(kw)!==-1;
+    return match(r[3]) || match(r[4]);
   });
   if(!hit.length){
     box.innerHTML = '<div class="empty-state"><div class="big">🔎</div><p>"'+esc(kw)+'"에 해당하는 국가·거래처 매출이 없습니다.</p></div>';
@@ -405,8 +523,8 @@ function runFind(){
   }
   var mC = {}, mD = {};
   hit.forEach(function(r){
-    if(String(r[3]).toLowerCase().indexOf(kw)!==-1) mC[r[3]]=1;
-    if(String(r[4]).toLowerCase().indexOf(kw)!==-1) mD[r[4]]=1;
+    if(match(r[3])) mC[r[3]]=1;
+    if(match(r[4])) mD[r[4]]=1;
   });
   var chips = Object.keys(mC).sort().map(function(c){return '<span class="match-chip">🌍 '+esc(c)+'</span>';}).join('')
             + Object.keys(mD).sort().slice(0,15).map(function(d){return '<span class="match-chip">🏢 '+esc(String(d).split(';')[0])+'</span>';}).join('');
@@ -453,8 +571,9 @@ function runFind(){
 
 /* ── 세부 플랫폼별 / 아이템별 매출 + 전체 대비 비중 (전체 연도 합계) ── */
 function detailHits(kw){
+  var match = SearchUtils.makeMatcher(kw);
   return DETAIL.filter(function(r){
-    return String(r[D_CTY]).toLowerCase().indexOf(kw)!==-1 || String(r[D_CUST]).toLowerCase().indexOf(kw)!==-1;
+    return match(r[D_CTY]) || match(r[D_CUST]);
   });
 }
 
@@ -821,17 +940,30 @@ function handleFile(file){
         var updMonths = parsed.months.filter(function(m){ return beforeMonths.indexOf(m)!==-1; });
         var krwSum = 0; parsed.recs.forEach(function(r){ krwSum += r.krw; });
 
+        _findAcItems = null; // 자동완성 목록 갱신
         renderYearChips(); renderDash();
-        st.innerHTML =
-          '<div class="upd-box ok">✅ <b>'+esc(file.name)+'</b> 반영 완료 ('+esc(parsed.sheetName)+' 시트, '+parsed.recs.length.toLocaleString()+'행)<br>' +
+        var baseMsg =
+          '✅ <b>'+esc(file.name)+'</b> 반영 완료 ('+esc(parsed.sheetName)+' 시트, '+parsed.recs.length.toLocaleString()+'행)<br>' +
           '· 대상: <b>'+year+'년 '+parsed.months.join(', ')+'월</b> — ' +
           (newMonths.length ? '신규 추가 '+newMonths.join(', ')+'월' : '') +
           (newMonths.length && updMonths.length ? ' / ' : '') +
           (updMonths.length ? '최신값으로 교체 '+updMonths.join(', ')+'월' : '') + '<br>' +
           '· 합계 매출: '+fmtKrwFull(krwSum)+'<br>' +
-          '· 현재 화면(대시보드·검색)에 즉시 반영되었습니다.<br><br>' +
-          '<b>모든 직원에게 공유하려면</b> 아래 버튼으로 파일을 받아 GitHub의 <b>html/sales-data.js</b>에 덮어써 주세요.<br>' +
-          '<button class="dl-btn" onclick="downloadDataFile()">⬇ 업데이트된 sales-data.js 다운로드</button></div>';
+          '· 현재 화면(대시보드·검색)에 즉시 반영되었습니다.<br>';
+        st.innerHTML = '<div class="upd-box ok">'+baseMsg+
+          '<br>⏳ <b>전 직원 공유 저장소</b>에 업로드 중… <b id="shareProg"></b> (창을 닫지 마세요)</div>';
+        saveSalesShared(year, file.name).then(function(){
+          st.innerHTML = '<div class="upd-box ok">'+baseMsg+
+            '<br>✅ <b>전 직원 공유 완료</b> — 다른 기기·브라우저에서도 페이지를 열면 자동으로 최신 데이터가 표시됩니다.<br>' +
+            '<span style="color:#6b7280;">(선택) 영구 백업을 원하면 아래 버튼으로 파일을 받아 GitHub의 <b>sales-data.js</b>에 덮어써도 됩니다.</span><br>' +
+            '<button class="dl-btn" onclick="downloadDataFile()">⬇ 업데이트된 sales-data.js 다운로드</button></div>';
+        }).catch(function(shareErr){
+          st.innerHTML = '<div class="upd-box ok">'+baseMsg+
+            '<br>⚠ <span style="color:#b91c1c;">공유 저장 실패: '+esc(shareErr.message)+'</span><br>' +
+            '이 화면에는 반영되었지만 다른 기기에는 공유되지 않았습니다. ' +
+            '<b>모든 직원에게 반영하려면</b> 아래 버튼으로 파일을 받아 GitHub의 <b>sales-data.js</b>에 덮어써 주세요.<br>' +
+            '<button class="dl-btn" onclick="downloadDataFile()">⬇ 업데이트된 sales-data.js 다운로드</button></div>';
+        });
       }catch(err){
         st.innerHTML = '<div class="upd-box err">⚠ 처리 실패: '+esc(err.message)+'</div>';
       }
@@ -861,23 +993,131 @@ function downloadDataFile(){
   setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 300);
 }
 
+/* ============ 전 직원 공유 저장소 (구글 시트 · data-sync.js) ============ */
+var salesStore = (typeof makeBlobStore === 'function') ? makeBlobStore('upload_blobs') : null;
+
+/* 업로드로 병합된 해당 연도 데이터를 통째로 공유 저장 */
+function saveSalesShared(year, sourceName){
+  if(!salesStore || !salesStore.shared) return Promise.reject(new Error('공유 저장소가 설정되지 않았습니다.'));
+  var payload = {
+    rows1: ROWS.filter(function(r){ return r[0]===year; }),
+    rowsD: DETAIL.filter(function(r){ return r[0]===year; }),
+    months: monthsOf(year),
+    built: META.built,
+    source: sourceName
+  };
+  var prog = function(d, t){
+    var el = document.getElementById('shareProg');
+    if(el) el.textContent = d + ' / ' + t;
+  };
+  return salesStore.save('sales_extra_' + year, payload, prog);
+}
+
+/* 페이지 로드시 공유 저장소의 업로드분을 기본 데이터 위에 반영 (월 단위 교체) */
+function loadSalesShared(){
+  if(!salesStore || !salesStore.shared) return Promise.resolve([]);
+  return salesStore.loadAll().then(function(blobs){
+    var applied = [];
+    Object.keys(blobs).sort().forEach(function(key){
+      var m = key.match(/^sales_extra_(\d{4})$/);
+      if(!m) return;
+      var y = parseInt(m[1], 10);
+      var d = blobs[key].data || {};
+      if(!Array.isArray(d.rows1) || !d.rows1.length) return;
+      var blobMonths = Array.isArray(d.months) ? d.months : [];
+      var mSet = {};
+      blobMonths.forEach(function(mm){ mSet[mm] = 1; });
+      var baseMonths = monthsOf(y);
+      // ROWS: 공유분에 포함된 (연도, 월)만 교체 — 기본 데이터가 더 최신 월을 갖고 있으면 유지
+      ROWS = ROWS.filter(function(r){ return !(r[0]===y && mSet[r[1]]); })
+                 .concat(d.rows1.filter(function(r){ return mSet[r[1]]; }));
+      // DETAIL: 공유분의 월 범위가 기본 데이터 이상일 때만 해당 연도 전체 교체
+      if(blobMonths.length >= baseMonths.length && Array.isArray(d.rowsD)){
+        DETAIL = DETAIL.filter(function(r){ return r[0]!==y; }).concat(d.rowsD);
+      }
+      if(META.years.indexOf(y)===-1){ META.years.push(y); META.years.sort(); }
+      META.months[String(y)] = monthsOf(y);
+      applied.push(y + '년' + (d.source ? ' (' + d.source + ')' : ''));
+    });
+    return applied;
+  });
+}
+
+/* ============ 국가·거래처 자동완성 ============ */
+var _findAcItems = null;
+function findAcItems(){
+  if(_findAcItems) return _findAcItems;
+  var c = {}, d = {};
+  ROWS.forEach(function(r){ if(r[3]) c[r[3]]=1; var n=String(r[4]||'').split(';')[0].trim(); if(n) d[n]=1; });
+  _findAcItems = Object.keys(c).sort().map(function(n){
+      var ko = SearchUtils.koNameOf(n);
+      return { value:n, label:n, sub:(ko ? ko+' · ' : '')+'국가' };
+    }).concat(Object.keys(d).sort().map(function(n){
+      return { value:n, label:n, sub:'거래처' };
+    }));
+  return _findAcItems;
+}
+
 /* ============ 초기화 ============ */
 (function(){
   var zone = document.getElementById('uploadZone');
   var input = document.getElementById('fileInput');
   zone.addEventListener('click', function(){ input.click(); });
   input.addEventListener('change', function(e){ if(e.target.files[0]) handleFile(e.target.files[0]); e.target.value=''; });
-  ['dragover','dragenter'].forEach(function(ev){ zone.addEventListener(ev, function(e){ e.preventDefault(); zone.classList.add('drag'); }); });
-  ['dragleave','drop'].forEach(function(ev){ zone.addEventListener(ev, function(e){ e.preventDefault(); zone.classList.remove('drag'); }); });
-  zone.addEventListener('drop', function(e){ if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
 
+  // 화면 어디에나 파일을 드래그하면 업로드 (오버레이 표시)
+  var overlay = document.getElementById('dropOverlay');
+  var dragDepth = 0;
+  function hasFiles(e){
+    return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types||[], 'Files') !== -1;
+  }
+  document.addEventListener('dragenter', function(e){
+    if(!hasFiles(e)) return;
+    e.preventDefault(); dragDepth++;
+    overlay.classList.add('on'); zone.classList.add('drag');
+  });
+  document.addEventListener('dragover', function(e){ if(hasFiles(e)) e.preventDefault(); });
+  document.addEventListener('dragleave', function(e){
+    if(!hasFiles(e)) return;
+    dragDepth = Math.max(0, dragDepth-1);
+    if(dragDepth===0){ overlay.classList.remove('on'); zone.classList.remove('drag'); }
+  });
+  document.addEventListener('drop', function(e){
+    e.preventDefault(); dragDepth = 0;
+    overlay.classList.remove('on'); zone.classList.remove('drag');
+    var f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if(f){ switchTab('update'); handleFile(f); }
+  });
+
+  // 국가·거래처 자동완성 (이니셜/한글 입력 → 드롭다운 제안)
+  SearchUtils.attachAutocomplete(document.getElementById('findInput'), findAcItems, {
+    onSelect: function(){ runFind(); }
+  });
   document.getElementById('findInput').addEventListener('keydown', function(e){
     if(e.key==='Enter') runFind();
   });
+  document.getElementById('findInput').placeholder = '국가 또는 거래처명 입력 (한글도 가능: 체코, 베트남 …) — 입력하면 자동으로 제안됩니다';
 
   renderYearChips();
   if(curYear!==null) renderDash();
   else document.getElementById('kpiRow').innerHTML = '<div class="empty-state" style="width:100%;"><p>sales-data.js 가 비어 있습니다. [데이터 업데이트] 탭에서 엑셀을 업로드해주세요.</p></div>';
+
+  // 전 직원 공유 저장소의 업로드분 반영
+  var noteEl = document.getElementById('dataNote');
+  if(noteEl && salesStore && salesStore.shared) noteEl.textContent = (noteEl.textContent ? noteEl.textContent + ' · ' : '') + '공유 데이터 확인 중…';
+  loadSalesShared().then(function(applied){
+    if(applied.length){
+      _findAcItems = null;
+      renderYearChips(); renderDash();
+      var n2 = document.getElementById('dataNote');
+      if(n2) n2.textContent = n2.textContent + ' · 공유 업로드 반영: ' + applied.join(', ');
+    } else {
+      renderYearChips();
+    }
+  }).catch(function(e){
+    console.warn('공유 업로드 데이터 확인 실패:', e);
+    renderYearChips();
+  });
 
   // URL ?q= 지원 (통합검색 등에서 연결)
   var m = location.search.match(/[?&]q=([^&]*)/);

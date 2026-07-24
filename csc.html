@@ -269,6 +269,7 @@ body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans
 
   <!-- STATS -->
   <div class="view" id="view-stats">
+    <div class="toolbar" style="justify-content:flex-end;"><button class="btn btn-ghost" onclick="UICommon.downloadDashboard(document.getElementById('view-stats'),'응답시간_분석')">📷 대시보드 다운로드</button></div>
     <div class="kpi-row" id="kpiRow"></div>
     <div class="chart-card" style="margin-bottom:14px;"><h3>월별 접수 건수 & 평균 응답시간</h3><div class="chart-wrap"><canvas id="chMonthly"></canvas></div></div>
     <div class="grid2">
@@ -289,6 +290,7 @@ body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans
       <span class="count-note" id="womMonthLabel" style="font-size:14px;font-weight:700;color:#111827;"></span>
       <button class="btn btn-ghost" onclick="womShiftMonth(1)">다음 달 ▶</button>
       <button class="btn btn-ghost" style="margin-left:auto;" onclick="exportWomXlsx()">⬇ 주차별 엑셀 다운로드</button>
+      <button class="btn btn-ghost" onclick="UICommon.downloadDashboard(document.getElementById('view-womweek'),'주차별_분석')">📷 대시보드 다운로드</button>
     </div>
     <div style="font-size:11.5px;color:#9ca3af;margin:-4px 0 12px;">한 달을 1~7일 · 8~14일 · 15~21일 · 22일~말일, 총 4개의 주차로 나누어 응답시간을 분석합니다.</div>
 
@@ -470,6 +472,7 @@ body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans
   </div>
 </div>
 
+<script src="ui-common.js"></script>
 <script src="csc-base.js"></script>
 <script src="guide-data.js"></script>
 <script src="claim-progress-seed.js"></script>
