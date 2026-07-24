@@ -353,7 +353,9 @@ function handleClaimFile(file) {
           updateBadge();
           const scope = res.mode === 'shared'
             ? '전 직원 화면에 자동으로 반영됩니다.'
-            : '이 브라우저에만 저장되었습니다.' + (res.error ? ' (사유: ' + res.error + ')' : '');
+            : res.mode === 'partial'
+              ? res.sharedCount + '건은 전 직원 화면에 반영되고, ' + res.localCount + '건은 이 브라우저에만 저장되었습니다. (사유: ' + res.error + ')'
+              : '이 브라우저에만 저장되었습니다.' + (res.error ? ' (사유: ' + res.error + ')' : '');
           status.textContent = '✅ 신규 클레임 ' + newRecs.length + '건 추가 완료 — ' + scope + ' 현재 ' + currentYear + '년 총 ' + DATA.length.toLocaleString() + '건';
         }).catch(function(err) {
           status.textContent = '⚠ 저장 중 오류: ' + err.message;

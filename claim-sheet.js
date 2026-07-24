@@ -15,7 +15,7 @@ var CLAIM_SHEET_API_URL = (typeof HUB_SHEET_API_URL !== 'undefined' && HUB_SHEET
   'https://script.google.com/macros/s/AKfycbxkxRmbkTjnzFciIk6p_I9-8rbVzYZVcs7xO2MPEBkp0X4uOUAf8QmXgebpS7FpYkWxFA/exec';
 var CLAIM_SHEET_TOKEN = (typeof HUB_SHEET_TOKEN !== 'undefined' && HUB_SHEET_TOKEN) || '0p9o8i7u';
 var CLAIM_SHEET_NAME = 'claim_extra';
-var CLAIM_BATCH_CHARS = 6000; // 한 번의 GET(JSONP) 요청에 담을 레코드 묶음의 대략적인 문자 수 (URL 길이 안전 마진)
+var CLAIM_BATCH_CHARS = 3500; // 한 번의 GET(JSONP) 요청 URL에 담을 레코드 묶음의 최대 크기(퍼센트 인코딩 후 문자 수 기준, URL 길이 안전 마진)
 
 var _claimExtrasCache = null; // { '2024':[...], '2025':[...], '2026':[...] }
 var _claimRowIds = {};        // { '2024': ['id1','id2', ...] } — reset(삭제)용
@@ -89,17 +89,45 @@ async function fetchAllClaimExtras() {
 
 function invalidateClaimExtrasCache() { _claimExtrasCache = null; }
 
-// 배열을 대략적인 문자 수(JSON 기준) 단위로 묶음(batch)으로 나눈다.
+// 배열을 대략적인 "URL 인코딩 후" 문자 수 단위로 묶음(batch)으로 나눈다.
+// 한글 등 멀티바이트 문자는 percent-encoding 시 훨씬 길어지므로 encodeURIComponent 기준으로 계산한다.
 // 한 레코드가 한도보다 크더라도 최소 1건은 포함시켜 무한루프를 방지한다.
 function _chunkByChars(items, maxChars) {
   var batches = [], cur = [], curLen = 2; // "[]"
   items.forEach(function (it) {
-    var len = JSON.stringify(it).length + 1;
+    var len = encodeURIComponent(JSON.stringify(it)).length + 3;
     if (cur.length && curLen + len > maxChars) { batches.push(cur); cur = []; curLen = 2; }
     cur.push(it); curLen += len;
   });
   if (cur.length) batches.push(cur);
   return batches;
+}
+
+// 한 묶음을 저장 시도. 실패하면 한 번 재시도 → 그래도 실패하면 반으로 쪼개 재귀 시도.
+// (건 1개짜리까지 쪼개도 실패하면 그 건만 로컬 실패로 처리 — 업로드 전체가 로컬로 떨어지는 것을 방지)
+async function _sendBatchResilient(rows, onOneDone) {
+  try {
+    var res = await _claimJsonp({ sheet: CLAIM_SHEET_NAME, action: 'bulkAdd', records: JSON.stringify(rows) }, 30000);
+    if (res && res.error) throw new Error(res.error);
+    if (onOneDone) onOneDone(rows.length);
+    return { ok: rows, fail: [] };
+  } catch (e1) {
+    try {
+      var res2 = await _claimJsonp({ sheet: CLAIM_SHEET_NAME, action: 'bulkAdd', records: JSON.stringify(rows) }, 30000);
+      if (res2 && res2.error) throw new Error(res2.error);
+      if (onOneDone) onOneDone(rows.length);
+      return { ok: rows, fail: [] };
+    } catch (e2) {
+      if (rows.length <= 1) {
+        if (onOneDone) onOneDone(1);
+        return { ok: [], fail: rows, lastError: e2 };
+      }
+      var mid = Math.ceil(rows.length / 2);
+      var r1 = await _sendBatchResilient(rows.slice(0, mid), onOneDone);
+      var r2 = await _sendBatchResilient(rows.slice(mid), onOneDone);
+      return { ok: r1.ok.concat(r2.ok), fail: r1.fail.concat(r2.fail), lastError: r2.lastError || r1.lastError };
+    }
+  }
 }
 
 // 신규 클레임 레코드들을 저장 — 행 단위로 'claim_extra' 시트에 bulkAdd
@@ -114,29 +142,34 @@ async function postClaimExtras(year, records, onProgress) {
   var merged = current.concat(freshRecs);
 
   if (isClaimSheetConfigured() && freshRecs.length) {
-    try {
-      var rows = freshRecs.map(function (r) {
-        return Object.assign({ id: 'CE_' + year + '_' + r.no, year: year }, r);
-      });
-      var batches = _chunkByChars(rows, CLAIM_BATCH_CHARS);
-      for (var i = 0; i < batches.length; i++) {
-        var res = await _claimJsonp({ sheet: CLAIM_SHEET_NAME, action: 'bulkAdd', records: JSON.stringify(batches[i]) }, 30000);
-        if (res && res.error) throw new Error(res.error);
-        if (onProgress) onProgress(i + 1, batches.length);
-      }
-      rows.forEach(function (r) {
-        if (!_claimRowIds[year]) _claimRowIds[year] = [];
-        _claimRowIds[year].push(r.id);
-      });
-      _localExtrasSet(year, merged);
-      if (_claimExtrasCache) _claimExtrasCache[year] = merged;
-      return { success: true, added: freshRecs.length, mode: 'shared' };
-    } catch (e) {
-      console.warn('공유 저장 실패, 이 브라우저에만 저장합니다:', e);
-      _localExtrasSet(year, merged);
-      if (_claimExtrasCache) _claimExtrasCache[year] = merged;
-      return { success: true, added: freshRecs.length, mode: 'local', error: String(e && e.message || e) };
+    var rows = freshRecs.map(function (r) {
+      return Object.assign({ id: 'CE_' + year + '_' + r.no, year: year }, r);
+    });
+    var batches = _chunkByChars(rows, CLAIM_BATCH_CHARS);
+    var okRows = [], failRows = [], lastError = null, done = 0;
+    var total = rows.length;
+    for (var i = 0; i < batches.length; i++) {
+      var r = await _sendBatchResilient(batches[i], function (n) { done += n; if (onProgress) onProgress(done, total); });
+      okRows = okRows.concat(r.ok);
+      failRows = failRows.concat(r.fail);
+      if (r.lastError) lastError = r.lastError;
     }
+    okRows.forEach(function (r) {
+      if (!_claimRowIds[year]) _claimRowIds[year] = [];
+      _claimRowIds[year].push(r.id);
+    });
+    _localExtrasSet(year, merged);
+    if (_claimExtrasCache) _claimExtrasCache[year] = merged;
+    if (failRows.length === 0) {
+      return { success: true, added: freshRecs.length, mode: 'shared' };
+    }
+    console.warn('일부 클레임 공유 저장 실패(' + failRows.length + '/' + total + '건), 해당 건은 이 브라우저에만 저장됩니다:', lastError);
+    return {
+      success: true, added: freshRecs.length,
+      mode: okRows.length > 0 ? 'partial' : 'local',
+      sharedCount: okRows.length, localCount: failRows.length,
+      error: String(lastError && lastError.message || lastError)
+    };
   }
   _localExtrasSet(year, merged);
   if (_claimExtrasCache) _claimExtrasCache[year] = merged;
