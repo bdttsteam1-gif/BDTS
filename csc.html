@@ -97,6 +97,14 @@ body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans
 .g-step { display:flex; gap:12px; }
 .g-step .num { flex-shrink:0; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; }
 .table-scroll { max-height:640px; overflow:auto; }
+
+/* ===== 참고사항 탭 전용: 화면 꽉 채우기 (정보조회 카트리지 탭과 동일한 레이아웃) ===== */
+#view-ref.active { max-width:none; width:100vw; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); padding:0 24px; }
+@media (max-width:768px){ #view-ref.active { padding:0 14px; } }
+.ref-detail-box { background:#eff6ff; border:2px solid var(--accent); border-radius:12px; padding:18px 20px; margin-top:16px; box-shadow:0 4px 14px rgba(37,99,235,.12); }
+.ref-detail-box h3 { font-size:14px; font-weight:800; color:var(--accent); margin-bottom:12px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.ref-back-btn { margin-left:auto; background:var(--accent); color:#fff; border:none; border-radius:8px; padding:7px 14px; font-size:12.5px; font-weight:700; cursor:pointer; }
+.ref-back-btn:hover { background:#1d4ed8; }
 .subrow { border:1px solid var(--line); border-radius:10px; padding:12px 34px 4px 12px; margin-bottom:10px; background:#fff; }
 .subrow:last-child { margin-bottom:0; }
 .del-row-btn { position:absolute; top:8px; right:8px; background:none; border:none; color:#cbd5e1; cursor:pointer; font-size:14px; padding:2px 6px; border-radius:6px; }
@@ -375,7 +383,7 @@ body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans
 
     <div class="g-search"><input id="refSearch" placeholder="마커명·LOT·키워드·내용 검색 후 Enter"></div>
 
-    <div class="chart-card">
+    <div class="chart-card" id="refListSection">
       <h3>마커별 기록 <span id="refCount" style="color:#9ca3af;font-weight:400;"></span></h3>
       <div class="table-scroll" style="max-height:420px;">
         <table class="wk-table" id="refMarkerTable"></table>
@@ -1494,9 +1502,11 @@ function showRefMarkerDetail(marker){
   refSelectedMarker=marker;
   var rows=REF_LOG.filter(function(r){ return (r.marker||'(마커 미입력)')===marker && matchRefKw(r); });
   rows=rows.slice().sort(function(a,b){ var da=a.date||'', db=b.date||''; if(da!==db) return da<db?1:-1; return 0; });
-  document.getElementById('refDetail').innerHTML =
-    '<div class="chart-card" style="margin-top:12px;"><h3>🔍 '+esc(marker)+' — 상세 기록 <small style="color:#9ca3af;font-weight:400;">'+rows.length+'건</small> <button type="button" class="btn btn-ghost" style="float:right;font-size:12px;padding:5px 12px;" onclick="closeRefMarkerDetail()">← 목록으로</button></h3>'+
-    '<div class="table-scroll" style="max-height:360px;"><table class="wk-table"><thead><tr><th>플랫폼</th><th>LOT No.</th><th>작성일</th><th>작성자</th><th>키워드</th><th>메일제목/경로</th><th style="text-align:left;">내용</th><th></th></tr></thead><tbody>'+
+  var el=document.getElementById('refDetail');
+  el.innerHTML =
+    '<div class="ref-detail-box"><h3>🔍 '+esc(marker)+' — 상세 기록 <span style="background:var(--accent);border-radius:10px;padding:1px 9px;font-size:11px;color:#fff;font-weight:400;">'+rows.length+'건</span>'+
+    '<button type="button" class="ref-back-btn" onclick="closeRefMarkerDetail()">← 목록으로 돌아가기</button></h3>'+
+    '<div class="table-scroll" style="max-height:360px;background:#fff;border-radius:8px;"><table class="wk-table"><thead><tr><th>플랫폼</th><th>LOT No.</th><th>작성일</th><th>작성자</th><th>키워드</th><th>메일제목/경로</th><th style="text-align:left;">내용</th><th></th></tr></thead><tbody>'+
     rows.map(function(r){
       return '<tr>'+
         '<td>'+esc(r.platform||'-')+'</td><td>'+esc(r.lot||'-')+'</td><td>'+esc(r.date||'-')+'</td><td>'+esc(r.author||'-')+'</td>'+
@@ -1505,9 +1515,17 @@ function showRefMarkerDetail(marker){
         '<td style="white-space:pre-wrap;max-width:320px;text-align:left;">'+esc(r.note||'-')+'</td>'+
         '<td style="white-space:nowrap;"><button type="button" onclick="editRefEntry(\''+r.id+'\')" style="background:#f3f4f6;border:1px solid #e5e7eb;border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;margin-right:4px;">수정</button>'+
         '<button type="button" onclick="deleteRefEntry(\''+r.id+'\',event)" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:13px;">✕</button></td></tr>';
-    }).join('')+'</tbody></table></div></div>';
+    }).join('')+'</tbody></table></div>'+
+    '<div style="margin-top:12px;text-align:center;"><button type="button" class="ref-back-btn" style="margin-left:0;" onclick="closeRefMarkerDetail()">← 목록으로 돌아가기</button></div>'+
+    '</div>';
+  el.scrollIntoView({behavior:'smooth', block:'start'});
 }
-function closeRefMarkerDetail(){ refSelectedMarker=null; document.getElementById('refDetail').innerHTML=''; }
+function closeRefMarkerDetail(){
+  refSelectedMarker=null;
+  document.getElementById('refDetail').innerHTML='';
+  var listEl=document.getElementById('refListSection');
+  if(listEl) listEl.scrollIntoView({behavior:'smooth', block:'start'});
+}
 document.getElementById('refSearch').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); refKw=this.value.trim(); renderRefView(); } });
 document.getElementById('refSearch').addEventListener('input', function(){ if(!this.value.trim()){ refKw=''; renderRefView(); } });
 document.getElementById('refDate').addEventListener('blur', function(){ if(this.value.trim()) this.value=normalizeRefDateInput(this.value); });

@@ -328,7 +328,10 @@
         </div>
         <div class="field span3">
           <label>첨부 이미지</label>
-          <input type="file" id="f_images" accept="image/*" multiple>
+          <div id="imageDropZone" style="border:2px dashed var(--line); border-radius:10px; padding:14px; text-align:center; transition:border-color .15s, background .15s;">
+            <input type="file" id="f_images" accept="image/*" multiple style="display:block; margin:0 auto;">
+            <div style="font-size:11.5px; color:var(--ink-soft); margin-top:6px;">여기로 이미지 파일을 끌어다 놓아도 됩니다 (PC 폴더에서 드래그 앤 드롭 가능)</div>
+          </div>
           <div id="imageUploadHint" style="font-size:11.5px; color:var(--ink-soft); margin-top:4px;"></div>
           <div id="imagePreviewList" style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;"></div>
         </div>
@@ -422,7 +425,7 @@ let existingImageUrls = [];   // Drive URLs already attached (edit mode) or just
 
 const FIELD_LABELS = {
   manager:'담당자', contact:'컨택방식', date:'일자', hospital:'고객명', region:'지역명', phone:'전화번호', requester:'요청자',
-  agency:'대리점', category:'분류', device:'기기명', sn:'SN', reagent:'시약명',
+  agency:'대리점', category:'분류', device:'기기명', sw:'S/W', sn:'SN', reagent:'시약명',
   reagentLot:'시약LOT', request:'접수사항', action:'조치사항', etc:'기타', doctorNote:'선생님 특징'
 };
 
@@ -480,6 +483,7 @@ function normalizeRecord(r){
     agency: r.agency || '',
     category: r.category || '',
     device: normAlcis(r.device || ''),
+    sw: r.sw || '',
     sn: r.sn || '',
     reagent: normAlcis(r.reagent || ''),
     reagentLot: r.reagentLot || '',
@@ -1011,8 +1015,8 @@ function addDeviceBlockUI(prefill){
         <input type="text" id="f_device_${idx}" placeholder="예: AFIAS-10" autocomplete="off">
       </div>
       <div class="field">
-        <label>기기명 (목록에서 선택)</label>
-        <select id="f_deviceSel_${idx}"><option value="">선택</option></select>
+        <label>S/W</label>
+        <input type="text" id="f_sw_${idx}" placeholder="예: 02.37.00" autocomplete="off">
       </div>
     </div>
     <div class="form-grid" style="margin-top:10px;">
@@ -1039,11 +1043,7 @@ function addDeviceBlockUI(prefill){
     </div>`;
   document.getElementById('deviceBlocks').appendChild(wrap);
 
-  const sel = wrap.querySelector(`#f_deviceSel_${idx}`);
-  const deviceListForSel = (typeof MASTER_DEVICE!=='undefined')?MASTER_DEVICE:LIST_DEVICE;
-  sel.innerHTML = '<option value="">선택</option>' + deviceListForSel.map(v=>`<option>${escapeHtml(v)}</option>`).join('');
   const deviceInput = wrap.querySelector(`#f_device_${idx}`);
-  sel.addEventListener('change', ()=>{ if(sel.value){ deviceInput.value = sel.value; deviceInput.dispatchEvent(new Event('input',{bubbles:true})); } });
 
   StrictList.attach(deviceInput, function(){ return (typeof MASTER_DEVICE!=='undefined')?MASTER_DEVICE:[]; });
   StrictList.attach(wrap.querySelector(`#f_reagent_${idx}`), function(){ return (typeof MASTER_ITEM!=='undefined')?MASTER_ITEM:[]; });
@@ -1056,6 +1056,7 @@ function addDeviceBlockUI(prefill){
   if(prefill){
     deviceInput.value = prefill.device || '';
     StrictList.validate(deviceInput, function(){ return (typeof MASTER_DEVICE!=='undefined')?MASTER_DEVICE:[]; });
+    wrap.querySelector(`#f_sw_${idx}`).value = prefill.sw || '';
     wrap.querySelector(`#f_reagent_${idx}`).value = prefill.reagent || '';
     StrictList.validate(wrap.querySelector(`#f_reagent_${idx}`), function(){ return (typeof MASTER_ITEM!=='undefined')?MASTER_ITEM:[]; });
     wrap.querySelector(`#f_reagentLot_${idx}`).value = prefill.reagentLot || '';
@@ -1078,6 +1079,7 @@ function readDeviceBlocks(){
     const idx = b.dataset.idx;
     return {
       device: document.getElementById(`f_device_${idx}`).value.trim(),
+      sw: document.getElementById(`f_sw_${idx}`).value.trim(),
       reagent: document.getElementById(`f_reagent_${idx}`).value.trim(),
       reagentLot: document.getElementById(`f_reagentLot_${idx}`).value.trim(),
       request: document.getElementById(`f_request_${idx}`).value.trim(),
@@ -1264,7 +1266,7 @@ function enterEditMode(rec){
   document.getElementById('f_agency').value = rec.agency||'';
   setSelectWithOther('f_category','box_category','etc_category', rec.category, LIST_CATEGORY);
   document.getElementById('f_sn').value = rec.sn||'';
-  resetDeviceBlocks({ device: rec.device||'', reagent: rec.reagent||'', reagentLot: rec.reagentLot||'', request: rec.request||'', action: rec.action||'', etc: rec.etc||'' });
+  resetDeviceBlocks({ device: rec.device||'', sw: rec.sw||'', reagent: rec.reagent||'', reagentLot: rec.reagentLot||'', request: rec.request||'', action: rec.action||'', etc: rec.etc||'' });
   setDeviceAddEnabled(false);
   document.getElementById('f_doctorNote').value = rec.doctorNote||'';
   document.getElementById('f_images').value = '';
@@ -1353,8 +1355,8 @@ async function saveEntry(){
 
   const deviceRows = readDeviceBlocks();
   // 빈 블록(장비명·시약·접수/조치/기타 모두 공란)은 건너뜀. 단, 블록이 1개뿐이면 그대로 저장(기존 동작 유지).
-  const rowsToSave = deviceRows.length <= 1 ? deviceRows : deviceRows.filter(d=>d.device||d.reagent||d.reagentLot||d.request||d.action||d.etc);
-  const finalRows = rowsToSave.length ? rowsToSave : [{ device:'', reagent:'', reagentLot:'', request:'', action:'', etc:'' }];
+  const rowsToSave = deviceRows.length <= 1 ? deviceRows : deviceRows.filter(d=>d.device||d.sw||d.reagent||d.reagentLot||d.request||d.action||d.etc);
+  const finalRows = rowsToSave.length ? rowsToSave : [{ device:'', sw:'', reagent:'', reagentLot:'', request:'', action:'', etc:'' }];
 
   document.getElementById('saveHint').textContent = '저장 중…';
   let ok = true;
@@ -1528,6 +1530,7 @@ function renderResultList(recs, prefix){
           <div class="d-item"><span class="k">요청자</span>${escapeHtml(r.requester)||'-'}</div>
           <div class="d-item"><span class="k">대리점</span>${escapeHtml(r.agency)||'-'}</div>
           <div class="d-item"><span class="k">기기명</span>${escapeHtml(r.device)||'-'}</div>
+          <div class="d-item"><span class="k">S/W</span>${escapeHtml(r.sw)||'-'}</div>
           <div class="d-item"><span class="k">SN</span>${escapeHtml(r.sn)||'-'}</div>
           <div class="d-item"><span class="k">시약명</span>${escapeHtml(r.reagent)||'-'}</div>
           <div class="d-item"><span class="k">시약LOT</span>${escapeHtml(r.reagentLot)||'-'}</div>
@@ -1595,7 +1598,7 @@ function reRunCurrentView(){
 function exportToExcel(recs, filename){
   const rows = recs.map(r=>({
     '담당자':r.manager,'컨택방식':r.contact,'일자':r.date,'고객명':r.hospital,'지역명':regionOf(r),'전화번호':r.phone,'요청자':r.requester,
-    '대리점':r.agency,'분류':r.category,'기기명':r.device,'SN':r.sn,'시약명':r.reagent,'시약LOT':r.reagentLot,
+    '대리점':r.agency,'분류':r.category,'기기명':r.device,'S/W':r.sw,'SN':r.sn,'시약명':r.reagent,'시약LOT':r.reagentLot,
     '접수사항':r.request,'조치사항':r.action,'기타':r.etc,'선생님 특징':r.doctorNote
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
@@ -1645,6 +1648,19 @@ async function initApp(){
     renderImagePreviews();
     e.target.value = '';
   });
+
+  (function(){
+    const dz = document.getElementById('imageDropZone');
+    if(!dz) return;
+    const setActive = on=>{ dz.style.borderColor = on ? 'var(--accent)' : 'var(--line)'; dz.style.background = on ? 'var(--accent-soft, rgba(37,99,235,.06))' : ''; };
+    ['dragenter','dragover'].forEach(evt=>dz.addEventListener(evt, e=>{ e.preventDefault(); e.stopPropagation(); setActive(true); }));
+    ['dragleave','dragend'].forEach(evt=>dz.addEventListener(evt, e=>{ e.preventDefault(); e.stopPropagation(); setActive(false); }));
+    dz.addEventListener('drop', e=>{
+      e.preventDefault(); e.stopPropagation(); setActive(false);
+      const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []).filter(f=>f.type.startsWith('image/'));
+      if(files.length){ selectedImageFiles = selectedImageFiles.concat(files); renderImagePreviews(); }
+    });
+  })();
 
   document.getElementById('hospitalListFilterInput').addEventListener('input', e=>{
     renderAllHospitalsList(e.target.value);
