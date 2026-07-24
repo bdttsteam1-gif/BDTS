@@ -90,6 +90,7 @@ var MASTER_ITEM = [
   "CK-MB Neo",
   "CMV IgG",
   "CMV IgM",
+  "C-peptide",
   "cNT-proBNP",
   "Cortisol",
   "COVID-19 Ab",
