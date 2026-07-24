@@ -261,6 +261,7 @@ body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans
       <button class="btn btn-primary" onclick="newEntry()">➕ 신규 접수</button>
       <input id="searchList" placeholder="검색: 병원·이슈·담당자·경로·장비·아이템 (실시간)">
       <button class="btn btn-ghost" id="searchResetBtn" onclick="resetListSearch()" style="display:none;">✕ 검색 초기화</button>
+      <button class="btn btn-ghost" onclick="openWeeklyReportModal()" style="white-space:nowrap;">📅 주간보고서</button>
       <button class="btn btn-ghost" onclick="openUnifyModal()" style="margin-left:auto;white-space:nowrap;">🔧 장비·아이템 이름 통일</button>
       <span class="count-note" id="countNote"></span>
     </div>
@@ -468,6 +469,37 @@ body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans
     <div class="modal-foot">
       <button class="btn btn-primary" id="unifyApplyBtn" onclick="applyUnifyPlan()" style="display:none;">선택한 항목 적용</button>
       <button class="btn btn-ghost" onclick="closeUnifyModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="weeklyReportModal" onclick="if(event.target===this) closeWeeklyReportModal()">
+  <div class="modal-box" style="max-width:920px;">
+    <div class="modal-head">
+      <div style="flex:1;min-width:0;">
+        <h3>📅 주간보고서</h3>
+        <div class="sub">한 주(토~금)간 접수된 모든 건을 완료/미완료 구분과 함께 정리합니다.</div>
+      </div>
+      <button class="modal-close" onclick="closeWeeklyReportModal()" title="닫기">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="toolbar" style="margin-bottom:12px;">
+        <button class="btn btn-ghost" onclick="wrShiftWeek(-1)">◀ 이전 주</button>
+        <span class="count-note" id="wrWeekLabel" style="font-size:14px;font-weight:700;color:#111827;"></span>
+        <button class="btn btn-ghost" onclick="wrShiftWeek(1)">다음 주 ▶</button>
+        <button class="btn btn-ghost" onclick="wrShiftWeek(0)" style="margin-left:8px;">이번 주</button>
+      </div>
+      <div id="wrCaptureArea" style="background:#fff;">
+        <div style="font-size:15px;font-weight:800;color:#111827;margin-bottom:10px;">CSC 주간업무보고 · <span id="wrWeekLabel2"></span></div>
+        <div class="kpi-row" id="wrKpiRow" style="margin-bottom:12px;"></div>
+        <div class="table-scroll" id="wrTableBody" style="max-height:52vh;"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="copyWeeklyReportText()">📝 업무보고 텍스트 복사</button>
+      <button class="btn btn-ghost" onclick="UICommon.downloadDashboard(document.getElementById('wrCaptureArea'),'CSC_주간업무보고_'+wrFileTag())">📷 대시보드 이미지 다운로드</button>
+      <button class="btn btn-primary" onclick="exportWeeklyReportXlsx()">⬇ 엑셀로 다운로드</button>
+      <button class="btn btn-ghost" onclick="closeWeeklyReportModal()">닫기</button>
     </div>
   </div>
 </div>
@@ -1545,6 +1577,156 @@ document.querySelectorAll('#refEntryCard input:not([type=file]), #refEntryCard s
 });
 document.getElementById('refDate').value=todayStr();
 
+
+/* ===== 주간보고서 (토~금 실제 주 단위, 완료/미완료 전체 목록) ===== */
+var _wrWeekStart = null; // 이번 주 토요일 00:00 Date 객체
+
+function wrSaturday(d) {
+  var x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  var day = x.getDay(); // 0=일 1=월 ... 6=토
+  var diff = (day + 1) % 7; // 토요일(6)까지 며칠 전인지 (일요일이면 1일 전 토요일)
+  x.setDate(x.getDate() - diff);
+  return x;
+}
+function wrFmtMD(d) { return (d.getMonth() + 1) + '/' + pad2(d.getDate()); }
+function wrRangeLabel(sat) {
+  var fri = new Date(sat); fri.setDate(fri.getDate() + 6);
+  return sat.getFullYear() + '년 ' + wrFmtMD(sat) + '(토) ~ ' + wrFmtMD(fri) + '(금)';
+}
+function wrFileTag() {
+  var sat = _wrWeekStart || wrSaturday(new Date());
+  var fri = new Date(sat); fri.setDate(fri.getDate() + 6);
+  return sat.getFullYear() + pad2(sat.getMonth() + 1) + pad2(sat.getDate()) + '_' + pad2(fri.getMonth() + 1) + pad2(fri.getDate());
+}
+function wrWeekRecords(sat) {
+  var nextSat = new Date(sat); nextSat.setDate(nextSat.getDate() + 7); // 배타적 상한(다음 토요일 00:00)
+  return allRecords().filter(function (r) {
+    var d = parseDT(r.recvAt);
+    return d && d >= sat && d < nextSat;
+  }).sort(function (a, b) { return (parseDT(a.recvAt) || 0) - (parseDT(b.recvAt) || 0); });
+}
+function openWeeklyReportModal() {
+  if (!_wrWeekStart) _wrWeekStart = wrSaturday(new Date());
+  document.getElementById('weeklyReportModal').classList.add('show');
+  renderWeeklyReport();
+}
+function closeWeeklyReportModal() { document.getElementById('weeklyReportModal').classList.remove('show'); }
+function wrShiftWeek(delta) {
+  if (!_wrWeekStart) _wrWeekStart = wrSaturday(new Date());
+  if (delta === 0) { _wrWeekStart = wrSaturday(new Date()); }
+  else { _wrWeekStart = new Date(_wrWeekStart.getFullYear(), _wrWeekStart.getMonth(), _wrWeekStart.getDate() + delta * 7); }
+  renderWeeklyReport();
+}
+function renderWeeklyReport() {
+  var sat = _wrWeekStart;
+  var label = wrRangeLabel(sat);
+  document.getElementById('wrWeekLabel').textContent = label;
+  document.getElementById('wrWeekLabel2').textContent = label;
+  var recs = wrWeekRecords(sat);
+  var done = recs.filter(isDone).length;
+  var pending = recs.length - done;
+
+  var durs = recs.filter(isDone).map(function (r) { return durMs(r); }).filter(function (v) { return v != null; });
+  var avg = durs.length ? durs.reduce(function (a, b) { return a + b; }, 0) / durs.length : null;
+  document.getElementById('wrKpiRow').innerHTML =
+    '<div class="kpi"><div class="val">' + recs.length.toLocaleString() + '</div><div class="lbl">총 접수</div></div>' +
+    '<div class="kpi"><div class="val" style="color:#15803d;">' + done.toLocaleString() + '</div><div class="lbl">완료</div></div>' +
+    '<div class="kpi"><div class="val" style="color:#b45309;">' + pending.toLocaleString() + '</div><div class="lbl">미완료</div></div>' +
+    '<div class="kpi"><div class="val">' + (fmtDur(avg) || '-') + '</div><div class="lbl">평균 응답시간</div><div class="sub">완료 ' + durs.length + '건 기준</div></div>';
+
+  var body = document.getElementById('wrTableBody');
+  if (!recs.length) {
+    body.innerHTML = '<div style="padding:24px;color:#9ca3af;text-align:center;">해당 주에 접수된 기록이 없습니다.</div>';
+    return;
+  }
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:12.5px;">' +
+    '<thead><tr style="text-align:left;color:#6b7280;border-bottom:1px solid #e5e7eb;">' +
+    ['상태', '제목', '병원명', '접수경로', '접수담당자', '접수일시', '회신자', '회신일시', '걸린시간'].map(function (h) {
+      return '<th style="padding:6px 8px;white-space:nowrap;">' + h + '</th>';
+    }).join('') + '</tr></thead><tbody>';
+  recs.forEach(function (r) {
+    var d = isDone(r);
+    html += '<tr style="border-bottom:1px solid #f1f5f9;cursor:pointer;" onclick="viewRecord(\'' + String(r.id).replace(/'/g, "\\'") + '\')">' +
+      '<td style="padding:6px 8px;"><span style="padding:2px 8px;border-radius:6px;font-weight:700;font-size:11px;' +
+        (d ? 'background:#dcfce7;color:#15803d;' : 'background:#fef3c7;color:#b45309;') + '">' + (d ? '완료' : '진행중') + '</span></td>' +
+      '<td style="padding:6px 8px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(titleOf(r)) + '</td>' +
+      '<td style="padding:6px 8px;white-space:nowrap;">' + esc(r.hospital || '') + '</td>' +
+      '<td style="padding:6px 8px;white-space:nowrap;">' + esc(r.via || '') + '</td>' +
+      '<td style="padding:6px 8px;white-space:nowrap;">' + esc(r.writer || '') + '</td>' +
+      '<td style="padding:6px 8px;white-space:nowrap;color:#6b7280;">' + fmtDT(r.recvAt) + '</td>' +
+      '<td style="padding:6px 8px;white-space:nowrap;">' + esc(r.replier || '') + '</td>' +
+      '<td style="padding:6px 8px;white-space:nowrap;color:#6b7280;">' + (d ? fmtDT(r.replyAt) : '-') + '</td>' +
+      '<td style="padding:6px 8px;white-space:nowrap;">' + (fmtDur(durMs(r)) || (d ? '-' : '진행중')) + '</td>' +
+      '</tr>';
+  });
+  html += '</tbody></table>';
+  body.innerHTML = html;
+}
+// 업무보고 문서에 바로 붙여넣을 수 있는 텍스트 요약 생성
+function buildWeeklyReportText() {
+  var sat = _wrWeekStart || wrSaturday(new Date());
+  var recs = wrWeekRecords(sat);
+  var done = recs.filter(isDone).length;
+  var pending = recs.length - done;
+  var lines = [];
+  lines.push('[CSC 주간업무보고] ' + wrRangeLabel(sat));
+  lines.push('총 ' + recs.length + '건 (완료 ' + done + ' · 미완료 ' + pending + ')');
+  lines.push('');
+  recs.forEach(function (r, i) {
+    var d = isDone(r);
+    var status = d ? '완료' : '진행중';
+    var dur = d ? (fmtDur(durMs(r)) || '-') : '회신대기';
+    var replier = r.replier ? (' → ' + r.replier) : '';
+    var place = r.hospital ? (r.hospital + ' - ') : '';
+    lines.push((i + 1) + '. [' + status + '] ' + (r.via || '-') + ' · ' + (r.writer || '-') + replier + ' · ' + dur + ' · ' + place + titleOf(r));
+  });
+  return lines.join('\n');
+}
+function copyWeeklyReportText() {
+  var recs = wrWeekRecords(_wrWeekStart || wrSaturday(new Date()));
+  if (!recs.length) { showMsg('err', '해당 주에 내보낼 기록이 없습니다.'); return; }
+  var text = buildWeeklyReportText();
+  function fallbackDownload() {
+    var blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'CSC_주간업무보고_' + wrFileTag() + '.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    showMsg('ok', '클립보드 복사를 사용할 수 없어 텍스트 파일로 다운로드했습니다.');
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function () {
+      showMsg('ok', '업무보고용 텍스트가 클립보드에 복사되었습니다. 문서에 붙여넣기(Ctrl+V) 하세요.');
+    }).catch(fallbackDownload);
+  } else {
+    fallbackDownload();
+  }
+}
+function exportWeeklyReportXlsx() {
+  var sat = _wrWeekStart || wrSaturday(new Date());
+  var recs = wrWeekRecords(sat);
+  if (!recs.length) { showMsg('err', '해당 주에 내보낼 기록이 없습니다.'); return; }
+  var rows = recs.map(function (r) {
+    var d = isDone(r);
+    return {
+      '상태': d ? '완료' : '진행중',
+      '제목': titleOf(r),
+      '병원명': r.hospital || '',
+      '접수경로': r.via || '',
+      '접수담당자': r.writer || '',
+      '접수일시': fmtDT(r.recvAt),
+      '회신자': r.replier || '',
+      '회신일시': d ? fmtDT(r.replyAt) : '',
+      '걸린시간': fmtDur(durMs(r)) || (d ? '' : '진행중')
+    };
+  });
+  var ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{ wch: 6 }, { wch: 34 }, { wch: 18 }, { wch: 8 }, { wch: 10 }, { wch: 17 }, { wch: 10 }, { wch: 17 }, { wch: 12 }];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '주간보고서');
+  var fname = 'CSC_주간보고서_' + wrFileTag() + '.xlsx';
+  XLSX.writeFile(wb, fname);
+}
 
 /* ===== 엑셀 ===== */
 function exportXlsx(){
