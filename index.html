@@ -190,7 +190,7 @@
   }
   function tryAuth() {
     if (input.value.trim().toLowerCase() === PASSCODE) {
-      try { sessionStorage.setItem(KEY, '1'); } catch (e) {}
+      try { localStorage.setItem(KEY, '1'); } catch (e) {}
       errEl.textContent = '';
       enter();
     } else {
@@ -200,7 +200,7 @@
     }
   }
   var authed = false;
-  try { authed = sessionStorage.getItem(KEY) === '1'; } catch (e) {}
+  try { authed = localStorage.getItem(KEY) === '1'; } catch (e) {}
   if (authed) { enter(); }
   else {
     document.getElementById('authSubmit').addEventListener('click', tryAuth);
