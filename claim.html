@@ -158,7 +158,6 @@
 <script src="ui-common.js"></script>
 <script src="search-utils.js"></script>
 <script src="claim-data.js"></script>
-<script src="data-sync.js"></script>
 <script src="claim-sheet.js"></script>
 </head>
 <body>
@@ -352,7 +351,9 @@ function handleClaimFile(file) {
           renderDashboard();
           updateUploadUI();
           updateBadge();
-          const scope = res.mode === 'shared' ? '전 직원 화면에 자동으로 반영됩니다.' : '이 브라우저에만 저장되었습니다. (build_claim_data.py로 전체 반영 가능)';
+          const scope = res.mode === 'shared'
+            ? '전 직원 화면에 자동으로 반영됩니다.'
+            : '이 브라우저에만 저장되었습니다.' + (res.error ? ' (사유: ' + res.error + ')' : '');
           status.textContent = '✅ 신규 클레임 ' + newRecs.length + '건 추가 완료 — ' + scope + ' 현재 ' + currentYear + '년 총 ' + DATA.length.toLocaleString() + '건';
         }).catch(function(err) {
           status.textContent = '⚠ 저장 중 오류: ' + err.message;
