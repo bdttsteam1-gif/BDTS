@@ -309,10 +309,6 @@
           <select id="f_category"></select>
           <div class="etc-box" id="box_category"><input type="text" id="etc_category" placeholder="분류 직접 입력"></div>
         </div>
-        <div class="field">
-          <label>SN</label>
-          <input type="text" id="f_sn" placeholder="장비 시리얼 번호">
-        </div>
       </div>
 
       <div class="section-title" style="font-size:13px;margin-top:22px;">장비 정보 <span style="font-weight:400;color:var(--ink-soft);">(최대 5개, 장비별로 시약·접수/조치사항을 따로 기록합니다)</span></div>
@@ -461,7 +457,17 @@ const SHEET_TOKEN = '0p9o8i7u';
 function normalizeDateStr(v){
   if(v===null || v===undefined || v==='') return '';
   const s = String(v);
-  return s.includes('T') ? s.split('T')[0] : s;
+  if(!s.includes('T')) return s;
+  // Values with a 'T' come back from Google Sheets as real Date objects
+  // serialized to UTC ISO strings (e.g. "2026-07-08T15:00:00.000Z" for a
+  // sheet cell that was local-midnight 2026-07-09 in Asia/Seoul, UTC+9).
+  // Splitting on 'T' directly drops that +9h offset and shows the day
+  // before whenever the team data is reloaded/refreshed. Shift back into
+  // Korea time before extracting the date parts.
+  const d = new Date(s);
+  if(isNaN(d.getTime())) return s.split('T')[0];
+  const kst = new Date(d.getTime() + 9*60*60*1000);
+  return `${kst.getUTCFullYear()}-${String(kst.getUTCMonth()+1).padStart(2,'0')}-${String(kst.getUTCDate()).padStart(2,'0')}`;
 }
 function normAlcis(s){
   if(!s) return s;
@@ -1001,6 +1007,7 @@ function updateDeviceBlockUI(){
 
 function addDeviceBlockUI(prefill){
   if(deviceBlockEls().length >= MAX_DEVICE_BLOCKS) return null;
+  const isFirstBlock = deviceBlockEls().length === 0;
   const idx = ++deviceBlockSeq;
   const wrap = document.createElement('div');
   wrap.className = 'device-block';
@@ -1015,6 +1022,10 @@ function addDeviceBlockUI(prefill){
         <label>기기명 (직접 입력)</label>
         <input type="text" id="f_device_${idx}" placeholder="예: AFIAS-10" autocomplete="off">
       </div>
+      ${isFirstBlock ? `<div class="field">
+        <label>SN</label>
+        <input type="text" id="f_sn" placeholder="장비 시리얼 번호">
+      </div>` : ''}
       <div class="field">
         <label>S/W</label>
         <input type="text" id="f_sw_${idx}" placeholder="예: 02.37.00" autocomplete="off">
@@ -1266,8 +1277,8 @@ function enterEditMode(rec){
   document.getElementById('f_requester').value = rec.requester||'';
   document.getElementById('f_agency').value = rec.agency||'';
   setSelectWithOther('f_category','box_category','etc_category', rec.category, LIST_CATEGORY);
-  document.getElementById('f_sn').value = rec.sn||'';
   resetDeviceBlocks({ device: rec.device||'', sw: rec.sw||'', reagent: rec.reagent||'', reagentLot: rec.reagentLot||'', request: rec.request||'', action: rec.action||'', etc: rec.etc||'' });
+  document.getElementById('f_sn').value = rec.sn||'';
   setDeviceAddEnabled(false);
   document.getElementById('f_doctorNote').value = rec.doctorNote||'';
   document.getElementById('f_images').value = '';

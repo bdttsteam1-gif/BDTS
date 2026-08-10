@@ -624,7 +624,7 @@ function renderCountryOrDistributor(keyword, matchedRows, searchType) {
   <div class="card">
     <div class="table-wrap">
       <table>
-        <thead><tr><th>#</th><th>Complaint No.</th><th>Item</th><th>LOT No.</th><th>3rd CLASS</th><th>국가</th><th>수신일</th><th>상태</th><th>상세</th></tr></thead>
+        <thead><tr><th>#</th><th>Complaint No.</th><th>Item</th><th>LOT No.</th><th>3rd CLASS</th><th>국가</th><th>연락처</th><th>수신일</th><th>상태</th><th>상세</th></tr></thead>
         <tbody>
           ${matchedRows.map((r, i) => `
           <tr onclick="showDetail(DATA_MAP['${r.no}'])" title="클릭하여 상세 보기">
@@ -634,6 +634,7 @@ function renderCountryOrDistributor(keyword, matchedRows, searchType) {
             <td>${r.lot || '-'}</td>
             <td>${r.c3 || '-'}</td>
             <td>${r.country || '-'}</td>
+            <td>${r.contact || '-'}</td>
             <td>${r.recv_date || '-'}</td>
             <td>${termTag(r.term) || r.term || '-'}</td>
             <td><button type="button" onclick="event.stopPropagation();showDetail(DATA_MAP['${r.no}'])" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--accent);cursor:pointer;white-space:nowrap;">자세히</button></td>
@@ -691,7 +692,7 @@ function showLotSubTable(rows, title) {
     <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:12px">${title} (${rows.length}건)</div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>#</th><th>Complaint No.</th><th>Item</th><th>LOT No.</th><th>3rd CLASS</th><th>국가</th><th>수신일</th><th>상태</th></tr></thead>
+        <thead><tr><th>#</th><th>Complaint No.</th><th>Item</th><th>LOT No.</th><th>3rd CLASS</th><th>국가</th><th>연락처</th><th>수신일</th><th>상태</th></tr></thead>
         <tbody>
           ${rows.map((r, i) => `
           <tr onclick="showDetail(DATA_MAP['${r.no}'])" title="클릭하여 상세 보기">
@@ -701,6 +702,7 @@ function showLotSubTable(rows, title) {
             <td>${r.lot || '-'}</td>
             <td>${r.c3 || '-'}</td>
             <td>${r.country || '-'}</td>
+            <td>${r.contact || '-'}</td>
             <td>${r.recv_date || '-'}</td>
             <td>${termTag(r.term) || r.term || '-'}</td>
           </tr>`).join('')}
@@ -757,7 +759,7 @@ function showItemSubTable(rows, title) {
     <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:12px">${title} (${rows.length}건)</div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>#</th><th>Complaint No.</th><th>LOT No.</th><th>3rd CLASS</th><th>국가</th><th>수신일</th><th>상태</th></tr></thead>
+        <thead><tr><th>#</th><th>Complaint No.</th><th>LOT No.</th><th>3rd CLASS</th><th>국가</th><th>연락처</th><th>수신일</th><th>상태</th></tr></thead>
         <tbody>
           ${rows.map((r, i) => `
           <tr onclick="showDetail(DATA_MAP['${r.no}'])" title="클릭하여 상세 보기">
@@ -766,6 +768,7 @@ function showItemSubTable(rows, title) {
             <td>${r.lot || '-'}</td>
             <td>${r.c3 || '-'}</td>
             <td>${r.country || '-'}</td>
+            <td>${r.contact || '-'}</td>
             <td>${r.recv_date || '-'}</td>
             <td>${termTag(r.term) || r.term || '-'}</td>
           </tr>`).join('')}
@@ -786,13 +789,14 @@ function renderGenericSearch(keyword, matchedRows) {
   <div class="card">
     <div class="table-wrap">
       <table>
-        <thead><tr><th>#</th><th>Complaint No.</th><th>국가</th><th>Item</th><th>LOT No.</th><th>3rd CLASS</th><th>수신일</th><th>상태</th></tr></thead>
+        <thead><tr><th>#</th><th>Complaint No.</th><th>국가</th><th>연락처</th><th>Item</th><th>LOT No.</th><th>3rd CLASS</th><th>수신일</th><th>상태</th></tr></thead>
         <tbody>
           ${matchedRows.map((r, i) => `
           <tr onclick="showDetail(DATA_MAP['${r.no}'])" title="클릭하여 상세 보기">
             <td style="color:var(--text2)">${i+1}</td>
             <td style="font-weight:600;color:var(--accent)">${r.no}</td>
             <td>${r.country || '-'}</td>
+            <td>${r.contact || '-'}</td>
             <td>${r.item || '-'}</td>
             <td>${r.lot || '-'}</td>
             <td>${r.c3 || '-'}</td>
@@ -970,7 +974,7 @@ function showDashSubTable(rows, title) {
     <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:12px">${title} (${rows.length}건)</div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>#</th><th>Complaint No.</th><th>Item</th><th>LOT No.</th><th>3rd CLASS</th><th>국가</th><th>수신일</th><th>상태</th></tr></thead>
+        <thead><tr><th>#</th><th>Complaint No.</th><th>Item</th><th>LOT No.</th><th>3rd CLASS</th><th>국가</th><th>연락처</th><th>수신일</th><th>상태</th></tr></thead>
         <tbody>
           ${rows.map((r, i) => `
           <tr onclick="showDetail(DATA_MAP['${r.no}'])" title="클릭하여 상세 보기">
@@ -980,6 +984,7 @@ function showDashSubTable(rows, title) {
             <td>${r.lot || '-'}</td>
             <td>${r.c3 || '-'}</td>
             <td>${r.country || '-'}</td>
+            <td>${r.contact || '-'}</td>
             <td>${r.recv_date || '-'}</td>
             <td>${termTag(r.term) || r.term || '-'}</td>
           </tr>`).join('')}
