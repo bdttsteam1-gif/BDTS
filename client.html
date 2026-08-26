@@ -98,7 +98,7 @@
   .device-block-title{font-size:12.5px; font-weight:800; color:var(--accent-dark);}
   .device-block-remove{background:transparent; border:none; color:var(--ink-soft); font-size:12px; font-weight:700; cursor:pointer; padding:4px 8px;}
   .device-block-remove:hover{color:#b5581f;}
-  .device-name-row{display:grid; grid-template-columns:1.4fr 1fr; gap:10px;}
+  .device-name-row{display:grid; grid-template-columns:1.4fr 1.2fr 0.9fr; gap:10px;}
   .device-name-row .field{margin-bottom:0;}
   @media (max-width:640px){ .device-name-row{grid-template-columns:1fr;} }
   .btn-row{margin-top:20px; display:flex; gap:10px; justify-content:flex-end; align-items:center;}
@@ -311,7 +311,7 @@
         </div>
       </div>
 
-      <div class="section-title" style="font-size:13px;margin-top:22px;">장비 정보 <span style="font-weight:400;color:var(--ink-soft);">(최대 5개, 장비별로 시약·접수/조치사항을 따로 기록합니다)</span></div>
+      <div class="section-title" style="font-size:13px;margin-top:22px;">장비 정보 <span style="font-weight:400;color:var(--ink-soft);">(최대 5개, 장비별로 SN·시약·접수/조치사항을 따로 기록합니다)</span></div>
       <div class="device-blocks" id="deviceBlocks"></div>
       <div style="margin-bottom:18px;">
         <button class="btn-ghost btn-small" id="btnAddDevice" type="button">+ 장비 추가</button>
@@ -1007,7 +1007,6 @@ function updateDeviceBlockUI(){
 
 function addDeviceBlockUI(prefill){
   if(deviceBlockEls().length >= MAX_DEVICE_BLOCKS) return null;
-  const isFirstBlock = deviceBlockEls().length === 0;
   const idx = ++deviceBlockSeq;
   const wrap = document.createElement('div');
   wrap.className = 'device-block';
@@ -1022,10 +1021,10 @@ function addDeviceBlockUI(prefill){
         <label>기기명 (직접 입력)</label>
         <input type="text" id="f_device_${idx}" placeholder="예: AFIAS-10" autocomplete="off">
       </div>
-      ${isFirstBlock ? `<div class="field">
+      <div class="field">
         <label>SN</label>
-        <input type="text" id="f_sn" placeholder="장비 시리얼 번호">
-      </div>` : ''}
+        <input type="text" id="f_sn_${idx}" placeholder="장비 시리얼 번호" autocomplete="off">
+      </div>
       <div class="field">
         <label>S/W</label>
         <input type="text" id="f_sw_${idx}" placeholder="예: 02.37.00" autocomplete="off">
@@ -1068,6 +1067,7 @@ function addDeviceBlockUI(prefill){
   if(prefill){
     deviceInput.value = prefill.device || '';
     StrictList.validate(deviceInput, function(){ return (typeof MASTER_DEVICE!=='undefined')?MASTER_DEVICE:[]; });
+    wrap.querySelector(`#f_sn_${idx}`).value = prefill.sn || '';
     wrap.querySelector(`#f_sw_${idx}`).value = prefill.sw || '';
     wrap.querySelector(`#f_reagent_${idx}`).value = prefill.reagent || '';
     StrictList.validate(wrap.querySelector(`#f_reagent_${idx}`), function(){ return (typeof MASTER_ITEM!=='undefined')?MASTER_ITEM:[]; });
@@ -1091,6 +1091,7 @@ function readDeviceBlocks(){
     const idx = b.dataset.idx;
     return {
       device: document.getElementById(`f_device_${idx}`).value.trim(),
+      sn: document.getElementById(`f_sn_${idx}`).value.trim(),
       sw: document.getElementById(`f_sw_${idx}`).value.trim(),
       reagent: document.getElementById(`f_reagent_${idx}`).value.trim(),
       reagentLot: document.getElementById(`f_reagentLot_${idx}`).value.trim(),
@@ -1241,7 +1242,7 @@ function setSelectWithOther(selectId, boxId, etcId, value, list){
 }
 
 function clearForm(){
-  ['f_manager','f_date','f_hospital','f_region','f_phone','f_requester','f_sn','f_agency','etc_category'].forEach(id=>document.getElementById(id).value='');
+  ['f_manager','f_date','f_hospital','f_region','f_phone','f_requester','f_agency','etc_category'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f_contact').value='';
   document.getElementById('f_category').value='';
   ['box_category'].forEach(id=>document.getElementById(id).classList.remove('show'));
@@ -1277,8 +1278,7 @@ function enterEditMode(rec){
   document.getElementById('f_requester').value = rec.requester||'';
   document.getElementById('f_agency').value = rec.agency||'';
   setSelectWithOther('f_category','box_category','etc_category', rec.category, LIST_CATEGORY);
-  resetDeviceBlocks({ device: rec.device||'', sw: rec.sw||'', reagent: rec.reagent||'', reagentLot: rec.reagentLot||'', request: rec.request||'', action: rec.action||'', etc: rec.etc||'' });
-  document.getElementById('f_sn').value = rec.sn||'';
+  resetDeviceBlocks({ device: rec.device||'', sn: rec.sn||'', sw: rec.sw||'', reagent: rec.reagent||'', reagentLot: rec.reagentLot||'', request: rec.request||'', action: rec.action||'', etc: rec.etc||'' });
   setDeviceAddEnabled(false);
   document.getElementById('f_doctorNote').value = rec.doctorNote||'';
   document.getElementById('f_images').value = '';
@@ -1360,15 +1360,14 @@ async function saveEntry(){
     requester: val('f_requester'),
     agency: val('f_agency'),
     category: resolveField('f_category','etc_category'),
-    sn: val('f_sn'),
     doctorNote: val('f_doctorNote'),
     images: JSON.stringify(imageUrls),
   };
 
   const deviceRows = readDeviceBlocks();
   // 빈 블록(장비명·시약·접수/조치/기타 모두 공란)은 건너뜀. 단, 블록이 1개뿐이면 그대로 저장(기존 동작 유지).
-  const rowsToSave = deviceRows.length <= 1 ? deviceRows : deviceRows.filter(d=>d.device||d.sw||d.reagent||d.reagentLot||d.request||d.action||d.etc);
-  const finalRows = rowsToSave.length ? rowsToSave : [{ device:'', sw:'', reagent:'', reagentLot:'', request:'', action:'', etc:'' }];
+  const rowsToSave = deviceRows.length <= 1 ? deviceRows : deviceRows.filter(d=>d.device||d.sn||d.sw||d.reagent||d.reagentLot||d.request||d.action||d.etc);
+  const finalRows = rowsToSave.length ? rowsToSave : [{ device:'', sn:'', sw:'', reagent:'', reagentLot:'', request:'', action:'', etc:'' }];
 
   document.getElementById('saveHint').textContent = '저장 중…';
   let ok = true;
@@ -1404,7 +1403,7 @@ async function saveEntry(){
 }
 
 function clearFormFieldsOnly(){
-  ['f_manager','f_date','f_hospital','f_region','f_phone','f_requester','f_sn','f_agency','etc_category'].forEach(id=>document.getElementById(id).value='');
+  ['f_manager','f_date','f_hospital','f_region','f_phone','f_requester','f_agency','etc_category'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f_contact').value='';
   document.getElementById('f_category').value='';
   ['box_category'].forEach(id=>document.getElementById(id).classList.remove('show'));
