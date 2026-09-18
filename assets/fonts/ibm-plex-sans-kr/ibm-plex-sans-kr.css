@@ -1,0 +1,7 @@
+/* IBM Plex Sans KR — SIL Open Font License 1.1 (LICENSE.txt, https://github.com/IBM/plex)
+   포털에서 쓰는 글자만 남긴 파일입니다(한글 KS X 1001 2,350자 + 저장소 데이터에 실제 나오는 글자 + 영문·숫자·기호).
+   목록에 없는 드문 글자는 시스템 한글 글꼴(맑은 고딕 등)로 표시됩니다. 다시 만들 때: tools/font-subset/README.md */
+@font-face { font-family: "IBM Plex Sans KR"; font-style: normal; font-weight: 100 449; font-display: swap; src: url("IBMPlexSansKR-Regular-subset.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans KR"; font-style: normal; font-weight: 450 549; font-display: swap; src: url("IBMPlexSansKR-Medium-subset.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans KR"; font-style: normal; font-weight: 550 649; font-display: swap; src: url("IBMPlexSansKR-SemiBold-subset.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans KR"; font-style: normal; font-weight: 650 950; font-display: swap; src: url("IBMPlexSansKR-Bold-subset.woff2") format("woff2"); }

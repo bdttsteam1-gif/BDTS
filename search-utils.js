@@ -81,6 +81,8 @@
   });
 
   function hasHangul(s) { return /[가-힣]/.test(s); }
+  /* 띄어쓰기·대소문자 무시 (2026-09 요청) — 모든 화면의 검색이 같은 규칙을 씁니다 */
+  function nrm(s) { return String(s == null ? '' : s).toLowerCase().replace(/[\s\u00a0\u3000]+/g, ''); }
   function normLatin(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9가-힣]+/g, ''); }
 
   // 한글 질의 → 매칭되는 영문 국가명 목록 / 영문 질의 → 한글 국가명 목록
@@ -234,13 +236,13 @@
   // 질의 1개에 대해 미리 계산해두고 텍스트마다 빠르게 판정
   function makeMatcher(query) {
     var q = String(query || '').trim();
-    var ql = q.toLowerCase();
+    var ql = nrm(q);
     var isHangul = hasHangul(q);
-    var aliases = countryAliases(q).map(function (a) { return a.toLowerCase(); });
+    var aliases = countryAliases(q).map(function (a) { return nrm(a); });
 
     return function (text) {
       if (!q) return true;
-      var t = String(text == null ? '' : text).toLowerCase();
+      var t = nrm(text);
       if (!t) return false;
       if (t.indexOf(ql) !== -1) return true;                      // 1) 직접 부분일치
       for (var i = 0; i < aliases.length; i++) {                  // 2) 국가명 한↔영
@@ -313,11 +315,11 @@
       if (!q) { items = []; close(); box.innerHTML = ''; return; }
       var all = provider() || [];
       var match = makeMatcher(q);
-      var ql = q.toLowerCase();
+      var ql = nrm(q);
       var starts = [], contains = [];
       for (var i = 0; i < all.length; i++) {
         var it = all[i];
-        var lv = String(it.value).toLowerCase();
+        var lv = nrm(it.value);
         var hay = it.value + ' ' + (it.label || '') + ' ' + (it.sub || '');
         if (lv.indexOf(ql) === 0) starts.push(it);
         else if (match(hay)) contains.push(it);
@@ -353,6 +355,7 @@
   }
 
   window.SearchUtils = {
+    nrm: nrm,
     makeMatcher: makeMatcher,
     smartIncludes: smartIncludes,
     countryAliases: countryAliases,

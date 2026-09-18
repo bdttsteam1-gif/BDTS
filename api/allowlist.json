@@ -1,0 +1,42 @@
+{
+  "_주석": [
+    "여기 적힌 메일 주소를 가진 사람만 포털에 들어올 수 있습니다.",
+    "roles: member = 조회/입력 가능, admin = member + 엑셀 업로드/삭제 가능",
+    "이 파일만 고쳐서 커밋하면 1~2분 뒤 자동 반영됩니다. (재배포 불필요)",
+    "대소문자는 무시합니다. 도메인 전체 허용이 필요하면 domains 에 넣으세요.",
+    "★ 항목 사이에는 반드시 쉼표(,)가 있어야 합니다. 마지막 항목 뒤에는 쉼표를 넣지 마세요."
+  ],
+
+  "users": [
+    { "email": "jms@boditech.co.kr", "name": "장명선", "roles": ["member", "admin"] },
+    { "email": "jemal@boditech.co.kr", "name": "제말", "roles": ["member"] },
+    { "email": "ksy4@boditech.co.kr", "name": "강신영", "roles": ["member"] },
+    { "email": "catia@boditech.co.kr", "name": "카티아", "roles": ["member"] },
+    { "email": "kdy1@boditech.co.kr", "name": "김대영", "roles": ["member"] },
+    { "email": "kms@boditech.co.kr", "name": "김민성", "roles": ["member"] },
+    { "email": "kbj@boditech.co.kr", "name": "김병주", "roles": ["member"] },
+    { "email": "ymkim@boditech.co.kr", "name": "김영민", "roles": ["member"] },
+    { "email": "kjy2@boditech.co.kr", "name": "김지유", "roles": ["member"] },
+    { "email": "pds@boditech.co.kr", "name": "박대선", "roles": ["member"] },
+    { "email": "parkak@boditech.co.kr", "name": "박애경", "roles": ["member"] },
+    { "email": "pej2@boditech.co.kr", "name": "박은지", "roles": ["member"] },
+    { "email": "pjw5@boditech.co.kr", "name": "박지원", "roles": ["member"] },
+    { "email": "phs1@boditech.co.kr", "name": "박혜신", "roles": ["member"] },
+    { "email": "bjh2@boditech.co.kr", "name": "배정환", "roles": ["member"] },
+    { "email": "uwb@boditech.co.kr", "name": "엄우빈", "roles": ["member"] },
+    { "email": "ljh3@boditech.co.kr", "name": "이정환", "roles": ["member"] },
+    { "email": "ljh4@boditech.co.kr", "name": "이정훈", "roles": ["member"] },
+    { "email": "ljh11@boditech.co.kr", "name": "이진호", "roles": ["member"] },
+    { "email": "lhk@boditech.co.kr", "name": "이후경", "roles": ["member"] },
+    { "email": "jyc@boditech.co.kr", "name": "정영철", "roles": ["member"] },
+    { "email": "ckw@boditech.co.kr", "name": "최광원", "roles": ["member"] },
+    { "email": "cjj@boditech.co.kr", "name": "최종진", "roles": ["member"] },
+    { "email": "chw1@boditech.co.kr", "name": "최형우", "roles": ["member"] },
+    { "email": "xjy@boditech.co.kr", "name": "허균의", "roles": ["member"] },
+    { "email": "hcy@boditech.co.kr", "name": "홍창엽", "roles": ["member"] },
+    { "email": "heh@boditech.co.kr", "name": "황은희", "roles": ["member"] },
+    { "email": "bdttsteam.1@gmail.com", "name": "테스트(Resend 가입계정)", "roles": ["member", "admin"] }
+  ],
+
+  "domains": []
+}

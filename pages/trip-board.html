@@ -1,0 +1,2071 @@
+<!doctype html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>출장 보드 — Boditech MED</title>
+<!-- 포털 안 [출장 보드] 화면 (pages/trips.html 이 이 파일을 틀 안에 띄웁니다).
+     글꼴은 외부(구글) 대신 포털에 들어 있는 IBM Plex Sans KR 을 씁니다.
+     포털 다른 화면처럼 밝은 화면으로 고정했습니다(data-theme="light"). -->
+<link rel="stylesheet" href="../assets/fonts/ibm-plex-sans-kr/ibm-plex-sans-kr.css">
+<link rel="icon" type="image/png" href="../assets/img/favicon.png">
+<script>
+/* 포털의 "가 100%" 글자 크기 설정을 이 보드에도 적용합니다 (100% = 보드 원래 크기) */
+(function () {
+  function apply() {
+    var v = 100;
+    try { v = parseInt(localStorage.getItem('bdts_ui_scale') || '100', 10); } catch (e) {}
+    if ([85, 100, 125, 150, 175, 200].indexOf(v) < 0) v = 100;
+    var z = v / 100, h = document.documentElement;
+    h.style.zoom = z === 1 ? '' : String(z);
+    h.style.setProperty('--zoom', z);
+  }
+  apply();
+  window.addEventListener('storage', function (e) { if (e.key === 'bdts_ui_scale') apply(); });
+  try { if (window.parent !== window) window.parent.document.addEventListener('bdts-fs', apply); } catch (e) {}
+})();
+</script>
+<style>
+:root{
+  --bg:#EDF0EC; --surface:#FFFFFF; --surface-2:#F5F7F4; --ink:#1E2622; --muted:#5F6963; --line:#D5DBD6;
+  --sign:#0B6B4F; --sign-2:#084F3B; --sign-intl:#1F4E8C; --mark:#E9A800; --danger:#B42318;
+  --land:#DFE6E0; --land-line:#B7C3BA; --dot:#9AA79E; --weekend:#F3F5F2; --today:#FFF8DD;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#111714; --surface:#19201C; --surface-2:#1F2722; --ink:#E4EAE6; --muted:#9AA59F; --line:#2E3832;
+    --sign:#0E7A5A; --sign-2:#0A5E46; --sign-intl:#2A62AD; --mark:#F5C33B; --danger:#F97066;
+    --land:#232C27; --land-line:#3A4640; --dot:#5E6B64; --weekend:#1C231F; --today:#3A3317;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111714; --surface:#19201C; --surface-2:#1F2722; --ink:#E4EAE6; --muted:#9AA59F; --line:#2E3832;
+  --sign:#0E7A5A; --sign-2:#0A5E46; --sign-intl:#2A62AD; --mark:#F5C33B; --danger:#F97066;
+  --land:#232C27; --land-line:#3A4640; --dot:#5E6B64; --weekend:#1C231F; --today:#3A3317;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--mark);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+[hidden]{display:none !important}
+.grow{flex:1}
+
+/* header + tabs */
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:16px clamp(14px,3vw,32px) 10px}
+.top h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.01em}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.status i{width:8px;height:8px;border-radius:50%;background:var(--dot)}
+.status[data-mode="live"] i{background:#2E9E5B}
+.status[data-mode="local"] i,.status[data-mode="error"] i{background:var(--danger)}
+.tabs{display:flex;gap:2px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:3px}
+.tab{border:0;background:transparent;padding:6px 16px;border-radius:7px;font-weight:500;color:var(--muted)}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 0 0 1px var(--line);font-weight:600}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 14px;font-weight:500}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--sign);border-color:var(--sign);color:#fff}
+.btn.primary:hover{background:var(--sign-2)}
+.btn.danger{color:var(--danger);border-color:transparent;background:transparent;padding-left:4px}
+.btn.danger.armed{background:var(--danger);color:#fff}
+.btn:disabled{opacity:.6;cursor:default}
+.notice{margin:0 clamp(14px,3vw,32px) 8px;padding:8px 12px;border-radius:8px;background:var(--today);font-size:14px}
+
+main{display:grid;gap:20px;padding:8px clamp(14px,3vw,32px) 40px;grid-template-columns:minmax(0,1fr)}
+.two-col{display:grid;gap:20px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:900px){.two-col{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}}
+
+/* sign panels */
+.sign{background:var(--sign);color:#fff;border-radius:12px;padding:18px 18px 16px;box-shadow:inset 0 0 0 4px var(--sign),inset 0 0 0 6px rgba(255,255,255,.92)}
+.sign.intl{--sign:var(--sign-intl)}
+.sign h2{margin:2px 4px 12px;font-size:21px;font-weight:700;letter-spacing:-.01em}
+.sign-inputs{display:grid;grid-template-columns:1.3fr 1fr;gap:8px;margin:0 4px;max-width:560px}
+.sign label{display:flex;flex-direction:column;gap:3px;font-size:13px;opacity:.95}
+.sign input{background:#fff;color:#1E2622;border:0;border-radius:6px;padding:8px 10px;min-width:0;width:100%}
+.sign-hint{margin:10px 4px 2px;font-size:13px;opacity:.9}
+
+/* panels */
+.panel,.board{background:var(--surface);border:1px solid var(--line);border-radius:12px;min-width:0}
+.panel-bar,.board-bar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 12px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.panel-bar h2,.board-bar h2{margin:0;font-size:17px;font-weight:600;align-self:center}
+.panel-bar small{color:var(--muted);align-self:center}
+.panel-bar label{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--muted)}
+.panel-bar select,.panel-bar input[type=search],.panel-bar input.name-in,.board-bar input[type=search]{border:1px solid var(--line);border-radius:7px;padding:6px 8px;background:var(--surface);color:var(--ink);font-size:14px;min-width:0}
+.board-bar input[type=search]{width:140px;align-self:center}
+.panel-bar .chk,.board-bar .chk{flex-direction:row;display:flex;align-items:center;gap:6px;font-size:14px;color:var(--ink);align-self:center}
+.panel-foot,.board-foot{margin:0;padding:8px 14px;font-size:12px;color:var(--muted);border-top:1px solid var(--line)}
+.nav{display:flex;gap:4px;align-self:center}
+.nav .btn{padding:5px 11px}
+.scroll{overflow-x:auto}
+.dotc{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--c);margin-right:6px;vertical-align:1px;flex:none}
+
+/* grouped people list */
+.flist{list-style:none;margin:0;padding:0}
+.flist li{display:grid;grid-template-columns:22px minmax(90px,130px) minmax(0,1fr) auto;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid var(--line)}
+.flist li:first-child{border-top:0}
+.flist .rank{font-size:13px;color:var(--muted);text-align:right}
+.flist .place b{font-weight:600;font-size:16px}
+.flist .place small{display:block;color:var(--muted);font-size:12px}
+.flist .people{display:flex;flex-wrap:wrap;gap:6px}
+.flist .dist{font-weight:600;text-align:right;white-space:nowrap}
+.flist .dist small{font-weight:400;color:var(--muted);margin-left:2px}
+.flist .best{background:color-mix(in srgb,var(--mark) 16%,var(--surface))}
+.flist .off .place b{font-weight:500;color:var(--muted)}
+.flist li.empty{display:block;padding:18px 14px;color:var(--muted)}
+.ulist li{grid-template-columns:minmax(80px,120px) auto minmax(0,1fr)}
+.ulist .what b{font-weight:600}
+.ulist .what small{display:block;color:var(--muted);font-size:12px}
+.pchip{display:inline-flex;align-items:baseline;gap:5px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 11px 4px 9px;font-size:14px;max-width:100%}
+.pchip:hover{border-color:var(--c)}
+.pchip .dotc{margin-right:0;align-self:center}
+.pchip b{font-weight:600;white-space:nowrap}
+.pchip small{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:14em}
+
+/* map */
+.mapbox{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px}
+.mapbox svg{display:block;width:100%;height:auto;max-height:560px}
+.mapbox figcaption{font-size:12px;color:var(--muted);padding:2px 4px 0}
+.map-title{margin:2px 4px 6px;font-size:17px;font-weight:600}
+.map-empty{font-size:15px;fill:var(--muted)}
+.map-label{font-size:11px;fill:var(--muted)}
+.map-target{font-size:13px;font-weight:700;fill:var(--ink)}
+.map-pin text{font-size:11px;font-weight:700;fill:#fff;pointer-events:none}
+
+/* 2-week timeline */
+.board .scroll{max-height:calc(72vh / var(--zoom,1));overflow:auto}
+.tl{min-width:840px}
+.tl-row{display:grid;grid-template-columns:118px minmax(0,1fr);border-bottom:1px solid var(--line)}
+.tl-row:last-child{border-bottom:0}
+.tl-row.head{position:sticky;top:0;z-index:4;background:var(--surface)}
+.tl-name{position:sticky;left:0;z-index:3;background:var(--surface);border:0;border-right:1px solid var(--line);text-align:left;padding:6px 10px 6px 14px;display:flex;flex-direction:column;justify-content:center;min-height:44px}
+.tl-name b{font-weight:600;display:flex;align-items:center;gap:0}
+.tl-name small{color:var(--muted);font-size:12px}
+button.tl-name:hover{background:var(--surface-2)}
+.tl-days{display:grid;grid-template-columns:repeat(var(--days,14),minmax(48px,1fr))}
+.tl.week{min-width:640px}
+.tl.week .tl-days{grid-template-columns:repeat(7,minmax(70px,1fr))}
+.tl.week.d5 .tl-days{grid-template-columns:repeat(5,minmax(230px,1fr))}   /* 국내 보드: 월~금 (2026-09-18) */
+.cell{grid-row:1/-1;border:0;border-left:1px solid var(--line);background:transparent;padding:0;cursor:cell}
+.cell:first-child{border-left:0}
+.cell.we{background:var(--weekend)}
+.cell.td{background:var(--today)}
+.cell:hover{background:color-mix(in srgb,var(--sign) 10%,transparent)}
+.head .tl-days div{text-align:center;padding:6px 0 5px;border-left:1px solid var(--line);font-size:12px;color:var(--muted);line-height:1.25;background:var(--surface)}
+.head .tl-days div:first-child{border-left:0}
+.head .tl-days b{display:block;font-size:15px;color:var(--ink);font-weight:600}
+.head .tl-days .we{background:var(--weekend)}
+.head .tl-days .sun,.head .tl-days .sun b{color:#C0392B}
+.head .tl-days .td{background:var(--today)}
+.head .tl-name{min-height:0;z-index:5}
+.bar{position:relative;z-index:1;margin:4px 3px;border:1px solid var(--line);border-left:3px solid var(--c);border-radius:6px;background:var(--surface);color:var(--ink);text-align:left;padding:0 9px;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.bar b{font-weight:600}
+.bar span{color:var(--muted);margin-left:5px}
+.bar.intl{background:var(--surface)}
+.tl.week .bar{display:flex;flex-direction:column;justify-content:center;line-height:1.3;padding:2px 9px}
+.tl.week .bar b,.tl.week .bar span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:0}
+.bar b{font-weight:600}
+.bar span{font-size:13px}
+.bar.leave{border-left-color:var(--muted);color:var(--muted);background:repeating-linear-gradient(135deg,var(--surface-2) 0 6px,var(--line) 6px 7px)}
+/* 국내 보드: 한 건 = 한 줄. [분류] 내용 ……… 영업 담당자 (2026-09-18) */
+.tl.week .bar.domrow{display:flex;flex-direction:row;align-items:center;gap:6px;margin:2px 3px;padding:0 8px;font-size:13.5px;line-height:1.3}
+.tl.week .bar.domrow b{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.tl.week .bar.domrow .rep{flex:0 0 auto;max-width:74px;overflow:hidden;text-overflow:ellipsis;font-style:normal;font-size:12.5px;color:var(--muted);padding-left:7px;border-left:1px solid var(--line)}
+.kd{flex:0 0 auto;display:inline-block;min-width:26px;text-align:center;font-size:11.5px;font-weight:700;letter-spacing:.02em;
+  padding:1px 5px;border-radius:4px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.wk-item .kd,.hist-kd{margin-right:5px}
+.bar.dim{opacity:.45}
+.bar.cut-l{border-top-left-radius:0;border-bottom-left-radius:0}
+.bar:hover{border-color:var(--muted);border-left-color:var(--c);background:var(--surface-2)}
+.board-empty{padding:40px 20px;text-align:center;color:var(--muted)}
+.board-empty .btn{margin-top:10px}
+
+/* month calendar */
+.mcal{min-width:780px}
+.mc-head,.mc-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.mc-head div{padding:6px 8px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--line);background:var(--surface-2)}
+.mc-head div:nth-child(7){color:#C0392B}
+.mc-cell{min-height:124px;border-top:1px solid var(--line);border-left:1px solid var(--line);padding:3px 5px 6px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.mc-grid .mc-cell:nth-child(7n+1){border-left:0}
+.mc-grid .mc-cell:nth-child(-n+7){border-top:0}
+.mc-cell.we{background:var(--weekend)}
+.mc-cell.out{background:var(--surface-2)}
+.mc-cell.out .mc-d{color:var(--muted)}
+.mc-d{border:0;background:none;text-align:left;padding:2px 3px;font-size:13px;font-weight:600;border-radius:5px;align-self:flex-start}
+.mc-d:hover{background:var(--surface-2)}
+.mc-cell.td .mc-d{background:var(--sign);color:#fff}
+.mc-chip{display:block;width:100%;text-align:left;border:0;border-left:3px solid var(--c);background:var(--surface);color:var(--ink);border-radius:4px;padding:1px 5px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mc-chip b{font-weight:600;margin-right:3px}
+.mc-chip.intl{background:var(--surface)}
+.mc-chip:hover{background:var(--surface-2)}
+.mc-chip.leave{border-left-color:var(--muted);color:var(--muted);background:var(--surface-2)}
+.mc-more{border:0;background:none;color:var(--sign);font-size:12px;font-weight:600;text-align:left;padding:1px 5px}
+.hstats{display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.stat{background:var(--surface-2);border-radius:8px;padding:8px 12px;min-width:110px}
+.stat small{display:block;color:var(--muted);font-size:12px}
+.stat b{font-size:18px;font-weight:600}
+.stat span{font-size:14px}
+
+/* history */
+.htable{width:100%;border-collapse:collapse;min-width:820px;font-size:14px}
+.htable th{text-align:left;font-weight:500;color:var(--muted);font-size:12px;padding:8px 14px;border-bottom:1px solid var(--line);background:var(--surface-2);white-space:nowrap;position:sticky;top:0}
+.htable td{padding:8px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+.htable td:first-child,.htable td:nth-child(2),.htable td:nth-child(3){white-space:nowrap}
+.htable tr.row{cursor:pointer}
+.htable tr.row:hover{background:var(--surface-2)}
+.htable .fut{color:var(--sign);font-size:12px;margin-left:4px}
+.htable .none td{color:var(--muted);text-align:center;padding:24px}
+.tag{display:inline-block;font-size:12px;border-radius:5px;padding:0 6px;background:var(--surface-2);border:1px solid var(--line);white-space:nowrap}
+.tag.intl{background:color-mix(in srgb,var(--sign-intl) 14%,var(--surface));border-color:color-mix(in srgb,var(--sign-intl) 40%,var(--line))}
+.sum-scroll{max-height:360px;overflow:auto;border-bottom:1px solid var(--line)}
+.stable{min-width:640px}
+.hist-scroll{max-height:560px;overflow:auto}
+/* 대시보드 (관리자 전용, 2026-09-16) */
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:0;border-top:1px solid var(--line)}
+.dash-box{padding:12px 14px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);min-width:0}
+.dash-box h3{margin:0 0 10px;font-size:14px;font-weight:600}
+.dash-box h3 small{font-weight:400;color:var(--muted);margin-left:6px;font-size:12px}
+.mchart{display:flex;align-items:flex-end;gap:6px;height:190px;padding-top:4px;overflow-x:auto}
+.mcol{flex:1 0 34px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:34px}
+.mcol .stk{width:70%;max-width:40px;display:flex;flex-direction:column-reverse;border-radius:4px 4px 0 0;overflow:hidden}
+.mcol .stk i{display:block;background:var(--sign)}
+.mcol .stk i.intl{background:var(--sign-intl)}
+.mcol .v{font-size:12px;font-weight:600;margin-bottom:3px}
+.mcol .l{font-size:11px;color:var(--muted);margin-top:4px;white-space:nowrap}
+.mcol .v small{display:block;font-weight:400;color:var(--muted);font-size:10px;text-align:center}
+.legend{display:flex;gap:12px;font-size:12px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--sign);margin-right:4px;vertical-align:-1px}
+.legend i.intl{background:var(--sign-intl)}
+.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+.rank li{display:grid;grid-template-columns:22px minmax(0,130px) minmax(0,1fr) 44px;align-items:center;gap:8px;font-size:13px}
+.rank .no{color:var(--muted);text-align:right}
+.rank .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank .bar-h{height:10px;border-radius:3px;background:color-mix(in srgb,var(--sign) 70%,var(--surface))}
+.rank.intl .bar-h{background:color-mix(in srgb,var(--sign-intl) 70%,var(--surface))}
+.rank .cnt{text-align:right;font-weight:600}
+.rank .cnt{white-space:nowrap}
+.rank.intl li{grid-template-columns:22px minmax(0,110px) minmax(0,1fr) auto}
+.rank .empty{display:block;color:var(--muted)}
+.stable tr.sel td{background:color-mix(in srgb,var(--sign) 8%,var(--surface))}
+.linkbtn{border:0;background:none;padding:0;font-weight:600;color:var(--ink);text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px;white-space:nowrap}
+
+/* dialogs */
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);padding:0;width:min(480px,calc(100vw / var(--zoom,1) - 24px));max-height:calc(100vh / var(--zoom,1) - 24px)}
+dialog.wide{width:min(1080px,calc(100vw / var(--zoom,1) - 24px))}
+dialog::backdrop{background:rgba(10,20,15,.45)}
+.dlg{padding:20px 20px 16px;display:flex;flex-direction:column;gap:12px}
+.dlg h2{margin:0 0 2px;font-size:18px;display:flex;align-items:center}
+.dlg h3{margin:6px 0 0;font-size:15px}
+.dlg label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.dlg input,.dlg select{border:1px solid var(--line);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--ink);font-size:15px;width:100%;min-width:0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{border:0;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:6px}
+.seg legend{font-size:13px;color:var(--muted);margin-bottom:4px;padding:0}
+.dlg .seg label{flex-direction:row;align-items:center;gap:6px;border:1px solid var(--line);border-radius:7px;padding:7px 12px;color:var(--ink);font-size:14px;cursor:pointer}
+.dlg .seg label:has(input:checked){border-color:var(--sign);background:color-mix(in srgb,var(--sign) 12%,var(--surface))}
+.dlg .seg input{width:auto;margin:0}
+.actions{display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap}
+.err{margin:0;color:var(--danger);font-size:13px;min-height:1em}
+.hint{margin:6px 0 0;font-size:12px;color:var(--muted)}
+.dlg-top{display:grid;grid-template-columns:minmax(0,240px) auto;gap:14px;align-items:end;justify-content:start}
+.vgrid{display:grid;gap:6px;align-items:center}
+.vgrid.dom{grid-template-columns:148px 92px 108px minmax(0,1.25fr) minmax(0,1.15fr) 108px 34px}
+.vgrid.intl{grid-template-columns:140px 140px 110px 100px minmax(0,1.2fr) minmax(0,1fr) 100px 34px}
+.vhead span{font-size:12px;color:var(--muted);padding:0 2px}
+.rows{max-height:calc(46vh / var(--zoom,1));overflow:auto;padding:2px}
+.vrow{margin-top:6px}
+.dlg .vrow label{gap:0}
+.vl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.dlg .vrow input.bad{border-color:var(--danger);box-shadow:0 0 0 1px var(--danger)}
+/* 이름 직접 입력 · 동행인 (2026-09-16) */
+input.name-in.bad,.dlg input.name-in.bad{border-color:var(--danger);box-shadow:0 0 0 1px var(--danger);color:var(--danger)}
+.panel-bar input.name-in{width:120px}
+.comp{display:flex;flex-direction:column;gap:4px}
+.comp-h{font-size:13px;color:var(--muted)}
+.comp-h small{font-size:12px;margin-left:6px}
+.comp-box{display:flex;flex-wrap:wrap;align-items:center;gap:6px;border:1px solid var(--line);border-radius:7px;padding:5px 6px;background:var(--surface)}
+.comp-box:focus-within{border-color:var(--sign)}
+.dlg .comp-box input{border:0;padding:4px 4px;width:150px;flex:0 1 150px;background:transparent}
+.dlg .comp-box input:focus{outline:none}
+.dlg .comp-box input.bad{box-shadow:none;border:0;background:color-mix(in srgb,var(--danger) 10%,transparent);border-radius:5px}
+.comp-box .btn{padding:4px 10px;font-size:13px}
+.cchip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-left:4px solid var(--c);border-radius:6px;padding:2px 4px 2px 7px;font-size:14px;color:var(--ink);background:var(--surface-2)}
+.cchip.new{border-style:dashed;border-left-style:solid}
+.cchip button{border:0;background:transparent;color:var(--muted);font-size:16px;line-height:1;padding:0 3px;border-radius:4px;cursor:pointer}
+.cchip button:hover{color:var(--danger)}
+.rm{border:0;background:transparent;font-size:20px;line-height:1;color:var(--muted);border-radius:6px;height:36px}
+.rm:hover{color:var(--danger);background:var(--surface-2)}
+.addrow{margin-top:10px}
+.mlist{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:10px;max-height:320px;overflow:auto}
+.mlist li{display:flex;align-items:center;gap:8px;padding:7px 8px 7px 12px;border-top:1px solid var(--line)}
+.mlist li:first-child{border-top:0}
+.mlist .nm{flex:1;min-width:0}
+.mlist small{color:var(--muted);margin-left:6px}
+.mlist .btn{padding:3px 9px;font-size:13px}
+.mlist .none{color:var(--muted);padding:14px 12px}
+.wk-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.wklist{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:10px;max-height:calc(60vh / var(--zoom,1));overflow:auto}
+.wklist li{display:grid;grid-template-columns:78px minmax(0,1fr) 32px;gap:10px;align-items:start;padding:9px 10px 9px 12px;border-top:1px solid var(--line)}
+.wklist li:first-child{border-top:0}
+.wklist li.we{background:var(--weekend)}
+.wklist li.td{background:var(--today)}
+.wklist.day li{grid-template-columns:minmax(0,1fr)}
+.wklist .wd{font-size:14px;padding-top:3px}
+.wklist .items{display:flex;flex-direction:column;gap:4px;min-width:0}
+.wk-item{display:block;text-align:left;border:1px solid var(--line);border-left:3px solid var(--c);border-radius:6px;background:var(--surface);color:var(--ink);padding:5px 10px;width:100%}
+.wk-item:hover{background:var(--surface-2)}
+.wk-item.intl{background:var(--surface)}
+.wk-item b{font-weight:600}
+.wk-item small{display:block;color:var(--muted);font-size:12px}
+.wk-item.leave{border-left-color:var(--muted);background:repeating-linear-gradient(135deg,var(--surface-2) 0 6px,var(--line) 6px 7px)}
+.wk-base{color:var(--muted);font-size:14px;padding-top:4px}
+.wk-plus{border:1px solid var(--line);background:var(--surface);border-radius:6px;height:30px;font-size:17px;line-height:1;color:var(--muted)}
+.wk-plus:hover{color:var(--ink);border-color:var(--muted)}
+
+.importbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 clamp(14px,3vw,32px) 8px;padding:10px 14px;border-radius:10px;background:var(--surface);border:1px solid var(--sign);font-size:14px}
+.importbar progress,.imp-box progress{width:160px;vertical-align:middle;margin-left:8px}
+.imp-box{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface-2)}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:10}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+@media (max-width:860px){
+  .vhead{display:none}
+  .vgrid.vrow{grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:10px;padding:10px;position:relative;margin-top:10px}
+  .dlg .vrow .vl{position:static;width:auto;height:auto;clip:auto;font-size:12px;margin-bottom:2px}
+  .vrow .wide-f{grid-column:1/-1}
+  .rm{position:absolute;top:2px;right:2px;height:28px;width:28px}
+  .dlg-top{grid-template-columns:1fr}
+}
+@media (max-width:560px){
+  .sign-inputs,.two{grid-template-columns:1fr}
+  .flist li{grid-template-columns:18px 1fr auto}
+  .flist .people{grid-column:2/-1}
+  .ulist li{grid-template-columns:1fr auto}
+  .ulist .what{grid-column:1/-1}
+  .tabs{width:100%}
+  .tab{flex:1;padding:6px 8px}
+}
+</style>
+</head>
+<body>
+<script src="../assets/auth-gate.js"></script>
+<header class="top">
+  <h1>출장 보드</h1>
+  <span class="status" id="status" data-mode="connecting"><i></i><span>연결하는 중</span></span>
+  <nav class="tabs" role="tablist" aria-label="보기 선택">
+    <button class="tab" role="tab" type="button" data-tab="dom" id="tab-dom" aria-controls="view-dom">국내</button>
+    <button class="tab" role="tab" type="button" data-tab="intl" id="tab-intl" aria-controls="view-intl">해외</button>
+    <button class="tab" role="tab" type="button" data-tab="all" id="tab-all" aria-controls="view-all">전체 달력</button>
+    <button class="tab" role="tab" type="button" data-tab="dash" id="tab-dash" aria-controls="view-dash" hidden>대시보드</button>
+  </nav>
+  <span class="grow"></span>
+  <button class="btn" id="openMembers" type="button">팀원 관리</button>
+  <button class="btn primary" id="openTrip" type="button">일정 추가</button>
+</header>
+<p class="notice" id="notice" hidden></p>
+<div class="importbar" id="importBar" hidden>
+  <span id="importText"></span>
+  <span class="grow"></span>
+  <button class="btn primary" type="button" data-import>가져오기</button>
+</div>
+
+<!-- ============ 국내 ============ -->
+<main id="view-dom" role="tabpanel" aria-labelledby="tab-dom">
+  <section class="sign" aria-label="가까운 팀원 찾기">
+    <h2>어디로 보낼까요?</h2>
+    <div class="sign-inputs">
+      <label><span>지역</span><input id="fCity" list="cityList" placeholder="예: 강릉" autocomplete="off"></label>
+      <label><span>날짜</span><input id="fDate" type="date"></label>
+    </div>
+    <p class="sign-hint" id="fHint"></p>
+  </section>
+
+
+  <section class="panel" aria-label="팀원 위치">
+    <div class="panel-bar"><h2 id="fListTitle">팀원 위치</h2><span class="grow"></span><label class="chk"><input type="checkbox" id="fShowAll"> 일정 없는 팀원도 보기</label></div>
+    <ol class="flist" id="fList" aria-live="polite"></ol>
+  </section>
+
+  <section class="board" aria-label="국내 주간 달력">
+    <div class="board-bar">
+      <h2 id="range-dom" class="num"></h2>
+      <span class="grow"></span>
+      <input type="search" data-namesearch="dom" placeholder="이름 검색" aria-label="팀원 이름 검색">
+      <div class="nav">
+        <button class="btn" type="button" data-nav="dom" data-step="-7" aria-label="이전 주">이전</button>
+        <button class="btn" type="button" data-nav="dom" data-step="0">이번 주</button>
+        <button class="btn" type="button" data-nav="dom" data-step="7" aria-label="다음 주">다음</button>
+      </div>
+    </div>
+    <div class="scroll"><div class="tl week" id="tl-dom"></div></div>
+    <p class="board-foot">월~금만 보여줍니다(토·일 제외). 이번 주에 국내 방문이 있는 팀원만 나오고, 같은 날 여러 곳을 가면 한 줄씩 따로 표시됩니다. 줄을 누르면 수정하고, 왼쪽 이름을 누르면 그 사람의 한 주 일정을 봅니다.</p>
+  </section>
+
+  <figure class="mapbox">
+    <h2 class="map-title" id="mapTitle"></h2>
+    <svg id="map" role="img" aria-label="팀원 위치 지도"></svg>
+    <figcaption id="mapCap"></figcaption>
+  </figure>
+</main>
+
+<!-- ============ 해외 ============ -->
+<main id="view-intl" role="tabpanel" aria-labelledby="tab-intl" hidden>
+  <section class="sign intl" aria-label="해외 출장 현황">
+    <h2>지금 해외에 누가 있나요?</h2>
+    <div class="sign-inputs">
+      <label><span>국가·도시</span><input id="iQ" list="countryList" placeholder="예: 베트남" autocomplete="off"></label>
+      <label><span>날짜</span><input id="iDate" type="date"></label>
+    </div>
+    <p class="sign-hint" id="iHint"></p>
+  </section>
+
+  <div class="two-col">
+    <section class="panel" aria-label="해외 체류 중">
+      <div class="panel-bar"><h2 id="iStayTitle">해외 체류 중</h2></div>
+      <ol class="flist" id="iStay"></ol>
+    </section>
+    <section class="panel" aria-label="다가오는 해외 출장">
+      <div class="panel-bar"><h2>다가오는 해외 출장</h2><small>30일 이내</small></div>
+      <ol class="flist ulist" id="iUp"></ol>
+    </section>
+  </div>
+
+  <section class="panel" id="iPastPanel" aria-label="다녀온 팀원" hidden>
+    <div class="panel-bar"><h2 id="iPastTitle">다녀온 팀원</h2><small>현지 경험이 있는 사람</small></div>
+    <ol class="flist ulist" id="iPast"></ol>
+  </section>
+
+  <section class="board" aria-label="해외 출장 달력">
+    <div class="board-bar">
+      <h2 id="range-intl" class="num"></h2>
+      <span class="grow"></span>
+      <input type="search" data-namesearch="intl" placeholder="이름 검색" aria-label="팀원 이름 검색">
+      <div class="nav">
+        <button class="btn" type="button" data-nav="intl" data-step="-7" aria-label="이전 주">이전</button>
+        <button class="btn" type="button" data-nav="intl" data-step="0">이번 주</button>
+        <button class="btn" type="button" data-nav="intl" data-step="7" aria-label="다음 주">다음</button>
+      </div>
+    </div>
+    <div class="scroll"><div class="tl week" id="tl-intl"></div></div>
+    <p class="board-foot">이번 주에 해외 출장이 있는 팀원만, 해외 출장 일정만 보입니다. 빈 칸을 누르면 그 날짜로 해외 출장을 추가하고, 막대를 누르면 수정합니다.</p>
+  </section>
+</main>
+
+<!-- ============ 전체 달력 ============ -->
+<main id="view-all" role="tabpanel" aria-labelledby="tab-all" hidden>
+  <section class="panel" aria-label="전체 달력">
+    <div class="panel-bar">
+      <h2 id="calLabel" class="num"></h2>
+      <div class="nav">
+        <button class="btn" type="button" data-nav="cal" data-step="-1" aria-label="이전 달">이전</button>
+        <button class="btn" type="button" data-nav="cal" data-step="0">이번 달</button>
+        <button class="btn" type="button" data-nav="cal" data-step="1" aria-label="다음 달">다음</button>
+      </div>
+      <span class="grow"></span>
+      <label>팀원<input id="cMember" class="name-in" list="memberList" placeholder="전체" autocomplete="off" title="이름을 입력하면 그 사람 일정만 봅니다. 비우면 전체"></label>
+      <label>구분<select id="cType">
+        <option value="work">국내 + 해외</option><option value="trip">국내</option><option value="intl">해외</option>
+        <option value="leave">휴가·부재</option><option value="all">모두</option>
+      </select></label>
+      <label>검색<input id="cQ" type="search" placeholder="이름, 병원, 지역, 국가" autocomplete="off"></label>
+    </div>
+    <div class="hstats" id="calStats"></div>
+    <div class="scroll"><div class="mcal" id="mcal"></div></div>
+    <p class="panel-foot">날짜를 누르면 그날 일정 전체를, 일정을 누르면 수정 창을 엽니다. 위 필터는 아래 출장 이력 목록에도 함께 적용됩니다.</p>
+  </section>
+
+  <section class="panel" aria-label="출장 이력">
+    <div class="panel-bar">
+      <h2>출장 이력</h2>
+      <span class="grow"></span>
+      <label>기간<select id="hPeriod">
+        <option value="1">최근 1개월</option><option value="3" selected>최근 3개월</option>
+        <option value="6">최근 6개월</option><option value="y">올해</option><option value="all">전체 기간</option>
+      </select></label>
+      <label class="chk"><input type="checkbox" id="hFuture"> 예정 일정 포함</label>
+      <button class="btn" type="button" id="hExport" title="지금 조건(기간·예정 포함·팀원·구분·검색)에 맞는 이력 전체를 엑셀로 받습니다">엑셀 다운로드</button>
+    </div>
+    <div class="scroll hist-scroll">
+      <table class="htable">
+        <thead><tr><th>날짜</th><th>팀원</th><th>구분</th><th>분류</th><th>국가·지역</th><th>방문처</th><th>목적</th><th>영업 담당자</th></tr></thead>
+        <tbody id="hBody"></tbody>
+      </table>
+    </div>
+    <p class="panel-foot" id="hFoot"></p>
+  </section>
+</main>
+
+<!-- ============ 대시보드 (관리자만) ============ -->
+<main id="view-dash" role="tabpanel" aria-labelledby="tab-dash" hidden>
+  <section class="panel" aria-label="출장 대시보드">
+    <div class="panel-bar">
+      <h2>출장 대시보드</h2>
+      <small>관리자만 볼 수 있습니다</small>
+      <span class="grow"></span>
+      <label>팀원<input id="dMember" class="name-in" list="memberList" placeholder="전체" autocomplete="off"></label>
+      <label>기간<select id="dPeriod">
+        <option value="1">최근 1개월</option><option value="3">최근 3개월</option>
+        <option value="6">최근 6개월</option><option value="y" selected>올해</option><option value="12">최근 12개월</option><option value="all">전체 기간</option>
+      </select></label>
+    </div>
+    <div class="hstats" id="dStats"></div>
+    <div class="dash-grid">
+      <div class="dash-box" style="grid-column:1/-1"><h3>월별 출장 건수<small>지난 일정 기준 · 해외는 출발월</small></h3><div class="mchart" id="dMonthly"></div>
+        <div class="legend"><span><i></i>국내 방문</span><span><i class="intl"></i>해외 출장</span></div></div>
+      <div class="dash-box"><h3>많이 간 국내 지역 TOP 10</h3><ol class="rank" id="dCity"></ol></div>
+      <div class="dash-box"><h3>많이 간 방문처 TOP 10</h3><ol class="rank" id="dHosp"></ol></div>
+      <div class="dash-box"><h3>해외 출장 국가<small>건수 (일수)</small></h3><ol class="rank intl" id="dCountry"></ol></div>
+      <div class="dash-box"><h3>방문 목적 TOP 10</h3><ol class="rank" id="dPurpose"></ol></div>
+    </div>
+  </section>
+  <section class="panel" aria-label="팀원별 출장 이력">
+    <div class="panel-bar"><h2>팀원별 출장 이력</h2><small>이름을 누르면 위 대시보드가 그 사람 기준으로 바뀝니다</small></div>
+    <div id="dSummary"></div>
+    <p class="panel-foot">지난 일정만 셉니다(오늘 포함). 휴가·부재는 세지 않습니다.</p>
+  </section>
+</main>
+
+<datalist id="cityList"></datalist>
+<datalist id="countryList"></datalist>
+<datalist id="purposeList"></datalist>
+<datalist id="repList"></datalist>
+<datalist id="memberList"></datalist>
+
+<!-- trip dialog -->
+<dialog id="tripDlg" class="wide">
+  <form class="dlg" id="tripForm" novalidate>
+    <h2 id="tripTitle">일정 추가</h2>
+    <div class="dlg-top">
+      <label>팀원<input id="tMember" class="name-in" list="memberList" placeholder="이름 입력" autocomplete="off" maxlength="20"></label>
+      <input type="hidden" name="memberId">
+      <fieldset class="seg">
+        <legend>구분</legend>
+        <label><input type="radio" name="type" value="trip" checked> 국내 방문</label>
+        <label><input type="radio" name="type" value="intl"> 해외 출장</label>
+        <label><input type="radio" name="type" value="leave"> 휴가·부재</label>
+      </fieldset>
+    </div>
+    <div class="comp" id="compBlock">
+      <div class="comp-h">동행인<small id="compNote">함께 가는 팀원을 넣으면 같은 일정이 그 사람 달력에도 들어갑니다.</small></div>
+      <div class="comp-box">
+        <span id="compChips" style="display:contents"></span>
+        <input id="compInput" class="name-in" list="memberList" placeholder="이름 입력 후 Enter" autocomplete="off" maxlength="20" aria-label="동행인 이름">
+        <button type="button" class="btn" id="compAdd">추가</button>
+      </div>
+    </div>
+    <div data-block="trip">
+      <div class="vgrid dom vhead" aria-hidden="true"><span>날짜</span><span>분류</span><span>방문지역</span><span>병원 이름</span><span>목적</span><span>영업 담당자</span><span></span></div>
+      <div class="rows" id="rows-trip"></div>
+      <button type="button" class="btn addrow" data-addrow="trip">+ 방문 한 줄 추가</button>
+      <p class="hint" data-edit-hide>같은 사람의 방문을 여러 줄로 한 번에 저장합니다. 새 줄은 윗줄의 날짜·지역·담당자를 이어받습니다.</p>
+    </div>
+    <div data-block="intl" hidden>
+      <div class="vgrid intl vhead" aria-hidden="true"><span>출발일</span><span>귀국일</span><span>국가</span><span>도시</span><span>방문처</span><span>목적</span><span>영업 담당자</span><span></span></div>
+      <div class="rows" id="rows-intl"></div>
+      <button type="button" class="btn addrow" data-addrow="intl">+ 출장 한 줄 추가</button>
+      <p class="hint" data-edit-hide>한 번의 출장에서 여러 곳을 들르면 줄을 나눠 적어도 됩니다. 새 줄은 윗줄의 날짜·국가·담당자를 이어받습니다.</p>
+    </div>
+    <div data-block="leave" hidden>
+      <div class="two">
+        <label>시작일<input type="date" name="leaveStart"></label>
+        <label>종료일<input type="date" name="leaveEnd"></label>
+      </div>
+      <label style="margin-top:10px">사유<input name="leaveNote" maxlength="60" placeholder="예: 연차, 사내 교육"></label>
+    </div>
+    <p class="err" id="tripErr"></p>
+    <div class="actions">
+      <button type="button" class="btn danger" id="tripDelete">삭제</button>
+      <span class="grow"></span>
+      <button type="button" class="btn" data-close>취소</button>
+      <button type="submit" class="btn primary" id="tripSave">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- members dialog -->
+<dialog id="memDlg">
+  <div class="dlg">
+    <h2 id="memTitle">팀원 관리</h2>
+    <div class="imp-box" id="impBox">
+      <b>엑셀 명단·출장 기록 가져오기</b>
+      <p class="hint" id="impBoxText" style="margin:2px 0 8px"></p>
+      <button class="btn" type="button" data-import id="impBoxBtn">가져오기</button>
+    </div>
+    <ul class="mlist" id="memList"></ul>
+    <div class="imp-box" id="backupBox" hidden>
+      <b>백업</b>
+      <p class="hint" style="margin:2px 0 8px">이 파일의 데이터는 지금 쓰는 브라우저에만 저장됩니다. 다른 컴퓨터로 옮기거나 브라우저 기록을 지우기 전에 백업 파일을 저장해 두세요.</p>
+      <div class="actions" style="margin:0">
+        <button class="btn" type="button" id="backupSave">백업 파일 저장</button>
+        <label class="btn" style="flex-direction:row;color:var(--ink);font-size:15px;cursor:pointer">백업 파일 불러오기<input type="file" id="backupLoad" accept=".json,application/json" hidden></label>
+      </div>
+    </div>
+    <form id="memForm" novalidate style="display:flex;flex-direction:column;gap:10px">
+      <h3 id="memFormTitle">팀원 추가</h3>
+      <div class="two">
+        <label>이름<input name="mname" maxlength="20"></label>
+        <label>기본 근무지<input name="base" list="cityList" autocomplete="off" placeholder="예: 서울"></label>
+      </div>
+      <p class="err" id="memErr"></p>
+      <div class="actions">
+        <button type="button" class="btn" id="memCancelEdit" hidden>편집 취소</button>
+        <span class="grow"></span>
+        <button type="button" class="btn" data-close>닫기</button>
+        <button type="submit" class="btn primary" id="memSubmit">추가</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<!-- week dialog -->
+<dialog id="weekDlg">
+  <div class="dlg">
+    <div class="wk-head">
+      <h2 id="wkTitle"></h2>
+      <span class="grow"></span>
+      <div class="nav">
+        <button class="btn" type="button" id="wkPrev" aria-label="이전 주">이전</button>
+        <button class="btn" type="button" id="wkNext" aria-label="다음 주">다음</button>
+      </div>
+    </div>
+    <p class="hint num" id="wkRange" style="margin:-6px 0 0"></p>
+    <ol class="wklist" id="wkList"></ol>
+    <div class="actions">
+      <button type="button" class="btn" id="wkAssign" hidden></button>
+      <span class="grow"></span>
+      <button type="button" class="btn" data-close>닫기</button>
+      <button type="button" class="btn primary" id="wkAdd">일정 추가</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- day dialog -->
+<dialog id="dayDlg">
+  <div class="dlg">
+    <h2 id="dayTitle"></h2>
+    <ol class="wklist day" id="dayList"></ol>
+    <div class="actions">
+      <span class="grow"></span>
+      <button type="button" class="btn" data-close>닫기</button>
+      <button type="button" class="btn primary" id="dayAdd">이 날 일정 추가</button>
+    </div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status"></div>
+<script src="../assets/trip-board-store.js"></script>
+<!-- 엑셀 '기술영업 리스트' 가져오기용 기록(팀원 이름·방문 병원)은 가져오기를 마친 뒤 이 파일에서 뺐습니다 (2026-09-16).
+     이 파일은 로그인 없이도 주소로 열 수 있어서입니다. 원본은 웹에서 열리지 않는 tools/trip-import/ 에 보관합니다.
+     다시 가져와야 하면 그 JSON 내용을 아래 {} 자리에 넣어 잠시 배포한 뒤, 가져오기를 마치고 다시 비워 주세요. -->
+<script type="application/json" id="importData">{"members":[],"batches":[]}</script>
+
+<script>
+/* ---------- reference data ---------- */
+const CITIES = [
+["서울",37.566,126.978],["인천",37.456,126.705],["수원",37.263,127.029],["성남",37.420,127.127],["고양",37.658,126.832],
+["용인",37.241,127.178],["부천",37.503,126.766],["안산",37.322,126.831],["화성",37.199,126.831],["평택",36.992,127.113],
+["파주",37.749,126.780],["김포",37.615,126.716],["의정부",37.738,127.034],["남양주",37.636,127.216],["이천",37.272,127.435],
+["여주",37.298,127.637],["가평",37.831,127.510],["양평",37.491,127.488],["포천",37.895,127.200],["연천",38.096,127.075],
+["안양",37.394,126.957],["시흥",37.380,126.803],["광명",37.478,126.865],["하남",37.539,127.215],["오산",37.150,127.077],
+["춘천",37.881,127.730],["원주",37.342,127.920],["강릉",37.752,128.876],["속초",38.207,128.592],["동해",37.525,129.114],
+["삼척",37.450,129.165],["태백",37.164,128.986],["홍천",37.697,127.889],["평창",37.371,128.390],["철원",38.147,127.313],
+["인제",38.070,128.170],["영월",37.184,128.462],["정선",37.381,128.661],["고성(강원)",38.381,128.468],
+["청주",36.642,127.489],["충주",36.991,127.926],["제천",37.133,128.191],["단양",36.985,128.366],["보은",36.489,127.729],
+["영동",36.175,127.783],["진천",36.855,127.436],["음성",36.940,127.690],
+["천안",36.815,127.114],["아산",36.790,127.002],["서산",36.785,126.450],["당진",36.890,126.628],["태안",36.746,126.298],
+["보령",36.333,126.613],["공주",36.446,127.119],["논산",36.187,127.099],["홍성",36.601,126.661],["예산",36.683,126.845],
+["대전",36.351,127.385],["세종",36.480,127.289],
+["전주",35.824,127.148],["군산",35.968,126.737],["익산",35.948,126.958],["정읍",35.570,126.856],["남원",35.416,127.390],
+["김제",35.804,126.881],["무주",36.007,127.661],["부안",35.732,126.733],["고창",35.436,126.702],["완주",35.905,127.162],
+["광주",35.160,126.852],["목포",34.812,126.392],["여수",34.760,127.662],["순천",34.951,127.487],["광양",34.941,127.696],
+["나주",35.016,126.711],["담양",35.321,126.988],["해남",34.573,126.599],["완도",34.311,126.755],["고흥",34.611,127.285],
+["진도",34.487,126.263],["영광",35.277,126.512],["무안",34.990,126.481],["보성",34.771,127.080],
+["대구",35.871,128.601],["포항",36.019,129.343],["경주",35.856,129.225],["구미",36.120,128.344],["안동",36.568,128.730],
+["경산",35.825,128.741],["김천",36.140,128.114],["영주",36.806,128.624],["상주",36.411,128.159],["문경",36.587,128.187],
+["영천",35.973,128.939],["울진",36.993,129.400],["영덕",36.415,129.365],["청송",36.436,129.057],["칠곡",35.996,128.402],
+["울릉",37.484,130.906],
+["부산",35.180,129.075],["울산",35.539,129.311],["창원",35.228,128.681],["김해",35.229,128.889],["진주",35.180,128.108],
+["통영",34.854,128.433],["거제",34.880,128.621],["양산",35.335,129.037],["사천",35.004,128.064],["밀양",35.504,128.746],
+["거창",35.687,127.910],["합천",35.567,128.166],["남해",34.838,127.893],["하동",35.067,127.751],["함안",35.272,128.406],
+["제주",33.499,126.531],["서귀포",33.254,126.560],
+["군포",37.361,126.935],["의왕",37.345,126.968],["과천",37.429,126.988],["구리",37.594,127.13],["양주",37.785,127.046],["동두천",37.904,127.061],["안성",37.008,127.28],["광주(경기)",37.429,127.255],["창녕",35.544,128.492],["장성",35.302,126.785],["괴산",36.815,127.787],["옥천",36.306,127.571],["증평",36.785,127.581],["계룡",36.275,127.249],["금산",36.109,127.488],["부여",36.276,126.91],["서천",36.08,126.692],["청양",36.459,126.802],["의령",35.322,128.262],["산청",35.415,127.873],["함양",35.52,127.725],["고령",35.726,128.263],["성주",35.919,128.283],["의성",36.353,128.697],["예천",36.658,128.453],["봉화",36.893,128.733],["청도",35.647,128.734],["양구",38.11,127.99],["화천",38.106,127.708],["횡성",37.492,127.985],["양양",38.075,128.619],["곡성",35.282,127.292],["구례",35.203,127.463],["화순",35.064,126.987],["장흥",34.682,126.907],["강진",34.642,126.767],["영암",34.8,126.697],["함평",35.066,126.517],["임실",35.618,127.289],["순창",35.374,127.137],["진안",35.792,127.425],["장수",35.647,127.521],["기장",35.244,129.222]
+];
+const CITY = new Map(CITIES.map(([n,lat,lng]) => [n,{name:n,lat,lng}]));
+const MAJOR = new Set(["서울","대전","대구","부산","광주","강릉","전주","제주","울산","청주","포항","여수","춘천","목포","안동"]);
+const COAST = [[37.75,126.55],[38.0,126.95],[38.3,127.3],[38.32,127.8],[38.35,128.1],[38.62,128.35],[38.2,128.6],[37.75,128.93],
+[37.45,129.18],[37.05,129.42],[36.4,129.4],[36.05,129.57],[35.55,129.45],[35.2,129.23],[35.05,128.98],[34.95,128.7],[34.75,128.45],
+[34.85,128.0],[34.7,127.75],[34.5,127.35],[34.4,126.9],[34.3,126.55],[34.6,126.3],[34.8,126.38],[35.1,126.35],[35.4,126.45],
+[35.7,126.55],[35.98,126.62],[36.3,126.52],[36.7,126.15],[36.95,126.45],[37.05,126.75],[37.4,126.62],[37.6,126.55]];
+const COUNTRIES = ["미국","캐나다","멕시코","브라질","칠레","페루","콜롬비아","아르헨티나","일본","중국","대만","홍콩","몽골",
+"베트남","태국","인도네시아","싱가포르","말레이시아","필리핀","캄보디아","미얀마","라오스","인도","파키스탄","방글라데시","스리랑카",
+"카자흐스탄","우즈베키스탄","아랍에미리트","사우디아라비아","카타르","쿠웨이트","이스라엘","튀르키예","이집트","남아프리카공화국","케냐","나이지리아",
+"독일","프랑스","영국","이탈리아","스페인","포르투갈","네덜란드","벨기에","스위스","오스트리아","폴란드","체코","헝가리","루마니아",
+"스웨덴","노르웨이","덴마크","핀란드","아일랜드","그리스","러시아","우크라이나","호주","뉴질랜드"];
+const PURPOSES = ["정기 방문","신규 방문","제품 설명","계약 협의","장비 설치","A/S 점검","사용 교육","학회·세미나","전시회","수금","현지 법인 지원"];
+const BASE_COLORS = ["#3B6FD8","#D6453D","#2E9E5B","#9C4DCC","#D98A00","#1C9AAA","#C2417F","#6F7F1E","#5A5FCF","#8A5A3C","#E0663A","#2F8F8F"];
+const WD = ["일","월","화","수","목","금","토"];
+/* 국내 보드는 월~금 5일만 보여줍니다 (토·일 제외). 해외는 기존대로 7일. */
+const BOARD_DAYS = { dom:5, intl:7 };
+/* 국내 방문 분류 (2026-09-18) — 엑셀 출장 계획표에서 쓰던 약어를 그대로 씁니다 */
+const KIND_LIST = [["PM","정기점검"],["E","평가"],["C","클레임"],["AS","수리"]];
+const KIND_LABEL = new Map(KIND_LIST);
+const KIND_SET = new Set(KIND_LIST.map(x => x[0]));
+function kindTag(k){ return k && KIND_SET.has(k) ? `<span class="kd kd-${k}" title="${KIND_LABEL.get(k)}">${k}</span>` : ""; }
+function kindText(k){ return k && KIND_SET.has(k) ? `[${k}] ` : ""; }
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const pad = n => String(n).padStart(2,"0");
+const keyOf = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const parseKey = k => { const [y,m,d] = k.split("-").map(Number); return new Date(y,m-1,d); };
+const addDays = (k,n) => { const d = parseKey(k); d.setDate(d.getDate()+n); return keyOf(d); };
+const addMonths = (k,n) => { const d = parseKey(k); return keyOf(new Date(d.getFullYear(), d.getMonth()+n, 1)); };
+const todayKey = () => keyOf(new Date());
+const mondayOf = k => { const d = parseKey(k); d.setDate(d.getDate()-((d.getDay()+6)%7)); return keyOf(d); };
+const md = k => { const d = parseKey(k); return (d.getMonth()+1)+"/"+d.getDate(); };
+const rng = t => t.start===t.end ? md(t.start) : md(t.start)+"–"+md(t.end);
+const dayDiff = (a,b) => Math.round((parseKey(b)-parseKey(a))/864e5);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const isKey = k => typeof k === "string" && /^\d{4}-\d{2}-\d{2}$/.test(k);
+function fullDate(k){ const d = parseKey(k), y = d.getFullYear(); return `${y!==new Date().getFullYear()?y+". ":""}${d.getMonth()+1}/${d.getDate()} (${WD[d.getDay()]})`; }
+function distKm(a,b){
+  const R=6371, r=x=>x*Math.PI/180, dLat=r(b.lat-a.lat), dLng=r(b.lng-a.lng);
+  const h=Math.sin(dLat/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+function hslHex(h,s,l){
+  s/=100; l/=100; const k=n=>(n+h/30)%12, a=s*Math.min(l,1-l);
+  const f=n=>Math.round(255*(l-a*Math.max(-1,Math.min(k(n)-3,9-k(n),1)))).toString(16).padStart(2,"0");
+  return "#"+f(0)+f(8)+f(4);
+}
+const paletteColor = i => i < BASE_COLORS.length ? BASE_COLORS[i] : hslHex((i*137.508)%360, 55, i%2 ? 40 : 50);
+function topCounts(list,n){ const c=new Map(); list.filter(Boolean).forEach(x=>c.set(x,(c.get(x)||0)+1)); return [...c].sort((a,b)=>b[1]-a[1]).slice(0,n); }
+let toastT;
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),2400); }
+const lsGet = k => { try { return localStorage.getItem(k); } catch(_) { return null; } };
+const lsSet = (k,v) => { try { localStorage.setItem(k,v); } catch(_) {} };
+
+/* ---------- state ---------- */
+const T0 = todayKey();
+const state = {
+  members:[], trips:[], mode:"connecting",
+  tab: ["dom","intl","all"].includes(lsGet("tripboard.tab")) ? lsGet("tripboard.tab") : "dom",   // 대시보드는 관리자 확인 뒤 다시 엽니다
+  boards: { dom:{anchor:T0, q:""}, intl:{anchor:T0, q:""} },
+  fCity:"", fDate:T0, fShowAll:false, iQ:"", iDate:T0,
+  cal: { month:T0.slice(0,8)+"01", member:"", type:"work", q:"" },
+};
+let db = null;
+
+function cleanMember(id,d){ return { id, name:String(d.name||"이름 없음").slice(0,20), base:String(d.base||""), color:/^#[0-9a-fA-F]{6}$/.test(d.color)?d.color:"#888888", createdAt:Number(d.createdAt)||0 }; }
+function cleanTrip(id,d){
+  if(!isKey(d.start)||!isKey(d.end)) return null;
+  const type = d.type==="leave" ? "leave" : d.type==="intl" ? "intl" : "trip";
+  return { id, memberId:String(d.memberId||""), type, start:d.start, end:d.end<d.start?d.start:d.end,
+    city:String(d.city||"").slice(0,40), country:String(d.country||"").slice(0,30),
+    hospital:String(d.hospital||"").slice(0,40), purpose:String(d.purpose ?? d.note ?? "").slice(0,60), rep:String(d.rep||"").slice(0,20),
+    kind: KIND_SET.has(String(d.kind||"")) ? String(d.kind) : "",
+    groupId:String(d.groupId||"").slice(0,40) };
+}
+const memberById = id => state.members.find(m => m.id === id);
+/* 이름으로 팀원 찾기 — 띄어쓰기 무시. partial 이면 이름 일부가 한 사람에게만 맞을 때 그 사람 */
+function findMember(q, partial){
+  const s = String(q||"").replace(/\s/g,"");
+  if(!s) return null;
+  const exact = state.members.find(m => m.name.replace(/\s/g,"")===s);
+  if(exact || !partial) return exact || null;
+  const hits = state.members.filter(m => m.name.replace(/\s/g,"").includes(s));
+  return hits.length===1 ? hits[0] : null;
+}
+/* 동행 묶음(groupId) → 같은 일정을 가진 다른 팀원 이름 */
+let _gm = { ref:null, len:-1, map:new Map() };
+function groupIndex(){
+  if(_gm.ref!==state.trips || _gm.len!==state.trips.length){
+    const map = new Map();
+    for(const t of state.trips) if(t.groupId){ if(!map.has(t.groupId)) map.set(t.groupId, []); map.get(t.groupId).push(t); }
+    _gm = { ref:state.trips, len:state.trips.length, map };
+  }
+  return _gm.map;
+}
+function companionNames(t){
+  if(!t.groupId) return [];
+  return (groupIndex().get(t.groupId)||[]).filter(x => x.id!==t.id && x.memberId!==t.memberId)
+    .map(x => (memberById(x.memberId)||{}).name).filter(Boolean);
+}
+const compTip = t => { const n = companionNames(t); return n.length ? "동행 "+n.join(", ") : ""; };
+const memberOrder = () => new Map(state.members.map((m,i) => [m.id,i]));
+
+const TYPE_LABEL = { trip:"국내", intl:"해외", leave:"휴가·부재" };
+function placeOf(t){ return t.type==="trip" ? t.city : t.type==="intl" ? [t.country,t.city].filter(Boolean).join(" ") : "휴가·부재"; }
+function mainOf(t){ return t.type==="trip" ? (t.hospital || t.city) : t.type==="intl" ? "✈ "+placeOf(t) : "휴가·부재"; }
+function subOf(t){ return (t.type==="trip" ? [t.hospital?t.city:"", t.purpose] : [t.hospital, t.purpose]).filter(Boolean).join(" "); }
+
+function whereIs(m, day){
+  const mine = state.trips.filter(t => t.memberId===m.id && t.start<=day && t.end>=day);
+  const leave = mine.find(t => t.type==="leave"); if(leave) return { kind:"leave", trip:leave };
+  const intl = mine.find(t => t.type==="intl"); if(intl) return { kind:"intl", trip:intl };
+  const trip = mine.find(t => t.type==="trip" && CITY.has(t.city)); if(trip) return { kind:"trip", trip, city:CITY.get(trip.city) };
+  return { kind:"base", city:CITY.get(m.base) || null };
+}
+function nextTrip(m, day){
+  return state.trips.filter(t => t.memberId===m.id && t.start>day && t.start<=addDays(day,3)).sort((a,b)=>a.start.localeCompare(b.start))[0];
+}
+function chip(m, sub, tip, weekDate){
+  return `<button type="button" class="pchip" data-week="${esc(m.id)}" ${weekDate?`data-week-date="${weekDate}"`:""} style="--c:${m.color}" title="${esc(tip||"이름을 누르면 한 주 일정을 봅니다")}"><span class="dotc"></span><b>${esc(m.name)}</b>${sub?`<small>${sub}</small>`:""}</button>`;
+}
+
+/* ---------- storage ---------- */
+async function withRetry(fn){
+  try { return await fn(); }
+  catch(e){ if(e && e.code==="unavailable"){ await new Promise(r=>setTimeout(r,400+Math.random()*600)); return await fn(); } throw e; }
+}
+function errMsg(e){
+  if(!e) return "저장하지 못했습니다.";
+  if(e.code==="quota_exceeded") return "저장 공간이 가득 찼습니다. 오래된 일정을 지운 뒤 다시 시도하세요.";
+  if(e.code==="revoked"||e.code==="not_granted") return "공유 저장소 권한이 없어 저장하지 못했습니다.";
+  if(e.code==="resource_exhausted") return "요청이 많습니다. 잠시 후 다시 시도하세요.";
+  if(e.code==="unavailable") return "공유 저장소(Azure)에 연결되지 않아 저장하지 못했습니다. 새로고침 후 다시 시도하세요.";
+  if(e.message) return e.message;
+  return "저장하지 못했습니다. 잠시 후 다시 시도하세요.";
+}
+const newId = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+async function save(col, id, data){
+  if(db){ await withRetry(() => db.collection(col).doc(id).set(data)); return; }
+  if(state.mode!=="local") throw { code:"unavailable" };
+  const rec = col==="members" ? cleanMember(id,data) : cleanTrip(id,data);
+  const arr = state[col], i = arr.findIndex(x => x.id===id);
+  if(i>=0) arr[i]=rec; else arr.push(rec);
+  persistLocal(); scheduleRender();
+}
+async function removeDoc(col, id){
+  if(db){ await withRetry(() => db.collection(col).doc(id).delete()); return; }
+  if(state.mode!=="local") throw { code:"unavailable" };
+  state[col] = state[col].filter(x => x.id!==id); persistLocal(); scheduleRender();
+}
+
+/* ---------- render ---------- */
+/* local (downloaded file) persistence */
+const LOCAL_KEY = "tripboard.data.v1";
+let persistT = null;
+function persistLocal(){
+  if(db) return;
+  clearTimeout(persistT);
+  persistT = setTimeout(() => {
+    try {
+      localStorage.setItem(LOCAL_KEY, JSON.stringify({ members:state.members, trips:state.trips, batchesDone:state.batchesDone, importAt:state.importAt }));
+    } catch(e){ toast("브라우저 저장 공간에 저장하지 못했습니다. 백업 파일을 저장해 두세요."); }
+  }, 300);
+}
+function loadLocal(data){
+  const src = data || (() => { try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || "null"); } catch(_) { return null; } })();
+  if(!src) return false;
+  state.members = (src.members||[]).map(m => cleanMember(String(m.id), m)).sort((a,b)=>a.createdAt-b.createdAt);
+  state.trips = (src.trips||[]).map(t => cleanTrip(String(t.id), t)).filter(Boolean);
+  state.batchesDone = readDone(src); state.importAt = Number(src.importAt)||0;
+  return true;
+}
+let renderT = null;
+function scheduleRender(){ clearTimeout(renderT); renderT = setTimeout(render, 120); }
+function render(){
+  clearTimeout(renderT);
+  renderStatus(); renderImport();
+  if(state.tab==="dom"){ renderFinder(); renderBoard("dom"); renderMap(); }
+  if(state.tab==="intl"){ renderIntl(); renderBoard("intl"); }
+  if(state.tab==="all"){ renderFilters(); renderCal(); renderHistory(); }
+  if(state.tab==="dash") renderDash();
+  if(weekDlg.open) renderWeek();
+  if(dayDlg.open) renderDay();
+}
+function setTab(tab){
+  if(tab==="dash" && !isAdmin) tab = "dom";
+  state.tab = tab; lsSet("tripboard.tab", tab);
+  for(const t of ["dom","intl","all","dash"]){
+    $("#view-"+t).hidden = t!==tab;
+    $("#tab-"+t).setAttribute("aria-selected", String(t===tab));
+  }
+  render();
+}
+
+function renderStatus(){
+  const el = $("#status"); el.dataset.mode = state.mode;
+  el.lastElementChild.textContent = {connecting:"연결하는 중",live:"팀 공유 중",local:"이 브라우저에 저장",error:"연결 끊김"}[state.mode] + (state.members.length ? ` · ${state.members.length}명` : "");
+  const n = $("#notice");
+  if(state.mode==="local"){ n.hidden=false; n.textContent="이 파일의 데이터는 이 컴퓨터의 이 브라우저에만 저장되며 다른 사람과 공유되지 않습니다. 팀원 관리 창에서 백업 파일을 저장해 둘 수 있습니다."; }
+  else if(state.mode==="error"){ n.hidden=false; n.textContent="공유 저장소(Azure)와 연결이 끊겼습니다. 지금은 저장되지 않습니다. 페이지를 새로고침하세요."; }
+  else n.hidden=true;
+}
+function emptyMembers(){ return `<li class="empty">${state.mode==="connecting"?"불러오는 중…":"아직 팀원이 없습니다. 오른쪽 위 ‘팀원 관리’에서 추가하세요."}</li>`; }
+
+/* domestic finder */
+function renderFinder(){
+  const list = $("#fList"), day = state.fDate, target = CITY.get(state.fCity);
+  const label = state.fShowAll ? "팀원" : "일정 있는 팀원";
+  $("#fListTitle").textContent = target ? `${md(day)} ${target.name}에서 가까운 ${label}` : `${md(day)} ${label}`;
+  $("#fHint").textContent = target
+    ? `${md(day)} 기준, ${target.name}에서 가까운 순서입니다. 이름을 누르면 그 사람의 한 주 일정이 보입니다.`
+    : "지역을 고르면 그날 가장 가까이 있는 팀원부터 보여 줍니다.";
+  if(!state.members.length){ list.innerHTML = emptyMembers(); return; }
+  const groups = new Map();
+  let shown = 0;
+  for(const m of state.members){
+    const w = whereIs(m, day);
+    if(w.kind==="base" && !state.fShowAll) continue;
+    shown++;
+    const key = w.kind==="leave" ? "__leave" : w.kind==="intl" ? "__intl" : (w.city ? w.city.name : "__none");
+    if(!groups.has(key)) groups.set(key, { key, city:(w.kind==="leave"||w.kind==="intl") ? null : w.city, people:[] });
+    groups.get(key).people.push({ m, w, nx: nextTrip(m, day) });
+  }
+  $("#fListTitle").textContent += ` ${shown}명`;
+  if(!shown){
+    list.innerHTML = `<li class="empty">${md(day)}에 출장·방문·휴가 일정이 있는 팀원이 없습니다. 근무지에 있는 팀원까지 보려면 오른쪽 위 ‘일정 없는 팀원도 보기’를 켜세요.</li>`;
+    return;
+  }
+  const gs = [...groups.values()];
+  gs.forEach(g => g.d = (target && g.city) ? distKm(g.city, target) : null);
+  const tail = k => ({__none:1, __intl:2, __leave:3})[k] || 0;
+  gs.sort((a,b) => tail(a.key)-tail(b.key) || (target ? (a.d??1e9)-(b.d??1e9) : b.people.length-a.people.length || a.key.localeCompare(b.key,"ko")));
+  const TITLES = { __leave:"휴가·부재", __intl:"해외 출장 중", __none:"위치 미지정" };
+  let rank = 0;
+  list.innerHTML = gs.map((g,i) => {
+    const off = !!tail(g.key);
+    if(!off) rank++;
+    const chips = g.people.map(({m,w,nx}) => {
+      let sub;
+      if(w.kind==="leave") sub = `~${md(w.trip.end)}`;
+      else if(w.kind==="intl") sub = `${esc(w.trip.country)} ~${md(w.trip.end)}`;
+      else if(w.kind==="trip") sub = (w.trip.hospital ? esc(w.trip.hospital) : "방문") + (w.trip.start!==w.trip.end ? ` ~${md(w.trip.end)}` : "");
+      else sub = "근무";
+      const tip = nx ? `다음 일정: ${md(nx.start)} ${nx.type==="leave"?"휴가·부재":placeOf(nx)+(nx.hospital?" "+nx.hospital:"")}` : "";
+      return chip(m, sub, tip, day);
+    }).join("");
+    const cls = off ? "off" : (target && i===0 && g.d!=null ? "best" : "");
+    return `<li class="${cls}">
+      <span class="rank num">${off?"–":rank}</span>
+      <div class="place"><b>${TITLES[g.key] || esc(g.key)}</b><small>${g.people.length}명</small></div>
+      <div class="people">${chips}</div>
+      <div class="dist num">${g.d!=null?Math.round(g.d)+"<small>km</small>":""}</div>
+    </li>`;
+  }).join("");
+}
+
+const X0=124.55, Y0=38.75, KX=80.9, KY=100;
+const proj = (lat,lng) => [(lng-X0)*KX, (Y0-lat)*KY];
+function renderMap(){
+  const svg = $("#map");
+  svg.setAttribute("viewBox","0 0 525 580");
+  const day = state.fDate, target = CITY.get(state.fCity);
+  let h = "";
+  const pts = COAST.map(([a,b]) => proj(a,b).map(v=>v.toFixed(1)).join(",")).join(" ");
+  h += `<polygon points="${pts}" fill="var(--land)" stroke="var(--land-line)" stroke-width="1.2" stroke-linejoin="round"/>`;
+  const [jx,jy] = proj(33.38,126.55);
+  h += `<ellipse cx="${jx}" cy="${jy}" rx="${0.52*KX}" ry="${0.19*KY}" fill="var(--land)" stroke="var(--land-line)" stroke-width="1.2"/>`;
+  const [ux,uy] = proj(37.5,130.87);
+  h += `<circle cx="${ux}" cy="${uy}" r="5" fill="var(--land)" stroke="var(--land-line)"/>`;
+  for(const c of CITY.values()){
+    const [x,y] = proj(c.lat,c.lng);
+    h += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.8" fill="var(--dot)"/>`;
+    if(MAJOR.has(c.name)) h += `<text class="map-label" x="${(x+5).toFixed(1)}" y="${(y+4).toFixed(1)}">${c.name}</text>`;
+  }
+  const groups = new Map(), avail = [];
+  let away = 0, atBase = 0, shown = 0;
+  for(const m of state.members){
+    const w = whereIs(m, day);
+    if(w.kind==="leave" || w.kind==="intl" || !w.city){ away++; continue; }
+    if(w.kind==="base" && !state.fShowAll){ atBase++; continue; }
+    shown++;
+    if(!groups.has(w.city.name)) groups.set(w.city.name, []);
+    groups.get(w.city.name).push(m);
+    if(target) avail.push({ city:w.city, d:distKm(w.city,target) });
+  }
+  if(target){
+    const [tx,ty] = proj(target.lat,target.lng);
+    const seen = new Set();
+    avail.sort((a,b)=>a.d-b.d).filter(a => !seen.has(a.city.name) && seen.add(a.city.name)).slice(0,3).forEach((a,i) => {
+      const [x,y] = proj(a.city.lat,a.city.lng);
+      h += `<line x1="${tx}" y1="${ty}" x2="${x}" y2="${y}" stroke="var(--mark)" stroke-width="${i===0?2.5:1.3}" stroke-dasharray="${i===0?"":"4 4"}"/>`;
+    });
+    h += `<circle cx="${tx}" cy="${ty}" r="15" fill="none" stroke="var(--mark)" stroke-width="3"/><circle cx="${tx}" cy="${ty}" r="4" fill="var(--mark)"/>`;
+    h += `<text class="map-target" x="${tx+19}" y="${ty-12}">${esc(target.name)}</text>`;
+  }
+  for(const [name, ms] of groups){
+    const c = CITY.get(name), [cx,cy] = proj(c.lat,c.lng), n = ms.length;
+    ms.forEach((m,i) => {
+      // spiral out when many people share a city
+      const ring = n>1 ? 11 + 4*Math.floor(i/8) + Math.min(n,8) : 0;
+      const ang = n>1 ? (i/Math.min(n,8))*Math.PI*2 - Math.PI/2 + Math.floor(i/8)*0.4 : 0;
+      const x = cx + Math.cos(ang)*ring, y = cy + Math.sin(ang)*ring;
+      h += `<g class="map-pin"><title>${esc(m.name)} · ${esc(name)}</title><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="9.5" fill="${m.color}" stroke="var(--surface)" stroke-width="2"/><text x="${x.toFixed(1)}" y="${(y+4).toFixed(1)}" text-anchor="middle">${esc([...m.name][0]||"?")}</text></g>`;
+    });
+  }
+  if(!shown) h += `<text class="map-empty" x="262" y="300" text-anchor="middle">${state.members.length ? "이 날짜에 국내 방문 일정이 있는 팀원이 없습니다" : "팀원을 추가하면 위치가 표시됩니다"}</text>`;
+  svg.innerHTML = h;
+  const isToday = day===todayKey();
+  $("#mapTitle").textContent = `${fullDate(day)}${isToday ? " 오늘" : ""} 팀원 위치 ${shown}명`;
+  const parts = [state.fShowAll
+    ? "국내 방문 일정이 있는 팀원은 방문 지역에, 일정이 없는 팀원은 기본 근무지에 표시합니다"
+    : `국내 방문 일정으로 위치가 확인된 팀원만 표시합니다${atBase ? ` (일정이 없는 ${atBase}명 제외)` : ""}`];
+  if(away) parts.push(`해외 출장·휴가·부재 ${away}명은 표시하지 않습니다`);
+  if(!isToday) parts.push("날짜는 위 ‘어디로 보낼까요?’에서 바꿀 수 있습니다");
+  parts.push("거리는 직선거리입니다");
+  $("#mapCap").textContent = parts.join(". ") + ".";
+}
+
+/* 2-week boards */
+function renderBoard(which){
+  const cfg = state.boards[which];
+  const DAYS = BOARD_DAYS[which];
+  const start = mondayOf(cfg.anchor), end = addDays(start, DAYS-1), today = todayKey();
+  const s = parseKey(start), e = parseKey(end);
+  $("#range-"+which).textContent = `${s.getMonth()+1}월 ${s.getDate()}일 – ${e.getMonth()+1}월 ${e.getDate()}일`;
+  const rangeEl = $("#range-"+which);
+  const tl = $("#tl-"+which);
+  tl.classList.toggle("d5", DAYS===5);        /* 국내(월~금 5칸) 와 해외(7칸) 의 칸 너비가 다릅니다 */
+  if(!state.members.length){
+    tl.innerHTML = `<div class="board-empty">${state.mode==="connecting" ? "불러오는 중…" : `팀원을 먼저 추가하면 여기에 이번 주 일정이 표시됩니다.<br><button class="btn primary" type="button" data-open-members>팀원 추가</button>`}</div>`;
+    return;
+  }
+  const days = Array.from({length:DAYS}, (_,i) => addDays(start,i));
+  const q = cfg.q.trim().toLowerCase();
+  let members = state.members.filter(m => !q || m.name.toLowerCase().includes(q));
+  const focus = which==="intl" ? "intl" : "trip";
+  const inWeek = t => t.type===focus && t.end>=start && t.start<=end;
+  members = members.filter(m => state.trips.some(t => t.memberId===m.id && inWeek(t)));
+  members.sort((x,y) => x.name.localeCompare(y.name, "ko"));
+  let h = `<div class="tl-row head"><div class="tl-name"></div><div class="tl-days">` +
+    days.map(k => { const d=parseKey(k), dw=d.getDay();
+      return `<div class="${dw===0||dw===6?"we":""} ${dw===0?"sun":""} ${k===today?"td":""}">${WD[dw]}<b class="num">${d.getDate()}</b></div>`; }).join("") + `</div></div>`;
+  if(!members.length) h += `<div class="board-empty">${q ? "이번 주 일정이 있는 팀원 중 이름이 일치하는 사람이 없습니다." : which==="dom" ? "이번 주에 국내 방문 일정이 있는 팀원이 없습니다. 상단의 ‘일정 추가’로 등록하세요." : "이번 주에 해외 출장 일정이 있는 팀원이 없습니다. 상단의 ‘일정 추가’로 등록하세요."}</div>`;
+  if(state.members.length) rangeEl.textContent += ` · ${which==="dom"?"국내 방문":"해외 출장"} ${members.length}명`;
+  /* 국내 보드(2026-09-18): 같은 날 여러 곳을 「외 N곳」으로 묶지 않고, 방문 한 건마다 한 줄씩 보여줍니다.
+     엑셀 출장 계획표처럼 한 사람 아래에 그 주의 방문이 모두 펼쳐집니다. */
+  const perRow = which==="dom";
+  for(const m of members){
+    const items = [], sameDay = new Map();
+    for(const t of state.trips){
+      if(t.memberId!==m.id || !inWeek(t)) continue;
+      if(!perRow && t.type==="trip" && t.start===t.end){ if(!sameDay.has(t.start)) sameDay.set(t.start, []); sameDay.get(t.start).push(t); }
+      else items.push({start:t.start, end:t.end, trips:[t]});
+    }
+    for(const [k, list] of sameDay) items.push({start:k, end:k, trips:list});
+    items.sort((a,b) => a.start.localeCompare(b.start) || b.end.localeCompare(a.end));
+    const laneEnds = [], placed = [];
+    for(const it of items){
+      /* 같은 날 두 곳이면 아래 줄로 내려가고, 날짜가 다르면 빈 줄을 다시 씁니다 */
+      let lane = laneEnds.findIndex(le => le < it.start);
+      if(lane<0){ lane = laneEnds.length; laneEnds.push(it.end); } else laneEnds[lane] = it.end;
+      placed.push({it, lane});
+    }
+    const lanes = Math.max(1, laneEnds.length);
+    h += `<div class="tl-row"><button class="tl-name" type="button" data-week="${esc(m.id)}" data-week-date="${start<=today&&today<=end?today:start}" style="--c:${m.color}" title="한 주 일정 보기"><b><span class="dotc"></span>${esc(m.name)}</b><small>${esc(m.base||"근무지 미지정")}</small></button>`;
+    h += `<div class="tl-days" style="grid-template-rows:repeat(${lanes},${perRow?38:52}px)">`;
+    days.forEach((k,i) => { const dw=parseKey(k).getDay();
+      h += `<button type="button" class="cell ${dw===0||dw===6?"we":""} ${k===today?"td":""}" style="grid-column:${i+1}" data-add="${esc(m.id)}" data-date="${k}" data-type="${focus}" aria-label="${esc(m.name)} ${md(k)} 일정 추가"></button>`; });
+    for(const {it,lane} of placed){
+      if(it.trips.length > 1){
+        const f = it.trips[0], n = it.trips.length, si = dayDiff(start, it.start);
+        const cities = [...new Set(it.trips.map(x => x.city).filter(Boolean))].join(", ");
+        const tip = `${m.name} · ${md(it.start)} 방문 ${n}곳\n` + it.trips.map(x => `${x.hospital||x.city}${x.purpose?" – "+x.purpose:""}`).join("\n");
+        h += `<button type="button" class="bar trip ${focus!=="trip"?"dim":""}" style="--c:${m.color};grid-column:${si+1}/${si+2};grid-row:${lane+1}" data-week="${esc(m.id)}" data-week-date="${it.start}" title="${esc(tip)}"><b>${esc(f.hospital||f.city)} 외 ${n-1}곳</b>${cities?`<span>${esc(cities)}</span>`:""}</button>`;
+        continue;
+      }
+      const t = it.trips[0];
+      const si = Math.max(0, dayDiff(start, t.start)), ei = Math.min(DAYS-1, dayDiff(start, t.end));
+      const dim = false;
+      const tip = [m.name, TYPE_LABEL[t.type], t.kind?`${t.kind} · ${KIND_LABEL.get(t.kind)}`:"", placeOf(t), t.hospital, t.purpose, t.rep?"영업 담당 "+t.rep:"", compTip(t), rng(t)].filter(Boolean).join(" · ");
+      const sub = t.type==="leave" ? t.purpose : subOf(t);
+      if(perRow){
+        /* [분류] 지역 · 병원 · 목적 ………… 영업 담당자 */
+        const body = [t.type==="trip" ? [t.city, t.hospital].filter(Boolean).join(" ") : mainOf(t), t.purpose].filter(Boolean).join(" ");
+        h += `<button type="button" class="bar ${t.type} domrow ${t.start<start?"cut-l":""}" style="--c:${m.color};grid-column:${si+1}/${ei+2};grid-row:${lane+1}" data-trip="${esc(t.id)}" title="${esc(tip)}">`
+          + kindTag(t.kind) + `<b>${esc(body || placeOf(t))}</b>`
+          + (t.rep?`<i class="rep">${esc(t.rep)}</i>`:"") + `</button>`;
+        continue;
+      }
+      h += `<button type="button" class="bar ${t.type} ${dim?"dim":""} ${t.start<start?"cut-l":""}" style="--c:${m.color};grid-column:${si+1}/${ei+2};grid-row:${lane+1}" data-trip="${esc(t.id)}" title="${esc(tip)}"><b>${esc(mainOf(t))}</b>${sub?`<span>${esc(sub)}</span>`:""}</button>`;
+    }
+    h += `</div></div>`;
+  }
+  tl.innerHTML = h;
+}
+
+/* overseas overview */
+function renderIntl(){
+  const day = state.iDate, q = state.iQ.trim().toLowerCase();
+  const match = t => !q || [t.country,t.city].join(" ").toLowerCase().includes(q);
+  const stay = $("#iStay"), up = $("#iUp");
+  if(!state.members.length){ stay.innerHTML = up.innerHTML = emptyMembers(); $("#iHint").textContent=""; $("#iPastPanel").hidden = true; return; }
+  const intl = state.trips.filter(t => t.type==="intl" && memberById(t.memberId));
+  const staying = intl.filter(t => t.start<=day && t.end>=day && match(t));
+  const groups = new Map();
+  for(const t of staying){ const k = t.country || "국가 미지정"; if(!groups.has(k)) groups.set(k, []); groups.get(k).push(t); }
+  const gs = [...groups].sort((a,b) => b[1].length-a[1].length || a[0].localeCompare(b[0],"ko"));
+  const people = new Set(staying.map(t=>t.memberId)).size;
+  $("#iStayTitle").textContent = `${md(day)} 해외 체류 중 ${people}명`;
+  $("#iHint").textContent = q
+    ? `${state.iQ.trim()} 기준으로 걸러서 보여 줍니다. 아래에 이곳을 다녀온 팀원도 함께 나옵니다.`
+    : `${md(day)} 기준 ${people}명이 해외에 있습니다. 국가를 입력하면 현지 경험이 있는 팀원도 찾아 줍니다.`;
+  stay.innerHTML = gs.length ? gs.map(([country, ts]) => `<li>
+      <span class="rank"></span>
+      <div class="place"><b>${esc(country)}</b><small>${new Set(ts.map(t=>t.memberId)).size}명</small></div>
+      <div class="people">${ts.map(t => chip(memberById(t.memberId), `${esc([t.city,t.hospital].filter(Boolean).join(" "))} ~${md(t.end)}`, "", day)).join("")}</div>
+      <div></div></li>`).join("")
+    : `<li class="empty">${q ? "이 날짜에 해당 국가에 있는 팀원이 없습니다." : "이 날짜에 해외에 있는 팀원이 없습니다."}</li>`;
+
+  const soon = intl.filter(t => t.start>day && t.start<=addDays(day,30) && match(t)).sort((a,b)=>a.start.localeCompare(b.start));
+  up.innerHTML = soon.length ? soon.map(t => {
+    const m = memberById(t.memberId);
+    return `<li><span class="num">${rng(t)}</span><div>${chip(m,"","",t.start)}</div>
+      <button type="button" class="what linkish" data-trip="${esc(t.id)}" style="border:0;background:none;text-align:left;padding:0"><b>${esc(placeOf(t))}</b><small>${esc(subOf(t)) || "&nbsp;"}</small></button></li>`;
+  }).join("") : `<li class="empty">30일 안에 잡힌 해외 출장이 없습니다.</li>`;
+
+  const pp = $("#iPastPanel");
+  pp.hidden = !q;
+  if(q){
+    const past = intl.filter(t => t.end<day && match(t)).sort((a,b)=>b.start.localeCompare(a.start));
+    const byMember = new Map();
+    for(const t of past){ if(!byMember.has(t.memberId)) byMember.set(t.memberId, []); byMember.get(t.memberId).push(t); }
+    $("#iPastTitle").textContent = `${state.iQ.trim()} 다녀온 팀원 ${byMember.size}명`;
+    $("#iPast").innerHTML = byMember.size ? [...byMember].map(([mid, ts]) => {
+      const m = memberById(mid), last = ts[0];
+      return `<li><span class="num">${fullDate(last.start)}</span><div>${chip(m,"","",last.start)}</div>
+        <div class="what"><b>${ts.length}회 방문</b><small>최근 ${esc(placeOf(last))}${last.hospital?" "+esc(last.hospital):""}</small></div></li>`;
+    }).join("") : `<li class="empty">기록된 방문 이력이 없습니다.</li>`;
+  }
+}
+
+/* full calendar + history */
+function renderFilters(){
+  refreshSuggestions();
+  const inp = $("#cMember");
+  if(!memberById(state.cal.member)) state.cal.member = "";
+  inp.placeholder = `전체 (${state.members.length}명)`;
+  // 입력 중에는 덮어쓰지 않음 (15초마다 새로 그려도 쓰던 글자가 지워지지 않게)
+  if(document.activeElement !== inp){ inp.value = state.cal.member ? memberById(state.cal.member).name : ""; inp.classList.remove("bad"); }
+  $("#cType").value = state.cal.type;
+}
+function calFilter(t){
+  const c = state.cal, m = memberById(t.memberId);
+  if(!m) return false;
+  if(c.member && t.memberId!==c.member) return false;
+  if(c.type==="work" && t.type==="leave") return false;
+  if(["trip","intl","leave"].includes(c.type) && t.type!==c.type) return false;
+  if(c.q){
+    const hay = [m.name,t.city,t.country,t.hospital,t.purpose,t.rep].join(" ").toLowerCase();
+    if(!hay.includes(c.q.toLowerCase())) return false;
+  }
+  return true;
+}
+const MAX_IN_CELL = 4;
+function renderCal(){
+  const first = state.cal.month, fd = parseKey(first), today = todayKey();
+  const last = keyOf(new Date(fd.getFullYear(), fd.getMonth()+1, 0));
+  $("#calLabel").textContent = `${fd.getFullYear()}년 ${fd.getMonth()+1}월`;
+  const gs = mondayOf(first), ge = addDays(mondayOf(last), 6);
+  const order = memberOrder();
+  const trips = state.trips.filter(t => t.end>=gs && t.start<=ge && calFilter(t))
+    .sort((a,b) => (order.get(a.memberId)-order.get(b.memberId)) || a.start.localeCompare(b.start));
+  const inMonth = trips.filter(t => t.end>=first && t.start<=last);
+  const dom = inMonth.filter(t=>t.type==="trip"), intl = inMonth.filter(t=>t.type==="intl");
+  const travellers = new Set([...dom,...intl].map(t=>t.memberId)).size;
+  $("#calStats").innerHTML = `
+    <div class="stat"><small>국내 방문</small><b class="num">${dom.length}</b><span>건</span></div>
+    <div class="stat"><small>해외 출장</small><b class="num">${intl.length}</b><span>건</span></div>
+    <div class="stat"><small>출장 다닌 인원</small><b class="num">${travellers}</b><span>명</span></div>
+    <div class="stat"><small>많이 간 곳</small><span>${topCounts([...dom,...intl].map(placeOf),3).map(([k,n])=>`${esc(k)} ${n}`).join(", ") || "없음"}</span></div>`;
+  let h = `<div class="mc-head">${["월","화","수","목","금","토","일"].map(d=>`<div>${d}</div>`).join("")}</div><div class="mc-grid">`;
+  for(let k = gs; k <= ge; k = addDays(k,1)){
+    const d = parseKey(k), dw = d.getDay();
+    const list = trips.filter(t => t.start<=k && t.end>=k);
+    const cls = [k<first||k>last?"out":"", dw===0||dw===6?"we":"", k===today?"td":""].join(" ");
+    h += `<div class="mc-cell ${cls}"><button type="button" class="mc-d num" data-day="${k}" aria-label="${fullDate(k)} 일정 ${list.length}건">${d.getDate()}</button>`;
+    const chips = [], byMember = new Map();
+    for(const t of list){
+      if(t.type==="trip" && t.start===t.end){
+        if(!byMember.has(t.memberId)){ const g = {group:true, trips:[]}; byMember.set(t.memberId, g); chips.push(g); }
+        byMember.get(t.memberId).trips.push(t);
+      } else chips.push(t);
+    }
+    h += chips.slice(0,MAX_IN_CELL).map(c => {
+      if(c.group && c.trips.length > 1){
+        const f = c.trips[0], m = memberById(f.memberId), n = c.trips.length;
+        return `<button type="button" class="mc-chip trip" style="--c:${m.color}" data-day="${k}" title="${esc(m.name+" · 방문 "+n+"곳\n"+c.trips.map(x=>x.hospital||x.city).join("\n"))}"><b>${esc(m.name)}</b>${esc((f.hospital||f.city)+" 외 "+(n-1))}</button>`;
+      }
+      const t = c.group ? c.trips[0] : c;
+      const m = memberById(t.memberId);
+      const label = t.type==="trip" ? (t.hospital || t.city) : t.type==="intl" ? "✈ "+(t.country||t.city) : "부재";
+      return `<button type="button" class="mc-chip ${t.type}" style="--c:${m.color}" data-trip="${esc(t.id)}" title="${esc([m.name, TYPE_LABEL[t.type], placeOf(t), t.hospital, t.purpose, compTip(t), rng(t)].filter(Boolean).join(" · "))}"><b>${esc(m.name)}</b>${esc(label)}</button>`;
+    }).join("");
+    if(chips.length > MAX_IN_CELL) h += `<button type="button" class="mc-more" data-day="${k}">+${chips.length-MAX_IN_CELL}명 더 보기</button>`;
+    h += `</div>`;
+  }
+  $("#mcal").innerHTML = h + `</div>`;
+}
+function histFrom(){
+  const v = $("#hPeriod").value, t = todayKey();
+  if(v==="all") return "0000-00-00";
+  if(v==="y") return t.slice(0,4)+"-01-01";
+  const d = parseKey(t); d.setMonth(d.getMonth()-Number(v)); return keyOf(d);
+}
+function historyRows(){                          // 화면 목록과 엑셀이 같은 조건·같은 순서(최신순)를 씁니다
+  const from = histFrom(), today = todayKey(), fut = $("#hFuture").checked;
+  return state.trips.filter(t => calFilter(t) && t.end>=from && (fut || t.start<=today))
+    .sort((a,b) => b.start.localeCompare(a.start) || b.end.localeCompare(a.end) || a.memberId.localeCompare(b.memberId));
+}
+function renderHistory(){
+  const today = todayKey();
+  const rows = historyRows();
+  const LIMIT = 400;
+  $("#hBody").innerHTML = rows.length ? rows.slice(0,LIMIT).map(t => {
+    const m = memberById(t.memberId);
+    return `<tr class="row" data-trip="${esc(t.id)}" tabindex="0">
+      <td>${fullDate(t.start)}${t.end!==t.start?` – ${md(t.end)}`:""}${t.start>today?`<span class="fut">예정</span>`:""}</td>
+      <td><span class="dotc" style="--c:${m.color}"></span>${esc(m.name)}</td>
+      <td><span class="tag ${t.type}">${TYPE_LABEL[t.type]}</span></td>
+      <td>${t.kind ? kindTag(t.kind)+esc(KIND_LABEL.get(t.kind)) : "–"}</td>
+      <td>${t.type==="leave" ? "–" : esc(placeOf(t))}</td><td>${esc(t.hospital)||"–"}</td><td>${esc(t.purpose)||"–"}</td><td>${esc(t.rep)||"–"}</td></tr>`;
+  }).join("") : `<tr class="none"><td colspan="8">${state.members.length ? "조건에 맞는 기록이 없습니다. 기간을 넓히거나 필터를 바꿔 보세요." : "팀원과 일정을 추가하면 여기에 이력이 쌓입니다."}</td></tr>`;
+  $("#hFoot").textContent = rows.length ? `${rows.length}건${rows.length>LIMIT?` 중 최근 ${LIMIT}건 표시`:""} · 줄을 누르면 수정할 수 있습니다.` : "";
+}
+
+/* ---------- 출장 이력 엑셀 다운로드 ---------- */
+// 엑셀 라이브러리(SheetJS)는 누를 때만 불러옵니다. 포털 claim.html 과 같은 판(0.18.5)입니다.
+let xlsxLoading = null;
+function loadXlsx(){
+  if(window.XLSX) return Promise.resolve(window.XLSX);
+  if(!xlsxLoading) xlsxLoading = new Promise((ok, no) => {
+    const sc = document.createElement("script");
+    sc.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+    sc.onload = () => window.XLSX ? ok(window.XLSX) : no(new Error("엑셀 기능을 불러오지 못했습니다."));
+    sc.onerror = () => { xlsxLoading = null; no(new Error("엑셀 기능을 불러오지 못했습니다. 인터넷 연결을 확인하세요.")); };
+    document.head.appendChild(sc);
+  });
+  return xlsxLoading;
+}
+async function exportHistory(){
+  const btn = $("#hExport"), rows = historyRows();
+  if(!rows.length){ toast("받을 이력이 없습니다. 기간이나 필터를 바꿔 보세요."); return; }
+  btn.disabled = true; const label = btn.textContent; btn.textContent = "만드는 중…";
+  try {
+    const X = await loadXlsx(), today = todayKey();
+    const head = ["시작일","종료일","일수","팀원","구분","분류","국가","지역·도시","방문처","목적","영업 담당자","동행인","상태"];
+    // 날짜는 "YYYY-MM-DD" 글자 그대로 넣습니다 (엑셀·시간대 때문에 하루 밀리는 일이 없도록)
+    const aoa = [head].concat(rows.map(t => [
+      t.start, t.end, dayDiff(t.start, t.end) + 1,
+      (memberById(t.memberId)||{}).name || "", TYPE_LABEL[t.type] || t.type,
+      t.kind ? `${t.kind} (${KIND_LABEL.get(t.kind)})` : "",
+      t.type==="intl" ? t.country : (t.type==="trip" ? "대한민국" : ""),
+      t.type==="leave" ? "" : t.city,
+      t.hospital, t.purpose, t.rep, companionNames(t).join(", "),
+      t.start > today ? "예정" : t.end >= today ? "진행 중" : "완료"
+    ]));
+    const ws = X.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = [12,12,6,10,8,12,10,12,30,40,12,20,8].map(w => ({wch:w}));
+    ws["!autofilter"] = { ref: X.utils.encode_range({s:{r:0,c:0}, e:{r:aoa.length-1, c:head.length-1}}) };
+    ws["!freeze"] = { xSplit:0, ySplit:1 };
+    const c = state.cal, m = memberById(c.member);
+    const cond = [
+      ["출장 이력 (출장 보드)"], [],
+      ["받은 날", today], ["받은 사람", (window.__bdtsUser && window.__bdtsUser.email) || ""],
+      ["기간", $("#hPeriod").selectedOptions[0].textContent + (histFrom()!=="0000-00-00" ? ` (${histFrom()} ~)` : "")],
+      ["예정 일정", $("#hFuture").checked ? "포함" : "제외"],
+      ["팀원", m ? m.name : "전체"], ["구분", $("#cType").selectedOptions[0].textContent],
+      ["검색어", c.q || "없음"], ["건수", rows.length], ["정렬", "시작일 최신순"]
+    ];
+    const ws2 = X.utils.aoa_to_sheet(cond); ws2["!cols"] = [{wch:12},{wch:40}];
+    const wb = X.utils.book_new();
+    X.utils.book_append_sheet(wb, ws, "출장 이력");
+    X.utils.book_append_sheet(wb, ws2, "조건");
+    const name = `출장이력_${m ? m.name+"_" : ""}${$("#hPeriod").selectedOptions[0].textContent.replace(/\s/g,"")}_${today.replace(/-/g,"")}.xlsx`;
+    X.writeFile(wb, name);
+    toast(`${rows.length.toLocaleString()}건을 엑셀로 받았습니다`);
+  } catch(e){ console.error(e); toast(e.message || "엑셀 파일을 만들지 못했습니다."); }
+  finally { btn.disabled = false; btn.textContent = label; }
+}
+$("#hExport").addEventListener("click", exportHistory);
+
+/* ---------- 대시보드 (관리자 전용) ---------- */
+let isAdmin = false;
+const savedTab = lsGet("tripboard.tab");
+state.dash = { member:"" };
+function applyAdmin(){
+  $("#tab-dash").hidden = !isAdmin;
+  if(!isAdmin && state.tab==="dash") setTab("dom");
+  if(isAdmin && savedTab==="dash" && state.tab!=="dash") setTab("dash");
+}
+(window.__bdtsAuthReady || Promise.resolve()).then(() => {
+  const u = window.__bdtsUser;
+  isAdmin = location.protocol==="file:" || !!(u && u.isAdmin);   // PC 에서 파일로 연 경우는 개인 사용이라 보여 줌
+  applyAdmin();
+}).catch(() => {});
+function periodFrom(v){
+  const t = todayKey();
+  if(v==="all") return "0000-00-00";
+  if(v==="y") return t.slice(0,4)+"-01-01";
+  const d = parseKey(t); d.setMonth(d.getMonth()-Number(v)); return keyOf(d);
+}
+function rankHtml(list, fmt){
+  if(!list.length) return `<li><span class="empty">기록 없음</span></li>`;
+  const max = list[0][1] || 1;
+  return list.map(([k,n],i) => `<li><span class="no num">${i+1}</span><span class="nm" title="${esc(k)}">${esc(k)}</span>
+    <span><span class="bar-h" style="display:block;width:${Math.max(3, Math.round(n/max*100))}%"></span></span><span class="cnt num">${fmt ? fmt(k,n) : n+"건"}</span></li>`).join("");
+}
+function renderDash(){
+  if(!isAdmin) return;
+  refreshSuggestions();
+  const inp = $("#dMember");
+  if(!memberById(state.dash.member)) state.dash.member = "";
+  inp.placeholder = `전체 (${state.members.length}명)`;
+  if(document.activeElement !== inp){ inp.value = state.dash.member ? memberById(state.dash.member).name : ""; inp.classList.remove("bad"); }
+  const from = periodFrom($("#dPeriod").value), today = todayKey(), mid = state.dash.member;
+  const clip = t => dayDiff(t.start < from ? from : t.start, t.end < today ? t.end : today) + 1;
+  const all = state.trips.filter(t => t.type!=="leave" && memberById(t.memberId) && t.start<=today && t.end>=from);
+  const past = all.filter(t => !mid || t.memberId===mid).sort((a,b) => b.start.localeCompare(a.start));
+  const dom = past.filter(t => t.type==="trip"), intl = past.filter(t => t.type==="intl");
+  const intlDays = intl.reduce((n,t) => n + clip(t), 0);
+  const m = memberById(mid);
+  $("#dStats").innerHTML = `
+    <div class="stat"><small>대상</small><span>${m ? `<span class="dotc" style="--c:${m.color}"></span>${esc(m.name)}` : `팀 전체 ${state.members.length}명`}</span></div>
+    <div class="stat"><small>국내 방문</small><b class="num">${dom.length.toLocaleString()}</b><span>건</span></div>
+    <div class="stat"><small>해외 출장</small><b class="num">${intl.length}</b><span>건, ${intlDays}일</span></div>
+    <div class="stat"><small>방문처</small><b class="num">${new Set(dom.map(t=>normH(t.hospital)).filter(Boolean)).size}</b><span>곳</span></div>
+    <div class="stat"><small>다녀온 지역</small><b class="num">${new Set(dom.map(t=>t.city).filter(Boolean)).size}</b><span>곳</span></div>
+    ${m ? "" : `<div class="stat"><small>출장 다닌 인원</small><b class="num">${new Set(past.map(t=>t.memberId)).size}</b><span>명</span></div>`}
+    <div class="stat"><small>최근 일정</small><span>${past[0] ? `${md(past[0].start)} ${esc(past[0].hospital||placeOf(past[0]))}` : "없음"}</span></div>`;
+
+  // 월별 (국내 = 방문일, 해외 = 출발일)
+  const months = [];
+  const firstM = (from==="0000-00-00" ? (past.length ? past[past.length-1].start : today) : from).slice(0,7);
+  for(let k = firstM+"-01"; k.slice(0,7) <= today.slice(0,7); k = addMonths(k,1)) months.push(k.slice(0,7));
+  const shown = months.slice(-24);
+  const cnt = new Map(shown.map(x => [x,{d:0,i:0}]));
+  for(const t of past){ const c = cnt.get(t.start.slice(0,7)); if(c){ if(t.type==="trip") c.d++; else c.i++; } }
+  const mx = Math.max(1, ...[...cnt.values()].map(c => c.d+c.i));
+  $("#dMonthly").innerHTML = shown.map(x => {
+    const c = cnt.get(x), H = 140;
+    const hd = Math.round(c.d/mx*H), hi = Math.round(c.i/mx*H);
+    return `<div class="mcol" title="${x} · 국내 ${c.d}건 · 해외 ${c.i}건"><span class="v num">${c.d+c.i}${c.i?`<small>해외 ${c.i}</small>`:""}</span>
+      <span class="stk"><i style="height:${hd}px"></i><i class="intl" style="height:${hi}px"></i></span>
+      <span class="l num">${x.slice(2,4)}.${x.slice(5)}</span></div>`;
+  }).join("");
+  $("#dCity").innerHTML = rankHtml(topCounts(dom.map(t=>t.city), 10));
+  $("#dHosp").innerHTML = rankHtml(topCounts(dom.map(t=>t.hospital), 10));
+  const cDays = new Map(); intl.forEach(t => { if(t.country) cDays.set(t.country, (cDays.get(t.country)||0) + clip(t)); });
+  $("#dCountry").innerHTML = rankHtml(topCounts(intl.map(t=>t.country), 10), (k,n) => `${n}건 (${cDays.get(k)||0}일)`);
+  $("#dPurpose").innerHTML = rankHtml(topCounts(past.map(t=>t.purpose), 10));
+
+  // 팀원별 요약 (항상 전체 팀원, 선택한 사람 강조)
+  const byM = new Map(); all.forEach(t => { if(!byM.has(t.memberId)) byM.set(t.memberId, []); byM.get(t.memberId).push(t); });
+  const body = [...state.members].sort((x,y) => (byM.get(y.id)||[]).length - (byM.get(x.id)||[]).length).map(mm => {
+    const mine = (byM.get(mm.id)||[]).sort((a,b) => b.start.localeCompare(a.start));
+    const d = mine.filter(t=>t.type==="trip"), it = mine.filter(t=>t.type==="intl"), last = mine[0];
+    return `<tr class="${mm.id===mid?"sel":""}"><td><button type="button" class="linkbtn" data-dmember="${esc(mm.id)}"><span class="dotc" style="--c:${mm.color}"></span>${esc(mm.name)}</button></td>
+      <td class="num">${d.length}건</td><td class="num">${it.length}건${it.length?` (${it.reduce((n,t)=>n+clip(t),0)}일)`:""}</td>
+      <td>${topCounts(mine.map(placeOf),2).map(([k,n])=>`${esc(k)} ${n}`).join(", ") || "–"}</td>
+      <td>${last ? `${md(last.start)} ${esc(last.hospital||placeOf(last))}` : "–"}</td></tr>`;
+  }).join("");
+  $("#dSummary").innerHTML = `<div class="scroll sum-scroll"><table class="htable stable"><thead><tr><th>팀원</th><th>국내 방문</th><th>해외 출장</th><th>자주 간 곳</th><th>최근 일정</th></tr></thead><tbody>${body || `<tr class="none"><td colspan="5">팀원이 없습니다.</td></tr>`}</tbody></table></div>`;
+}
+function applyDashMember(){
+  const inp = $("#dMember"), v = inp.value.trim();
+  const mm = v ? findMember(v, true) : null;
+  if(v && !mm){ inp.classList.add("bad"); return; }
+  inp.classList.remove("bad"); inp.value = mm ? mm.name : "";
+  state.dash.member = mm ? mm.id : ""; renderDash();
+}
+$("#dMember").addEventListener("input", e => { e.target.classList.remove("bad"); if(findMember(e.target.value,false) || !e.target.value.trim()) applyDashMember(); });
+$("#dMember").addEventListener("change", applyDashMember);
+$("#dMember").addEventListener("keydown", e => { if(e.key==="Enter" && !e.isComposing){ e.preventDefault(); applyDashMember(); } });
+$("#dPeriod").addEventListener("change", renderDash);
+
+/* ---------- week dialog ---------- */
+const weekDlg = $("#weekDlg"), dayDlg = $("#dayDlg");
+const week = { memberId:null, start:null };
+function contextDate(){ return state.tab==="dom" ? state.fDate : state.tab==="intl" ? state.iDate : todayKey(); }
+function openWeek(memberId, dateKey){
+  week.memberId = memberId; week.start = mondayOf(isKey(dateKey) ? dateKey : contextDate());
+  renderWeek(); weekDlg.showModal();
+}
+function itemHtml(t, m, withName){
+  const who = withName ? esc(m.name)+" · " : "";
+  if(t.type==="leave") return `<button type="button" class="wk-item leave" data-trip="${esc(t.id)}"><b>${who}휴가·부재</b><small>${esc([t.purpose, t.start!==t.end?rng(t):""].filter(Boolean).join(" · ")) || "&nbsp;"}</small></button>`;
+  const sub = [t.type==="trip" ? (t.hospital?t.city:"") : t.hospital, t.purpose, t.rep?"영업 담당 "+t.rep:"", t.start!==t.end?rng(t):""].filter(Boolean).join(" · ");
+  const main = t.type==="trip" ? (t.hospital||t.city) : "✈ "+placeOf(t);
+  return `<button type="button" class="wk-item ${t.type}" style="--c:${m.color}" data-trip="${esc(t.id)}"><b>${who}${kindTag(t.kind)}${esc(main)}</b>${sub?`<small>${esc(sub)}</small>`:""}</button>`;
+}
+function renderWeek(){
+  const m = memberById(week.memberId);
+  if(!m){ if(weekDlg.open) weekDlg.close(); return; }
+  const today = todayKey(), end = addDays(week.start, 6);
+  $("#wkTitle").innerHTML = `<span class="dotc" style="--c:${m.color}"></span>${esc(m.name)} 님의 한 주`;
+  const s0 = parseKey(week.start), e0 = parseKey(end);
+  $("#wkRange").textContent = `${s0.getMonth()+1}월 ${s0.getDate()}일 – ${e0.getMonth()+1}월 ${e0.getDate()}일 · 기본 근무지 ${m.base||"미지정"}`;
+  $("#wkList").innerHTML = Array.from({length:7}, (_,i) => addDays(week.start,i)).map(k => {
+    const d = parseKey(k), dw = d.getDay();
+    const rank = t => ({leave:0,intl:1,trip:2})[t.type];
+    const items = state.trips.filter(t => t.memberId===m.id && t.start<=k && t.end>=k).sort((a,b) => rank(a)-rank(b) || a.start.localeCompare(b.start));
+    const body = items.length ? items.map(t => itemHtml(t, m, false)).join("")
+      : `<div class="wk-base">${dw===0||dw===6 ? "주말" : m.base ? esc(m.base)+" 근무" : "일정 없음"}</div>`;
+    return `<li class="${dw===0||dw===6?"we":""} ${k===today?"td":""}">
+      <div class="wd"><b>${WD[dw]}</b> <span class="num">${d.getMonth()+1}/${d.getDate()}</span></div>
+      <div class="items">${body}</div>
+      <button type="button" class="wk-plus" data-wkadd="${k}" aria-label="${md(k)} 일정 추가" title="이 날 일정 추가">+</button>
+    </li>`;
+  }).join("");
+  const target = state.tab==="dom" ? CITY.get(state.fCity) : null, ab = $("#wkAssign");
+  ab.hidden = !target;
+  if(target) ab.textContent = `${md(state.fDate)} ${target.name}에 배정`;
+}
+$("#wkPrev").addEventListener("click", () => { week.start = addDays(week.start,-7); renderWeek(); });
+$("#wkNext").addEventListener("click", () => { week.start = addDays(week.start,7); renderWeek(); });
+$("#wkAdd").addEventListener("click", () => {
+  const c = contextDate();
+  openTrip({memberId:week.memberId, date: week.start<=c && c<=addDays(week.start,6) ? c : week.start});
+});
+$("#wkAssign").addEventListener("click", () => openTrip({memberId:week.memberId, city:state.fCity, date:state.fDate, type:"trip"}));
+$("#wkList").addEventListener("click", e => {
+  const a = e.target.closest("[data-wkadd]"); if(a) openTrip({memberId:week.memberId, date:a.dataset.wkadd});
+});
+
+/* ---------- day dialog ---------- */
+let dayKey = null;
+function openDay(k){ dayKey = k; renderDay(); dayDlg.showModal(); }
+function renderDay(){
+  const order = memberOrder();
+  const list = state.trips.filter(t => t.start<=dayKey && t.end>=dayKey && calFilter(t))
+    .sort((a,b) => (order.get(a.memberId)-order.get(b.memberId)));
+  $("#dayTitle").textContent = `${fullDate(dayKey)} 일정 ${list.length}건`;
+  $("#dayList").innerHTML = list.length
+    ? list.map(t => `<li>${itemHtml(t, memberById(t.memberId), true)}</li>`).join("")
+    : `<li><div class="wk-base">이 날 일정이 없습니다.</div></li>`;
+}
+$("#dayAdd").addEventListener("click", () => openTrip({date:dayKey, memberId:state.cal.member || undefined}));
+
+/* ---------- trip dialog ---------- */
+const tripDlg = $("#tripDlg"), tripForm = $("#tripForm"), TF = tripForm.elements;
+let editingTrip = null;
+const ROWDEF = {
+  trip: [
+    ["date","날짜","date",""], ["kind","분류","select"], ["city","방문지역","text","cityList","예: 대전"],
+    ["hospital","병원 이름","text","","예: 충남대학교병원",40,"wide-f"], ["purpose","목적","text","purposeList","예: 제품 설명",60,"wide-f"],
+    ["rep","영업 담당자","text","repList","이름",20],
+  ],
+  intl: [
+    ["start","출발일","date",""], ["end","귀국일","date",""],
+    ["country","국가","text","countryList","예: 베트남",30], ["city","도시","text","","예: 하노이",40],
+    ["hospital","방문처","text","","병원·기관·전시회",40,"wide-f"], ["purpose","목적","text","purposeList","예: 학회 참석",60,"wide-f"],
+    ["rep","영업 담당자","text","repList","이름",20],
+  ],
+};
+const rowsOf = kind => [...$("#rows-"+kind).querySelectorAll("[data-row]")];
+function rowHtml(kind, v={}){
+  return `<div class="vgrid ${kind==="trip"?"dom":"intl"} vrow" data-row>` + ROWDEF[kind].map(([f,label,type,list,ph,max,cls]) => {
+    /* 분류처럼 목록에서만 고르는 칸은 <select> 로 그립니다 (안 골라도 저장됩니다) */
+    if(type==="select"){
+      const cur = v[f]||"";
+      return `<label class="${cls||""}"><span class="vl">${label}</span><select data-f="${f}" class="kind-sel">`
+        + `<option value=""${cur?"":" selected"}>선택</option>`
+        + KIND_LIST.map(([code,name]) => `<option value="${code}"${cur===code?" selected":""}>${code} · ${name}</option>`).join("")
+        + `</select></label>`;
+    }
+    return `<label class="${cls||""}"><span class="vl">${label}</span><input type="${type}" data-f="${f}" ${list?`list="${list}"`:""} ${ph?`placeholder="${ph}"`:""} ${max?`maxlength="${max}"`:""} autocomplete="off" value="${esc(v[f]||"")}"></label>`;
+  }).join("") + `<button type="button" class="rm" data-rm aria-label="이 줄 지우기" title="이 줄 지우기">×</button></div>`;
+}
+const rowVal = r => Object.fromEntries([...r.querySelectorAll("[data-f]")].map(x => [x.dataset.f, String(x.value).trim()]));
+function isFilled(kind, v){ return kind==="trip" ? !!(v.city||v.hospital||v.purpose||v.rep||v.kind) : !!(v.country||v.city||v.hospital||v.purpose||v.rep); }
+const curType = () => TF.type.value;
+function syncRows(){
+  for(const kind of ["trip","intl"]){
+    const rs = rowsOf(kind);
+    rs.forEach(r => r.querySelector("[data-rm]").hidden = rs.length < 2);
+  }
+  tripForm.querySelectorAll("[data-addrow],[data-edit-hide]").forEach(x => x.hidden = !!editingTrip);
+  updateSaveLabel();
+}
+function updateSaveLabel(){
+  const b = $("#tripSave"), k = curType();
+  if(editingTrip || k==="leave"){ b.textContent = "저장"; return; }
+  const n = rowsOf(k).filter(r => isFilled(k, rowVal(r))).length;
+  b.textContent = n > 1 ? `${n}건 저장` : "저장";
+}
+function syncTypeField(){
+  const k = curType();
+  tripForm.querySelectorAll("[data-block]").forEach(b => b.hidden = b.dataset.block!==k);
+  $("#compBlock").hidden = k==="leave";
+  updateSaveLabel();
+}
+function refreshSuggestions(){
+  $("#memberList").innerHTML = state.members.map(m => `<option value="${esc(m.name)}">`).join("");
+  const reps = new Set([...state.members.map(m=>m.name), ...state.trips.map(x=>x.rep).filter(Boolean)]);
+  $("#repList").innerHTML = [...reps].map(n => `<option value="${esc(n)}">`).join("");
+  const countries = new Set([...state.trips.map(t=>t.country).filter(Boolean), ...COUNTRIES]);
+  $("#countryList").innerHTML = [...countries].map(n => `<option value="${esc(n)}">`).join("");
+}
+function openTrip(opts={}){
+  if(!state.members.length){ openMembers(); toast("먼저 팀원을 추가하세요"); return; }
+  const t = opts.tripId ? state.trips.find(x=>x.id===opts.tripId) : null;
+  if(opts.tripId && !t) return;
+  editingTrip = t ? t.id : null;
+  const m0 = memberById(t ? t.memberId : opts.memberId);
+  TF.memberId.value = m0 ? m0.id : "";
+  $("#tMember").value = m0 ? m0.name : "";
+  $("#tMember").classList.remove("bad");
+  // 동행인: 같은 묶음(groupId)에 있는 다른 팀원 일정
+  comp.list = []; comp.orig = []; comp.copies = new Map();
+  if(t && t.groupId){
+    for(const x of groupIndex().get(t.groupId) || []){
+      if(x.id===t.id || x.memberId===t.memberId || comp.copies.has(x.memberId) || !memberById(x.memberId)) continue;
+      comp.copies.set(x.memberId, x.id); comp.list.push(x.memberId); comp.orig.push(x.memberId);
+    }
+  }
+  $("#compInput").value = ""; $("#compInput").classList.remove("bad");
+  renderComp();
+  refreshSuggestions();
+  const type = t ? t.type : (opts.type || (state.tab==="intl" ? "intl" : "trip"));
+  TF.type.value = type;
+  const day = opts.date || contextDate();
+  const s = t ? t.start : day, e = t ? t.end : day;
+  $("#rows-trip").innerHTML = rowHtml("trip", t && t.type==="trip" ? {date:t.start, city:t.city, hospital:t.hospital, purpose:t.purpose, rep:t.rep} : {date:s, city:opts.city||""});
+  $("#rows-intl").innerHTML = rowHtml("intl", t && t.type==="intl" ? t : {start:s, end:e});
+  TF.leaveStart.value = s; TF.leaveEnd.value = e;
+  TF.leaveNote.value = t && t.type==="leave" ? t.purpose : "";
+  $("#tripTitle").textContent = t ? "일정 수정" : "일정 추가";
+  const del = $("#tripDelete"); del.hidden = !t; del.classList.remove("armed"); del.textContent = "삭제";
+  $("#tripErr").textContent = "";
+  syncRows(); syncTypeField();
+  tripDlg.showModal();
+  if(!m0) $("#tMember").focus();
+  else if(!t && type!=="leave"){
+    const f = type==="intl" ? "country" : (opts.city ? "hospital" : "city");
+    rowsOf(type)[0].querySelector(`[data-f="${f}"]`).focus();
+  }
+}
+
+/* ---------- 팀원 이름 직접 입력 · 동행인 ---------- */
+const comp = { list:[], orig:[], copies:new Map() };   // list: 지금 동행인, orig: 창을 열 때 동행인, copies: 팀원 → 그 사람 일정 번호
+function renderComp(){
+  const main = TF.memberId.value;
+  $("#compChips").innerHTML = comp.list.map(id => {
+    const m = memberById(id); if(!m) return "";
+    const isNew = !comp.copies.has(id);
+    return `<span class="cchip ${isNew&&editingTrip?"new":""}" style="--c:${m.color}" title="${isNew&&editingTrip?"저장하면 이 사람 달력에 추가됩니다":""}">${esc(m.name)}<button type="button" data-crm="${esc(id)}" aria-label="${esc(m.name)} 빼기" title="동행인에서 빼기">×</button></span>`;
+  }).join("");
+  const removed = comp.orig.filter(id => !comp.list.includes(id)).map(id => (memberById(id)||{}).name).filter(Boolean);
+  const note = $("#compNote");
+  if(removed.length) note.textContent = `저장하면 ${removed.join(", ")} 님 달력에서 이 일정이 빠집니다.`;
+  else if(editingTrip && comp.orig.length) note.textContent = "내용을 고쳐 저장하면 동행인 일정도 같이 바뀝니다. [삭제]는 이 사람 일정만 지웁니다.";
+  else note.textContent = "함께 가는 팀원을 넣으면 같은 일정이 그 사람 달력에도 들어갑니다.";
+  if(main && comp.list.includes(main)){ comp.list = comp.list.filter(x => x!==main); renderComp(); }
+}
+function setMainMember(){                       // 팀원 칸 확정 (Tab·Enter·칸 벗어남)
+  const inp = $("#tMember"), v = inp.value.trim();
+  const m = v ? findMember(v, true) : null;
+  if(m){ inp.value = m.name; inp.classList.remove("bad"); }
+  else if(v) inp.classList.add("bad");
+  TF.memberId.value = m ? m.id : "";
+  renderComp();
+  return m;
+}
+function addCompanion(){                        // 동행인 칸 확정. 성공하면 true
+  const inp = $("#compInput"), v = inp.value.trim(), err = $("#tripErr");
+  if(!v) return true;
+  const m = findMember(v, true);
+  if(!m){ inp.classList.add("bad"); err.textContent = `‘${v}’ 은(는) 팀원 목록에 없는 이름입니다.`; return false; }
+  if(m.id === TF.memberId.value){ inp.classList.add("bad"); err.textContent = "위 팀원 본인은 동행인으로 넣을 필요가 없습니다."; return false; }
+  if(!comp.list.includes(m.id)) comp.list.push(m.id);
+  inp.value = ""; inp.classList.remove("bad"); err.textContent = "";
+  renderComp();
+  return true;
+}
+function focusNext(el){
+  const all = [...tripForm.querySelectorAll("input:not([type=hidden]),button,select")]
+    .filter(x => !x.disabled && x.offsetParent !== null && !(x.type==="radio" && !x.checked));
+  const i = all.indexOf(el);
+  if(i >= 0 && all[i+1]) all[i+1].focus();
+}
+$("#tMember").addEventListener("input", e => {
+  e.target.classList.remove("bad");
+  const m = findMember(e.target.value, false);
+  TF.memberId.value = m ? m.id : "";
+  if(m) renderComp();
+});
+$("#tMember").addEventListener("change", setMainMember);
+$("#tMember").addEventListener("keydown", e => {
+  if(e.isComposing) return;
+  if(e.key==="Tab" && !e.shiftKey) setMainMember();
+  if(e.key==="Enter"){ e.preventDefault(); if(setMainMember()) focusNext(e.target); }
+});
+$("#compInput").addEventListener("input", e => { e.target.classList.remove("bad"); });
+$("#compInput").addEventListener("keydown", e => {
+  if(e.isComposing) return;
+  if(e.key==="Enter"){ e.preventDefault(); addCompanion(); }                         // 계속 이어서 입력
+  else if(e.key==="Tab" && !e.shiftKey && e.target.value.trim()){ if(!addCompanion()) e.preventDefault(); }
+  else if(e.key==="Backspace" && !e.target.value && comp.list.length){ comp.list.pop(); renderComp(); }
+});
+$("#compInput").addEventListener("change", e => {   // 목록에서 골랐을 때 바로 추가
+  if(findMember(e.target.value, false)) addCompanion();
+});
+$("#compAdd").addEventListener("click", () => { addCompanion(); $("#compInput").focus(); });
+$("#compChips").addEventListener("click", e => {
+  const b = e.target.closest("[data-crm]"); if(!b) return;
+  comp.list = comp.list.filter(x => x !== b.dataset.crm); renderComp(); $("#compInput").focus();
+});
+/* 동행인이 이미 같은 일정을 따로 적어 둔 경우 새로 만들지 않고 그 일정을 묶습니다 */
+function findOwnSame(memberId, d){
+  return state.trips.find(x => x.memberId===memberId && x.type===d.type && (!x.groupId || x.groupId===d.groupId) && (
+    d.type==="trip" ? (sameVisit(x, memberId, d.start, d.hospital) || (x.start===d.start && !x.hospital && !d.hospital && x.city===d.city))
+                    : (x.start===d.start && x.country===d.country && (x.city||"")===(d.city||""))));
+}
+tripForm.addEventListener("click", e => {
+  const add = e.target.closest("[data-addrow]");
+  if(add){
+    const kind = add.dataset.addrow, rs = rowsOf(kind), prev = rs.length ? rowVal(rs[rs.length-1]) : {};
+    const v = kind==="trip" ? {date:prev.date||todayKey(), kind:prev.kind||"", city:prev.city||"", rep:prev.rep||""}
+                            : {start:prev.start||todayKey(), end:prev.end||prev.start||todayKey(), country:prev.country||"", city:prev.city||"", rep:prev.rep||""};
+    $("#rows-"+kind).insertAdjacentHTML("beforeend", rowHtml(kind, v));
+    syncRows();
+    const last = rowsOf(kind).pop();
+    last.scrollIntoView({block:"nearest"});
+    last.querySelector('[data-f="hospital"]').focus();
+    return;
+  }
+  const rm = e.target.closest("[data-rm]");
+  if(rm){ rm.closest("[data-row]").remove(); syncRows(); }
+});
+tripForm.addEventListener("input", e => { e.target.classList.remove("bad"); updateSaveLabel(); });
+tripForm.addEventListener("keydown", e => { if(e.key==="Enter" && !e.isComposing && e.target.closest("[data-row]")) e.preventDefault(); });
+tripForm.addEventListener("change", e => {
+  if(e.target.name==="type") syncTypeField();
+  if(e.target.name==="leaveStart" && TF.leaveEnd.value < TF.leaveStart.value) TF.leaveEnd.value = TF.leaveStart.value;
+  if(e.target.dataset && e.target.dataset.f==="start"){
+    const endEl = e.target.closest("[data-row]").querySelector('[data-f="end"]');
+    if(!endEl.value || endEl.value < e.target.value) endEl.value = e.target.value;
+  }
+});
+tripForm.addEventListener("submit", async e => {
+  e.preventDefault();
+  const err = $("#tripErr"); err.textContent = "";
+  const kind = curType();
+  const m = setMainMember(), memberId = m ? m.id : "";
+  if(!m){
+    $("#tMember").classList.add("bad");
+    err.textContent = $("#tMember").value.trim() ? "팀원 이름이 목록에 없습니다. 빨간 칸을 확인하세요." : "팀원 이름을 입력하세요.";
+    $("#tMember").focus(); return;
+  }
+  if(kind!=="leave" && !addCompanion()){ $("#compInput").focus(); return; }
+  const btn = $("#tripSave");
+  if(kind==="leave"){
+    const start = TF.leaveStart.value, end = TF.leaveEnd.value;
+    if(!isKey(start) || !isKey(end)){ err.textContent = "시작일과 종료일을 입력하세요."; return; }
+    if(end < start){ err.textContent = "종료일이 시작일보다 빠릅니다."; return; }
+    btn.disabled = true;
+    try {
+      await save("trips", editingTrip || newId(), {memberId, type:"leave", start, end, city:"", country:"", hospital:"", rep:"", kind:"", purpose:TF.leaveNote.value.trim().slice(0,60), groupId:"", updatedAt:Date.now()});
+      tripDlg.close(); toast(editingTrip ? "일정을 수정했습니다" : "휴가·부재를 추가했습니다");
+    } catch(x){ err.textContent = errMsg(x); }
+    finally { btn.disabled = false; }
+    return;
+  }
+  const rows = rowsOf(kind).filter(r => isFilled(kind, rowVal(r)));
+  if(!rows.length){ err.textContent = kind==="trip" ? "방문지역과 병원 이름을 한 줄 이상 입력하세요." : "국가를 한 줄 이상 입력하세요."; return; }
+  let firstBad = null;
+  const mark = (r,f) => { const el = r.querySelector(`[data-f="${f}"]`); el.classList.add("bad"); firstBad = firstBad || el; };
+  for(const r of rows){
+    const v = rowVal(r);
+    if(kind==="trip"){
+      if(!isKey(v.date)) mark(r,"date");
+      if(!CITY.has(v.city)) mark(r,"city");
+    } else {
+      if(!isKey(v.start)) mark(r,"start");
+      if(!isKey(v.end) || (isKey(v.start) && v.end < v.start)) mark(r,"end");
+      if(!v.country) mark(r,"country");
+    }
+  }
+  if(firstBad){
+    err.textContent = kind==="trip"
+      ? "빨간 칸을 확인하세요. 날짜는 필수이고, 지역은 목록에 있는 시·군 이름으로 골라야 합니다."
+      : "빨간 칸을 확인하세요. 출발일·귀국일·국가는 필수이고, 귀국일은 출발일보다 빠를 수 없습니다.";
+    firstBad.focus(); return;
+  }
+  btn.disabled = true;
+  let done = 0, compAdded = 0, compRemoved = 0;
+  const orig = editingTrip && state.trips.find(x => x.id===editingTrip);
+  const compIds = comp.list.filter(id => id!==memberId && memberById(id));
+  try {
+    for(const r of rows){
+      const v = rowVal(r);
+      let data;
+      if(kind==="trip"){
+        let end = v.date;
+        if(orig && orig.type==="trip") end = addDays(v.date, dayDiff(orig.start, orig.end));
+        data = {memberId, type:"trip", start:v.date, end, city:v.city, country:"", hospital:v.hospital.slice(0,40), purpose:v.purpose.slice(0,60), rep:v.rep.slice(0,20), kind:KIND_SET.has(v.kind)?v.kind:"", updatedAt:Date.now()};
+      } else {
+        data = {memberId, type:"intl", start:v.start, end:v.end, country:v.country.slice(0,30), city:v.city.slice(0,40), hospital:v.hospital.slice(0,40), purpose:v.purpose.slice(0,60), rep:v.rep.slice(0,20), kind:"", updatedAt:Date.now()};
+      }
+      // 동행 묶음 번호: 수정이면 기존 번호(없으면 이 일정 번호), 새 일정이면 줄마다 새 번호
+      //   동행인이 한 명도 없으면 묶음 없음("")
+      const gid = compIds.length ? (orig ? (orig.groupId || orig.id) : newId()) : "";
+      data.groupId = gid;
+      await save("trips", editingTrip || newId(), data);
+      // 동행인 일정 — 수정이면 기존 일정을 같이 고치고, 없으면 새로 넣음
+      for(const cid of compIds){
+        const copyId = comp.copies.get(cid) || (findOwnSame(cid, data) || {}).id || null;
+        if(!comp.copies.has(cid)) compAdded++;
+        await save("trips", copyId || newId(), {...data, memberId:cid, groupId:gid});
+      }
+      // 팀원 칸을 바꿨는데 그 사람이 이미 동행 일정이 있으면, 겹치지 않게 그 일정은 지움
+      if(orig && memberId!==orig.memberId && comp.copies.has(memberId)){
+        await removeDoc("trips", comp.copies.get(memberId)); comp.copies.delete(memberId);
+      }
+      done++;
+      if(!editingTrip) r.remove();
+    }
+    // 동행인에서 뺀 사람의 일정 삭제 (수정일 때만)
+    for(const cid of comp.orig){
+      if(compIds.includes(cid) || cid===memberId || !comp.copies.has(cid)) continue;
+      await removeDoc("trips", comp.copies.get(cid)); compRemoved++;
+    }
+    tripDlg.close();
+    const withTxt = compIds.length ? ` · 동행 ${compIds.length}명` : "";
+    toast(editingTrip
+      ? `일정을 수정했습니다${compAdded?` · 동행 ${compAdded}명 추가`:""}${compRemoved?` · 동행 ${compRemoved}명 뺌`:""}`
+      : `${m.name} 님 ${kind==="trip"?"국내 방문":"해외 출장"} ${done}건을 추가했습니다${withTxt}`);
+  } catch(x){
+    syncRows();
+    err.textContent = (done ? `${done}건은 저장됐고 남은 줄은 저장하지 못했습니다. ` : "") + errMsg(x);
+  } finally { btn.disabled = false; }
+});
+$("#tripDelete").addEventListener("click", async e => {
+  const b = e.currentTarget;
+  if(!b.classList.contains("armed")){ b.classList.add("armed"); b.textContent = "한 번 더 누르면 삭제"; return; }
+  try { await removeDoc("trips", editingTrip); tripDlg.close(); toast("일정을 삭제했습니다"); }
+  catch(x){ $("#tripErr").textContent = errMsg(x); }
+});
+
+/* ---------- import from spreadsheet ---------- */
+const IMPORT = JSON.parse(document.getElementById("importData").textContent);
+const IMPORT_DOC = "meta/import-2026";
+const LEGACY_BATCH = IMPORT.batches.length ? IMPORT.batches[0].id : "2026-현황";
+const imp = { running:false, done:0, total:0, msg:"" };
+state.batchesDone = []; state.importAt = 0;
+function readDone(v){
+  const arr = v && Array.isArray(v.batchesDone) ? v.batchesDone.slice() : v && Array.isArray(v.batches) ? v.batches.slice() : [];
+  if(v && (v.done || v.importDone) && !arr.includes(LEGACY_BATCH)) arr.push(LEGACY_BATCH);
+  return arr;
+}
+const pendingBatches = () => IMPORT.batches.filter(b => !state.batchesDone.includes(b.id));
+const normH = x => String(x||"").replace(/\(.*?\)/g,"").replace(/의원|병원|\s/g,"").replace(/비케이/g,"BK");
+function sameVisit(a, memberId, start, hospital){
+  if(a.memberId!==memberId || a.start!==start) return false;
+  const x = normH(a.hospital), y = normH(hospital);
+  return !!x && !!y && (x===y || (Math.min(x.length,y.length)>=3 && (x.endsWith(y) || y.endsWith(x))));
+}
+function renderImport(){
+  const bar = $("#importBar"), ready = state.mode==="live" || state.mode==="local";
+  const pend = pendingBatches();
+  const first = !state.batchesDone.length;
+  const list = pend.map(b => `${b.label} ${b.trips.length}건`).join(", ");
+  const prog = imp.running ? `<progress max="${imp.total}" value="${imp.done}"></progress> ${imp.done}/${imp.total}` : "";
+  let text;
+  if(imp.running) text = `기록을 가져오는 중입니다. 창을 닫지 마세요.${prog}`;
+  else if(imp.msg) text = esc(imp.msg);
+  else if(first) text = `엑셀 ‘기술영업 리스트’의 팀원 ${IMPORT.members.length}명과 기록(${esc(list)})을 한 번에 가져올 수 있습니다.`;
+  else text = `새로 정리된 일정이 있습니다: ${esc(list)}. 가져오기를 누르면 이미 있는 방문은 건너뛰고 추가합니다.`;
+  bar.hidden = !ready || (!pend.length && !imp.running && !imp.msg);
+  $("#importText").innerHTML = text;
+  bar.querySelector("[data-import]").hidden = imp.running || !pend.length;
+  const bt = $("#impBoxText"), bb = $("#impBoxBtn");
+  // 가져올 기록을 파일에서 뺀 뒤에는 팀원 관리 창의 가져오기 칸을 숨깁니다
+  $("#impBox").hidden = !IMPORT.batches.length;
+  const doneLabels = IMPORT.batches.filter(b => state.batchesDone.includes(b.id)).map(b => b.label).join(", ");
+  if(!pend.length && !imp.running){
+    bt.innerHTML = `가져오기를 마쳤습니다: ${esc(doneLabels)}.`;
+    bb.hidden = true;
+  } else {
+    bt.innerHTML = text + (doneLabels ? `<br>이미 가져온 기록: ${esc(doneLabels)}` : "");
+    bb.hidden = imp.running || !ready;
+  }
+}
+const sleepMs = ms => new Promise(r => setTimeout(r, ms));
+async function saveWithBackoff(col, id, data){
+  for(let a = 0; ; a++){
+    try { return await save(col, id, data); }
+    catch(e){
+      if(e && e.code==="resource_exhausted" && a < 6){ await sleepMs(1500*(a+1)); continue; }
+      throw e;
+    }
+  }
+}
+async function runImport(){
+  const pend = pendingBatches();
+  if(imp.running || !pend.length) return;
+  if(!(state.mode==="live" || state.mode==="local")) return;
+  imp.running = true; imp.msg = ""; imp.done = 0; imp.total = 0; renderImport();
+  const runId = newId();
+  let renew = null, added = 0, skipped = 0, fixed = 0;
+  try {
+    if(db){
+      const lease = await db.doc(IMPORT_DOC).acquire({holder:runId, ttlMs:120000});
+      if(!lease.acquired){ imp.msg = "다른 팀원이 지금 가져오기를 진행하고 있습니다. 잠시 후 새로고침해 보세요."; return; }
+      renew = setInterval(() => db.doc(IMPORT_DOC).acquire({holder:runId, ttlMs:120000}).catch(()=>{}), 60000);
+    }
+    const nameToId = new Map(state.members.map(m => [m.name, m.id]));
+    const used = new Set(state.members.map(m => m.color.toLowerCase()));
+    let ci = 0;
+    // members only come with the first (spreadsheet) batch; people deleted later are not recreated
+    const newMembers = pend.some(b => b.id===LEGACY_BATCH) ? IMPORT.members.filter(pm => !nameToId.has(pm.name)) : [];
+    const queue = [];
+    const known = [...state.trips];
+    for(const b of pend){
+      for(const t of b.trips){
+        const [id, mName, , start, , , , hospital] = t;
+        if(state.trips.some(x => x.id===id)) { skipped++; continue; }
+        const mid = nameToId.get(mName) || (newMembers.some(pm => pm.name===mName) ? "x-m-" + IMPORT.members.findIndex(pm => pm.name===mName) : null);
+        if(!mid){ skipped++; continue; }
+        if(t[2]==="trip" && known.some(x => sameVisit(x, mid, start, hospital))){ skipped++; continue; }
+        known.push({memberId:mid, start, hospital});
+        queue.push([t, mid]);
+      }
+    }
+    const fixes = pend.flatMap(b => b.fixes || []).filter(([id, oldCity]) => { const x = state.trips.find(t => t.id===id); return x && x.city===oldCity; });
+    imp.total = newMembers.length + queue.length + fixes.length; renderImport();
+    for(const pm of newMembers){
+      while(used.has(paletteColor(ci).toLowerCase())) ci++;
+      const color = paletteColor(ci); used.add(color.toLowerCase());
+      const id = "x-m-" + IMPORT.members.indexOf(pm);
+      await saveWithBackoff("members", id, { name:pm.name, base:CITY.has(pm.base) ? pm.base : "춘천", color, createdAt:Date.now()+IMPORT.members.indexOf(pm) });
+      nameToId.set(pm.name, id);
+      imp.done++; renderImport();
+    }
+    // 포털(Azure): 한 번에 최대 500건씩, 이미 있는 번호는 건너뛰고 넣습니다.
+    if(db && db.bulkCreate && queue.length){
+      const recs = queue.splice(0).map(([[id,,type,start,end,city,country,hospital,purpose,rep], mid]) =>
+        ({ id, memberId:mid, type, start, end, city, country, hospital, purpose, rep, updatedAt:Date.now(), source:"import" }));
+      const n0 = recs.length;
+      const saved = await db.bulkCreate("trips", recs, n => { imp.done += n; renderImport(); });
+      added += saved; skipped += n0 - saved;
+    }
+    const worker = async () => {
+      while(queue.length){
+        const [[id,,type,start,end,city,country,hospital,purpose,rep], mid] = queue.shift();
+        await saveWithBackoff("trips", id, { memberId:mid, type, start, end, city, country, hospital, purpose, rep, updatedAt:Date.now(), source:"import" });
+        imp.done++; added++;
+        if(imp.done % 10 === 0 || !queue.length) renderImport();
+      }
+    };
+    await Promise.all([worker(), worker(), worker(), worker()]);
+    for(const [id, , newCity] of fixes){
+      const x = state.trips.find(t => t.id===id); if(!x) continue;
+      const { id:_drop, ...body } = x;
+      await saveWithBackoff("trips", id, { ...body, city:newCity, updatedAt:Date.now() });
+      imp.done++; fixed++;
+    }
+    const doneNow = [...new Set([...state.batchesDone, ...pend.map(b => b.id)])];
+    if(db) await withRetry(() => db.doc(IMPORT_DOC).set({ done:true, batches:doneNow, at:Date.now() }));
+    state.batchesDone = doneNow; state.importAt = Date.now(); persistLocal();
+    toast(`${newMembers.length ? `팀원 ${newMembers.length}명, ` : ""}일정 ${added}건을 추가했습니다${skipped ? ` (이미 있는 ${skipped}건은 건너뜀)` : ""}${fixed ? `, 지역 ${fixed}건 수정` : ""}`);
+  } catch(e){
+    imp.msg = `${imp.done}건까지 처리했습니다. ${errMsg(e)} 가져오기를 다시 누르면 이어서 진행합니다.`;
+  } finally {
+    clearInterval(renew);
+    imp.running = false;
+    render(); if(memDlg.open) renderMemList();
+  }
+}
+
+/* ---------- members dialog ---------- */
+const memDlg = $("#memDlg"), memForm = $("#memForm"), MF = memForm.elements;
+let editingMember = null;
+function renderMemList(){
+  $("#memTitle").textContent = `팀원 관리 (${state.members.length}명)`;
+  const ul = $("#memList");
+  if(!state.members.length){ ul.innerHTML = `<li class="none">아직 팀원이 없습니다. 아래에서 추가하세요.</li>`; return; }
+  ul.innerHTML = state.members.map(m => `<li><span class="dotc" style="--c:${m.color}"></span><span class="nm">${esc(m.name)}<small>${esc(m.base)}</small></span>
+    <button class="btn" type="button" data-edit-m="${esc(m.id)}">수정</button>
+    <button class="btn danger" type="button" data-del-m="${esc(m.id)}">삭제</button></li>`).join("");
+}
+function resetMemForm(){
+  editingMember = null; memForm.reset();
+  $("#memFormTitle").textContent = "팀원 추가"; $("#memSubmit").textContent = "추가";
+  $("#memCancelEdit").hidden = true; $("#memErr").textContent = "";
+}
+function openMembers(){ resetMemForm(); renderMemList(); memDlg.showModal(); }
+$("#memCancelEdit").addEventListener("click", resetMemForm);
+memForm.addEventListener("submit", async e => {
+  e.preventDefault();
+  const name = MF.mname.value.trim(), base = MF.base.value.trim(), err = $("#memErr");
+  if(!name){ err.textContent = "이름을 입력하세요."; return; }
+  if(!CITY.has(base)){ err.textContent = "기본 근무지는 목록에 있는 시·군 이름으로 골라 주세요."; return; }
+  try {
+    if(editingMember){
+      const m = memberById(editingMember);
+      await save("members", m.id, { name, base, color:m.color, createdAt:m.createdAt });
+      toast("팀원 정보를 수정했습니다");
+    } else {
+      const used = new Set(state.members.map(m=>m.color.toLowerCase()));
+      let i = 0; while(used.has(paletteColor(i).toLowerCase()) && i < 200) i++;
+      await save("members", newId(), { name, base, color:paletteColor(i), createdAt:Date.now() });
+      toast(`${name} 님을 추가했습니다`);
+    }
+    resetMemForm(); renderMemList(); MF.mname.focus();
+  } catch(x){ err.textContent = errMsg(x); }
+});
+$("#memList").addEventListener("click", async e => {
+  const ed = e.target.closest("[data-edit-m]"), del = e.target.closest("[data-del-m]");
+  if(ed){
+    const m = memberById(ed.dataset.editM); if(!m) return;
+    editingMember = m.id; MF.mname.value = m.name; MF.base.value = m.base;
+    $("#memFormTitle").textContent = `${m.name} 님 정보 수정`; $("#memSubmit").textContent = "변경 저장";
+    $("#memCancelEdit").hidden = false; MF.mname.focus();
+  }
+  if(del){
+    if(!del.classList.contains("armed")){ del.classList.add("armed"); del.textContent = "일정까지 삭제"; return; }
+    const id = del.dataset.delM;
+    try {
+      for(const t of state.trips.filter(t => t.memberId===id)) await removeDoc("trips", t.id);
+      await removeDoc("members", id);
+      if(editingMember===id) resetMemForm();
+      renderMemList();
+      toast("팀원을 삭제했습니다");
+    } catch(x){ $("#memErr").textContent = errMsg(x); }
+  }
+});
+
+/* ---------- backup (downloaded file only) ---------- */
+$("#backupSave").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify({ app:"tripboard", savedAt:new Date().toISOString(), members:state.members, trips:state.trips, batchesDone:state.batchesDone, importAt:state.importAt }, null, 1)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `출장보드_백업_${todayKey()}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  toast("백업 파일을 저장했습니다");
+});
+$("#backupLoad").addEventListener("change", async e => {
+  const f = e.target.files[0]; e.target.value = "";
+  if(!f) return;
+  try {
+    const data = JSON.parse(await f.text());
+    if(!data || data.app!=="tripboard" || !Array.isArray(data.members) || !Array.isArray(data.trips)) throw new Error("형식");
+    loadLocal(data); persistLocal(); render(); renderMemList();
+    toast(`백업을 불러왔습니다 (팀원 ${state.members.length}명, 기록 ${state.trips.length}건)`);
+  } catch(_){ $("#memErr").textContent = "출장 보드 백업 파일이 아니거나 내용이 손상되었습니다."; }
+});
+
+/* ---------- wiring ---------- */
+$("#cityList").innerHTML = [...CITY.keys()].sort((a,b)=>a.localeCompare(b,"ko")).map(n => `<option value="${n}">`).join("");
+$("#purposeList").innerHTML = PURPOSES.map(p => `<option value="${p}">`).join("");
+refreshSuggestions();
+$("#fDate").value = state.fDate;
+$("#iDate").value = state.iDate;
+$("#fCity").addEventListener("input", e => {
+  const v = e.target.value.trim(), nv = CITY.has(v) ? v : "";
+  if(nv !== state.fCity){ state.fCity = nv; renderFinder(); renderMap(); }
+});
+$("#fShowAll").addEventListener("change", e => { state.fShowAll = e.target.checked; renderFinder(); renderMap(); });
+$("#fDate").addEventListener("change", e => { if(isKey(e.target.value)){ state.fDate = e.target.value; renderFinder(); renderMap(); } });
+$("#iQ").addEventListener("input", e => { state.iQ = e.target.value; renderIntl(); });
+$("#iDate").addEventListener("change", e => { if(isKey(e.target.value)){ state.iDate = e.target.value; renderIntl(); } });
+document.querySelectorAll("[data-namesearch]").forEach(inp => inp.addEventListener("input", () => {
+  state.boards[inp.dataset.namesearch].q = inp.value; renderBoard(inp.dataset.namesearch);
+}));
+function applyMemberFilter(){
+  const inp = $("#cMember"), v = inp.value.trim();
+  const m = v ? findMember(v, true) : null;
+  if(v && !m){ inp.classList.add("bad"); return; }
+  inp.classList.remove("bad");
+  inp.value = m ? m.name : "";
+  if((m ? m.id : "") === state.cal.member) return;
+  state.cal.member = m ? m.id : "";
+  renderCal(); renderHistory();
+}
+$("#cMember").addEventListener("input", e => {
+  const inp = e.target; inp.classList.remove("bad");
+  const m = findMember(inp.value, false);            // 목록에서 고르거나 이름을 끝까지 쓰면 바로 적용
+  if(m || !inp.value.trim()) applyMemberFilter();
+});
+$("#cMember").addEventListener("change", applyMemberFilter);
+$("#cMember").addEventListener("keydown", e => { if(e.key==="Enter" && !e.isComposing){ e.preventDefault(); applyMemberFilter(); } });
+$("#cType").addEventListener("change", e => { state.cal.type = e.target.value; renderCal(); renderHistory(); });
+$("#cQ").addEventListener("input", e => { state.cal.q = e.target.value.trim(); renderCal(); renderHistory(); });
+$("#hPeriod").addEventListener("change", renderHistory);
+$("#hFuture").addEventListener("change", renderHistory);
+$("#hBody").addEventListener("keydown", e => { const r = e.target.closest("[data-trip]"); if(r && e.key==="Enter") openTrip({tripId:r.dataset.trip}); });
+$("#openTrip").addEventListener("click", () => openTrip());
+$("#openMembers").addEventListener("click", openMembers);
+const tabOrder = () => ["dom","intl","all"].concat(isAdmin ? ["dash"] : []);
+$(".tabs").addEventListener("keydown", e => {
+  if(e.key!=="ArrowRight" && e.key!=="ArrowLeft") return;
+  const o = tabOrder(), i = (o.indexOf(state.tab) + (e.key==="ArrowRight"?1:o.length-1)) % o.length;
+  setTab(o[i]); $("#tab-"+o[i]).focus();
+});
+document.addEventListener("click", e => {
+  const t = e.target;
+  if(!(t instanceof Element)) return;
+  const c = t.closest("[data-close]"); if(c){ c.closest("dialog").close(); return; }
+  if(t.closest("[data-open-members]")) return openMembers();
+  if(t.closest("[data-import]")) return runImport();
+  if(t.closest("#tripDlg, #memDlg")) return;
+  const tr = t.closest("[data-trip]"); if(tr) return openTrip({tripId:tr.dataset.trip});
+  const wk = t.closest("[data-week]"); if(wk) return openWeek(wk.dataset.week, wk.dataset.weekDate);
+  const ad = t.closest("[data-add]"); if(ad) return openTrip({memberId:ad.dataset.add, date:ad.dataset.date, type:ad.dataset.type});
+  const dd = t.closest("[data-day]"); if(dd) return openDay(dd.dataset.day);
+  const tab = t.closest("[data-tab]"); if(tab) return setTab(tab.dataset.tab);
+  const dm = t.closest("[data-dmember]"); if(dm){ state.dash.member = state.dash.member===dm.dataset.dmember ? "" : dm.dataset.dmember; renderDash(); $("#view-dash").scrollIntoView({block:"start"}); return; }
+  const hm = t.closest("[data-hmember]"); if(hm){ state.cal.member = hm.dataset.hmember; $("#cMember").value = (memberById(state.cal.member)||{}).name || ""; $("#cMember").classList.remove("bad"); renderCal(); renderHistory(); return; }
+  const nav = t.closest("[data-nav]");
+  if(nav){
+    const w = nav.dataset.nav, step = Number(nav.dataset.step);
+    if(w==="cal") state.cal.month = step ? addMonths(state.cal.month, step) : todayKey().slice(0,8)+"01";
+    else state.boards[w].anchor = step ? addDays(state.boards[w].anchor, step) : todayKey();
+    return w==="cal" ? renderCal() : renderBoard(w);
+  }
+});
+// keep "today" fresh if the page stays open overnight
+let lastToday = todayKey();
+setInterval(() => {
+  const t = todayKey(); if(t === lastToday) return;
+  if(state.fDate===lastToday){ state.fDate=t; $("#fDate").value=t; }
+  if(state.iDate===lastToday){ state.iDate=t; $("#iDate").value=t; }
+  lastToday = t; render();
+}, 60000);
+
+setTab(state.tab);
+
+/* ---------- shared store ---------- */
+(async () => {
+  let d = null;
+  try { d = await window.bdtsTripDb(); }
+  catch(e){ console.warn(e); state.mode = "error"; render(); return; }
+  if(!d){
+    state.mode = "local"; loadLocal(); $("#backupBox").hidden = false;
+    render(); if(memDlg.open) renderMemList();
+    // downloaded file: bring in any bundled records automatically, no button needed
+    if(pendingBatches().length) runImport();
+    return;
+  }
+  db = d;
+  const got = {members:false, trips:false};
+  const onErr = e => { state.mode = "error"; render(); console.warn(e); };
+  db.collection("members").onSnapshot(s => {
+    state.members = s.docs.map(x => cleanMember(x.id, x.data() || {})).sort((a,b)=>a.createdAt-b.createdAt);
+    got.members = true; if(got.trips) state.mode = "live";
+    scheduleRender(); if(memDlg.open) renderMemList();
+  }, onErr);
+  db.collection("trips").onSnapshot(s => {
+    state.trips = s.docs.map(x => cleanTrip(x.id, x.data() || {})).filter(Boolean);
+    got.trips = true; if(got.members) state.mode = "live";
+    scheduleRender();
+  }, onErr);
+  db.doc(IMPORT_DOC).onSnapshot(s => {
+    const v = s.exists ? s.data() : null;
+    state.batchesDone = readDone(v);
+    state.importAt = v && v.at || 0;
+    scheduleRender();
+  }, () => {});
+})();
+</script>
+</body>
+</html>

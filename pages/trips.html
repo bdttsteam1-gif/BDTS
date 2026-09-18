@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>출장 보드 — Boditech MED</title>
+<link rel="stylesheet" href="../assets/portal.css">
+<style>
+/* 출장 보드 (2026-09) — 왼쪽 메뉴 [최근 이슈] 아래.
+   보드 화면(trip-board.html)은 자체 디자인이 있어 포털 공통 스타일과 섞이지 않도록 틀(iframe) 안에 띄웁니다.
+   틀은 화면 높이에 맞춰 고정하고, 보드 안에서 스크롤합니다(팝업이 화면 가운데에 뜨도록). */
+html[data-bdts-page="trips"], html[data-bdts-page="trips"] body{overflow:hidden}
+@media (max-width:820px){html[data-bdts-page="trips"] .b-who{display:none}}
+/* "가 100%" 화면 배율(zoom)은 틀 안 보드가 스스로 맞춥니다(trip-board.html). 그래서 틀 자체는 배율을 되돌려 1배로 둡니다.
+   (배율이 걸린 틀 안에서는 클릭 위치가 어긋나는 브라우저가 있습니다) */
+.tb-frame{display:block;width:100%;border:0;background:#EDF0EC;zoom:calc(1 / var(--zoom, 1));
+  height:calc(100vh - var(--nav-h, 60px) * var(--zoom, 1))}
+@supports (height:100dvh){.tb-frame{height:calc(100dvh - var(--nav-h, 60px) * var(--zoom, 1))}}
+</style>
+<!-- 디자인 레이어(Quiet Editorial Workspace): 겉모습만 바꿉니다. -->
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+
+<nav class="b-nav">
+  <a class="b-home" href="../index.html"><span>🏠</span>홈</a>
+  <div class="b-brand">Boditech <span>MED</span></div>
+  <div class="b-spacer"></div>
+  <span class="b-who" id="who"></span>
+</nav>
+
+<iframe class="tb-frame" id="tripFrame" title="출장 보드" src="trip-board.html"></iframe>
+
+<script src="../assets/auth-gate.js"></script>
+<script src="../azure-store.js"></script>
+<script>
+/* 상단 사용자 표시 */
+(window.__bdtsAuthReady || Promise.resolve()).then(function () {
+  var me = window.__bdtsUser || {}, w = document.getElementById('who');
+  if (w && me.email) w.textContent = me.email + (me.isAdmin ? ' (관리자)' : '');
+});
+</script>
+<script src="../ui-common.js"></script>
+<script src="../assets/theme.js"></script>
+</body>
+</html>

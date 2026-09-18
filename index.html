@@ -1,215 +1,175 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Boditech MED — 내부 포털</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #ffffff;
-      color: #1a1a2e;
-      min-height: 100vh;
-    }
-
-    .nav {
-      background: #1a1a2e;
-      color: #fff;
-      padding: 0 24px;
-      height: 52px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .nav-brand { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
-    .nav-brand span { color: #2563eb; }
-
-    .hero {
-      background: #1a1a2e;
-      color: #fff;
-      padding: 44px 24px 48px;
-      text-align: center;
-    }
-    .hero h1 { font-size: 26px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.5px; }
-    .hero p { font-size: 14px; color: #8b90b8; }
-
-    .cards {
-      max-width: 1080px;
-      margin: 40px auto;
-      padding: 0 24px;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 16px;
-    }
-    .card {
-      background: #fff;
-      border: 1px solid #d1d5db;
-      border-radius: 10px;
-      padding: 24px;
-      text-decoration: none;
-      color: inherit;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      transition: border-color 0.15s, box-shadow 0.15s;
-    }
-    .card:hover { border-color: #2563eb; box-shadow: 0 4px 14px rgba(37,99,235,.08); }
-    .card-label {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      color: #6b7280;
-    }
-    .card h2 { font-size: 18px; font-weight: 700; color: #111827; }
-    .card p { font-size: 13px; color: #6b7280; line-height: 1.6; }
-    .card-arrow { margin-top: 8px; font-size: 13px; color: #2563eb; font-weight: 600; }
-
-    footer {
-      text-align: center;
-      padding: 32px 16px;
-      font-size: 12px;
-      color: #9ca3af;
-      border-top: 1px solid #e5e7eb;
-      margin-top: 24px;
-    }
-
-    /* password gate */
-    #authGate {
-      position: fixed; inset: 0; z-index: 999;
-      background: #1a1a2e; color: #fff;
-      display: flex; align-items: center; justify-content: center;
-    }
-    #authGate .gate-box { width: 320px; max-width: 90vw; text-align: center; padding: 0 16px; }
-    #authGate h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
-    #authGate h2 span { color: #2563eb; }
-    #authGate p { font-size: 13px; color: #8b90b8; margin-bottom: 20px; }
-    #authGate input {
-      width: 100%; padding: 12px 14px; border-radius: 8px; border: 1px solid #3a3a5a;
-      background: #12122a; color: #fff; font-size: 15px; outline: none; text-align: center;
-    }
-    #authGate input:focus { border-color: #2563eb; }
-    #authGate button {
-      width: 100%; margin-top: 12px; padding: 12px; border: none; border-radius: 8px;
-      background: #2563eb; color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
-    }
-    #authGate button:hover { background: #1d4ed8; }
-    #authError { color: #f87171; font-size: 13px; margin-top: 10px; min-height: 18px; }
-    #appBody { display: none; }
-
-    /* ===== Mobile ===== */
-    @media (max-width: 768px) {
-      .nav { padding: 0 16px; }
-      .hero { padding: 32px 16px 36px; }
-      .hero h1 { font-size: 22px; }
-      .cards { margin: 24px auto; padding: 0 14px; grid-template-columns: 1fr; gap: 12px; }
-      .card { padding: 18px; }
-      #authGate input { font-size: 16px; }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boditech MED — 내부 포털</title>
+<link rel="stylesheet" href="assets/portal.css">
+<style>
+.h-nav{background:#1a1a2e;color:#fff;padding:0 24px;height:52px;display:flex;align-items:center;gap:12px}
+.h-brand{font-size:16px;font-weight:700}.h-brand span{color:#2563eb}
+.h-sp{flex:1}
+.h-who{font-size:12px;color:#8b90b8}
+.h-out{background:rgba(255,255,255,.12);border:none;color:#fff;padding:6px 12px;
+  border-radius:7px;font-size:12px;font-weight:600;text-decoration:none}
+.h-out:hover{background:rgba(255,255,255,.22)}
+.h-hero{background:#1a1a2e;color:#fff;padding:44px 24px 48px;text-align:center}
+.h-hero h1{font-size:26px;font-weight:700;margin-bottom:8px}
+.h-hero p{font-size:14px;color:#8b90b8}
+.h-cards{max-width:1120px;margin:40px auto;padding:0 24px;display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.h-card{background:#fff;border:1px solid #d1d5db;border-radius:10px;padding:24px;
+  text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:8px;
+  transition:border-color .15s,box-shadow .15s}
+.h-card:hover{border-color:#2563eb;box-shadow:0 4px 14px rgba(37,99,235,.08)}
+.h-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#6b7280}
+.h-card h2{font-size:18px;font-weight:700;color:#111827}
+.h-card p{font-size:13px;color:#6b7280;line-height:1.6}
+.h-arrow{margin-top:auto;padding-top:8px;font-size:13px;color:#2563eb;font-weight:600}
+.h-grp{max-width:1120px;margin:32px auto 0;padding:0 24px;font-size:12px;font-weight:700;
+  color:#6b7280;text-transform:uppercase;letter-spacing:.6px}
+.h-foot{text-align:center;padding:32px 16px;font-size:12px;color:#9ca3af;
+  border-top:1px solid #e5e7eb;margin-top:32px}
+@media (max-width:768px){.h-cards{grid-template-columns:1fr;margin:24px auto;padding:0 14px}}
+</style>
+<!-- 디자인 레이어(Quiet Editorial Workspace): 겉모습만 바꿉니다. 화면 내용·동작은 그대로입니다. 글꼴·사진은 assets/fonts, assets/img 에 포함되어 외부 접속이 필요 없습니다. -->
+<link rel="stylesheet" href="assets/theme.css">
 </head>
 <body>
 
-<div id="authGate">
-  <div class="gate-box">
-    <h2>Boditech <span>MED</span></h2>
-    <p>내부 포털 접속을 위해 비밀번호를 입력해주세요.</p>
-    <input type="password" id="authInput" placeholder="비밀번호" autocomplete="off">
-    <button id="authSubmit" type="button">입장</button>
-    <div id="authError"></div>
+<nav class="h-nav">
+  <div class="h-brand">Boditech <span>MED</span></div>
+  <div class="h-sp"></div>
+  <span class="h-who" id="who"></span>
+  <button class="h-out" onclick="bdtsChangePassword()" style="cursor:pointer;background:#374151;margin-right:6px">비밀번호 변경</button>
+  <button class="h-out" onclick="bdtsLogout()" style="cursor:pointer">로그아웃</button>
+</nav>
+
+<section class="h-hero">
+  <h1>바디텍메드 기술영업팀</h1>
+  <p>거래처 이력 · 고객지원센터 · 클레임 로그 (국내) · 통합 클레임 로그 · Sales Report · 정보 · 통합 검색</p>
+</section>
+
+<div class="h-grp">기록하기</div>
+<div class="h-cards">
+  <a class="h-card" href="pages/records.html#client">
+    <div class="h-label">Client History</div><h2>거래처 이력</h2>
+    <p>병원·거래처별 방문/전화 이력을 기록합니다. 저장하면 클레임 로그 (국내)에 마스터로그가 함께 만들어집니다.</p>
+    <div class="h-arrow">바로가기 →</div>
+  </a>
+  <a class="h-card" href="pages/records.html#csc">
+    <div class="h-label">Customer Service Center</div><h2>고객지원센터</h2>
+    <p>CSC 접수를 기록합니다. 저장하면 진행상황에 쌓이고 클레임 로그 (국내)에도 함께 기록됩니다.</p>
+    <div class="h-arrow">바로가기 →</div>
+  </a>
+  <a class="h-card" href="pages/records.html#claim">
+    <div class="h-label">Domestic Complaint</div><h2>클레임 로그 (국내)</h2>
+    <p>거래처 이력·고객지원센터에서 만들어진 마스터로그를 조회·수정하고, 신규 건을 직접 작성합니다.</p>
+    <div class="h-arrow">바로가기 →</div>
+  </a>
+</div>
+
+<div class="h-grp">찾아보기</div>
+<div class="h-cards">
+  <a class="h-card" href="pages/claim.html">
+    <div class="h-label">Complaint Log</div><h2>통합 클레임 로그</h2>
+    <p>연도별 클레임 로그를 조회합니다. 엑셀을 올리면 기존 건은 그대로 두고 새 건만 추가됩니다.</p>
+    <div class="h-arrow">바로가기 →</div>
+  </a>
+  <a class="h-card" href="pages/sales.html">
+    <div class="h-label">Sales</div><h2>Sales Report</h2>
+    <p>연도·월별 매출과 국가·거래처별 실적을 봅니다. 매달 엑셀을 올리면 그 달 데이터만 새로 채워집니다.</p>
+    <div class="h-arrow">바로가기 →</div>
+  </a>
+  <a class="h-card" href="pages/info.html">
+    <div class="h-label">Info</div><h2>정보</h2>
+    <p>장비별 에러코드·증상별 대응·매뉴얼·자료와, 마커·LOT별로 묶은 CSC 참고 기록을 봅니다.</p>
+    <div class="h-arrow">바로가기 →</div>
+  </a>
+  <a class="h-card" href="pages/search.html">
+    <div class="h-label">Unified Search</div><h2>통합 검색</h2>
+    <p>통합 클레임 로그·장비 정보·거래처 이력을 한 번에 검색합니다. 결과마다 어느 자료에서 왔는지 출처가 표시됩니다.</p>
+    <div class="h-arrow">바로가기 →</div>
+  </a>
+</div>
+
+<div class="h-foot">Boditech MED Internal Portal</div>
+
+<!-- 관리자 전용: 퇴사·기기 분실 시 특정 사람의 로그인 세션을 즉시 끊습니다.
+     allowlist.json 에서 그 사람을 지우는 것과는 별개 조치이니, 필요하면 둘 다 함께 처리하세요. -->
+<div id="adminPanel" style="display:none;max-width:1120px;margin:0 auto 40px;padding:0 24px">
+  <!-- 운영 로그 요약 (2026-09) — 저장 실패·오류·로그인 잠김이 최근 7일 동안 몇 번 있었는지 -->
+  <a id="opsSum" href="pages/audit.html?tab=ops" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#fff;
+     border:1px solid #e5e7eb;border-left:4px solid #9ca3af;border-radius:10px;padding:14px 18px;margin-bottom:14px;text-decoration:none;color:#111827">
+    <b style="font-size:14px">운영 로그 · 최근 7일</b><span id="opsSumTxt" style="font-size:13px;color:#6b7280">불러오는 중…</span>
+    <span style="margin-left:auto;font-size:12.5px;font-weight:700;color:#374151">자세히 →</span>
+  </a>
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:18px 20px;margin-bottom:14px">
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:4px">관리자 — 변경 이력</h3>
+    <p style="font-size:12px;color:#6b7280;margin-bottom:12px;line-height:1.6">
+      누가 언제 어떤 건을 등록·수정·삭제했는지 확인합니다. 로그인 기록도 함께 남습니다.
+    </p>
+    <a href="pages/audit.html" style="display:inline-block;background:#2563eb;color:#fff;
+      padding:9px 16px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">변경 이력 보기</a>
+    <a href="pages/audit.html?tab=ops" style="display:inline-block;background:#fff;color:#111827;border:1px solid #d1d5db;margin-left:8px;
+      padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">운영 로그 보기</a>
+    <a href="pages/import.html" style="display:inline-block;background:#374151;color:#fff;margin-left:8px;
+      padding:9px 16px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">운영 데이터 옮기기</a>
+  </div>
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:18px 20px">
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:4px">관리자 — 세션 강제 로그아웃</h3>
+    <p style="font-size:12px;color:#6b7280;margin-bottom:12px;line-height:1.6">
+      퇴사자나 노트북 분실 등으로 지금 로그인되어 있는 기기를 즉시 끊어야 할 때 씁니다.
+      (한 번 로그인하면 6개월간 유지되므로, 접근을 막으려면 <code>allowlist.json</code> 삭제와 별개로 이 조치가 필요합니다.)
+    </p>
+    <div style="display:flex;gap:8px;max-width:420px">
+      <input type="email" id="revokeEmail" placeholder="무효화할 메일 주소" style="flex:1;padding:9px 11px;border:1px solid #d1d5db;border-radius:8px">
+      <button id="revokeBtn" style="background:#dc2626;color:#fff;border:none;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">즉시 무효화</button>
+    </div>
+    <div id="revokeMsg" style="font-size:12px;margin-top:8px"></div>
   </div>
 </div>
 
-<div id="appBody">
-
-<nav class="nav">
-  <div class="nav-brand">Boditech <span>MED</span></div>
-</nav>
-
-<section class="hero">
-  <h1>내부 포털</h1>
-  <p>거래처 이력 · 클레임 현황 · 고객지원센터·진행상황·가이드 · Sales Report · 통합 검색</p>
-</section>
-
-<div class="cards">
-  <a class="card" href="client.html">
-    <div class="card-label">Client History</div>
-    <h2>거래처 이력</h2>
-    <p>병원·거래처별 방문/전화 이력 카드를 등록·조회·검색합니다.</p>
-    <div class="card-arrow">바로가기 →</div>
-  </a>
-  <a class="card" href="claim.html">
-    <div class="card-label">Dashboard</div>
-    <h2>클레임 현황</h2>
-    <p>연도별 클레임 통계·상세 목록을 확인하고, 엑셀 업로드로 신규 건을 추가합니다.</p>
-    <div class="card-arrow">바로가기 →</div>
-  </a>
-  <a class="card" href="csc.html">
-    <div class="card-label">고객지원센터 · Progress · Guide</div>
-    <h2>고객지원센터</h2>
-    <p>고객지원센터로 접수하면 진행상황에 쌓이고, 회신을 채우면 응답 소요시간을 분석합니다. 접수 가이드·에러코드·FAQ도 함께.</p>
-    <div class="card-arrow">바로가기 →</div>
-  </a>
-  <a class="card" href="sales.html">
-    <div class="card-label">Sales</div>
-    <h2>Sales Report</h2>
-    <p>연도·월별 매출 대시보드와 국가·거래처별 매출 검색. 매달 엑셀 업로드로 새 월 데이터만 증분 업데이트합니다.</p>
-    <div class="card-arrow">바로가기 →</div>
-  </a>
-  <a class="card" href="search.html">
-    <div class="card-label">Search</div>
-    <h2>통합 검색</h2>
-    <p>클레임·가이드·거래처 이력을 한 번에 검색하고 출처를 추적합니다.</p>
-    <div class="card-arrow">바로가기 →</div>
-  </a>
-  <a class="card" href="info.html">
-    <div class="card-label">Info · 비공식</div>
-    <h2>정보조회</h2>
-    <p>장비별 가이드 정리와 카트리지 마커별 수기 기록(플랫폼·LOT·내용)을 확인합니다.</p>
-    <div class="card-arrow">바로가기 →</div>
-  </a>
-</div>
-
-<footer>Boditech MED Internal Portal</footer>
-
-</div><!-- /#appBody -->
-
-<script src="ui-common.js"></script>
+<script src="assets/auth-gate.js"></script>
+<script src="azure-store.js"></script>
+<script src="assets/portal.js"></script>
 <script>
-(function () {
-  var PASSCODE = "bdts";
-  var KEY = "portal_authed";
-  var gate = document.getElementById('authGate');
-  var app = document.getElementById('appBody');
-  var input = document.getElementById('authInput');
-  var errEl = document.getElementById('authError');
-
-  function enter() {
-    gate.style.display = 'none';
-    app.style.display = 'block';
-  }
-  function tryAuth() {
-    if (input.value.trim().toLowerCase() === PASSCODE) {
-      try { localStorage.setItem(KEY, '1'); } catch (e) {}
-      errEl.textContent = '';
-      enter();
-    } else {
-      errEl.textContent = '비밀번호가 올바르지 않습니다.';
-      input.value = '';
-      input.focus();
-    }
-  }
-  var authed = false;
-  try { authed = localStorage.getItem(KEY) === '1'; } catch (e) {}
-  if (authed) { enter(); }
-  else {
-    document.getElementById('authSubmit').addEventListener('click', tryAuth);
-    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); tryAuth(); } });
-    input.focus();
-  }
-})();
+showWho();
+whoAmI().then(function (me) {
+  if (!me || !me.isAdmin) return;
+  document.getElementById('adminPanel').style.display = 'block';
+  /* 운영 로그 요약 */
+  fetch('/api/opslog?summary=7', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+    var box = document.getElementById('opsSum'), t = document.getElementById('opsSumTxt');
+    if (!j || j.error) { t.textContent = (j && j.error) || '불러오지 못했습니다.'; return; }
+    if (!j.total) { t.textContent = '기록된 문제가 없습니다.'; box.style.borderLeftColor = '#10715a'; return; }
+    var KO = { save_fail: '저장 실패', delete_fail: '삭제 실패', server_error: '서버 오류', upload_fail: '업로드 실패',
+      load_fail: '불러오기 실패', client_error: '화면 오류', login_locked: '로그인 잠김', login_fail: '로그인 실패' };
+    var serious = (j.byKind.save_fail || 0) + (j.byKind.delete_fail || 0) + (j.byKind.server_error || 0);
+    box.style.borderLeftColor = serious ? '#c2532a' : '#d97706';
+    t.innerHTML = '<b style="color:' + (serious ? '#c2532a' : '#b45309') + '">' + j.total + '건</b> — '
+      + Object.keys(KO).filter(function (k) { return j.byKind[k]; }).map(function (k) { return KO[k] + ' ' + j.byKind[k]; }).join(' · ');
+  }).catch(function () { document.getElementById('opsSumTxt').textContent = '불러오지 못했습니다.'; });
+  document.getElementById('revokeBtn').onclick = function () {
+    var email = document.getElementById('revokeEmail').value.trim();
+    var msg = document.getElementById('revokeMsg');
+    if (!email) { msg.textContent = '메일 주소를 입력해주세요.'; msg.style.color = '#dc2626'; return; }
+    if (!confirm(email + ' 의 로그인 세션을 즉시 끊으시겠습니까?\n그 사람은 다음 접속부터 메일 주소와 비밀번호를 다시 입력해야 합니다.')) return;
+    fetch('/api/auth/revoke-session', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email })
+    }).then(function (r) { return r.json(); }).then(function (j) {
+      if (j.error) { msg.textContent = j.error; msg.style.color = '#dc2626'; return; }
+      msg.textContent = j.message; msg.style.color = '#15803d';
+      document.getElementById('revokeEmail').value = '';
+    }).catch(function () {
+      msg.textContent = '요청에 실패했습니다.'; msg.style.color = '#dc2626';
+    });
+  };
+});
 </script>
-
+<script src="ui-common.js"></script>
+<script src="assets/theme.js"></script>
 </body>
 </html>

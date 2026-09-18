@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>운영 데이터 옮기기 — Boditech MED 내부 포털</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Malgun Gothic', '맑은 고딕', sans-serif;
+         background: #f4f5f7; color: #111827; font-size: 14px; line-height: 1.6; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 28px 20px 80px; }
+  .home { display: inline-block; font-size: 13px; color: #6b7280; text-decoration: none; margin-bottom: 14px; }
+  .home:hover { color: #2563eb; }
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .sub { color: #6b7280; font-size: 13px; margin-bottom: 24px; }
+  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px 22px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .step { display: inline-flex; width: 22px; height: 22px; border-radius: 50%; background: #2563eb; color: #fff;
+          font-size: 12px; font-weight: 700; align-items: center; justify-content: center; flex: none; }
+  .step.off { background: #d1d5db; }
+  .card p.d { color: #6b7280; font-size: 13px; margin-bottom: 14px; }
+  .btn { background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 10px 18px;
+         font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .btn:hover { background: #1d4ed8; }
+  .btn:disabled { background: #d1d5db; cursor: not-allowed; }
+  .btn.danger { background: #dc2626; } .btn.danger:hover { background: #b91c1c; }
+  .btn.ghost { background: #fff; color: #374151; border: 1px solid #d1d5db; }
+  .drop { border: 2px dashed #cbd5e1; border-radius: 10px; padding: 30px 20px; text-align: center;
+          color: #6b7280; cursor: pointer; transition: .15s; }
+  .drop:hover, .drop.on { border-color: #2563eb; background: #eff6ff; color: #2563eb; }
+  .drop b { display: block; font-size: 15px; color: #111827; margin-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+  th, td { border-bottom: 1px solid #e5e7eb; padding: 8px 10px; text-align: left; }
+  th { color: #6b7280; font-weight: 700; font-size: 12px; background: #f9fafb; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .ok { color: #059669; font-weight: 700; } .bad { color: #dc2626; font-weight: 700; }
+  .warn { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 14px 16px;
+          font-size: 13px; color: #92400e; margin-bottom: 14px; }
+  .warn b { color: #78350f; }
+  .bar { height: 8px; background: #e5e7eb; border-radius: 999px; overflow: hidden; margin: 12px 0 6px; }
+  .bar i { display: block; height: 100%; background: #2563eb; width: 0; transition: width .2s; }
+  .log { background: #111827; color: #d1d5db; border-radius: 8px; padding: 12px 14px; font-size: 12px;
+         font-family: ui-monospace, Consolas, monospace; max-height: 260px; overflow: auto; white-space: pre-wrap;
+         margin-top: 12px; display: none; }
+  label.chk { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; cursor: pointer; margin-bottom: 14px; }
+  label.chk input { margin-top: 4px; }
+  .gate { text-align: center; padding: 60px 20px; color: #6b7280; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; margin-top: 10px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; background: #eef2ff; color: #3730a3; margin-left: 4px; }
+  .tag.keep { background: #ecfdf5; color: #065f46; }
+  .muted { color: #9ca3af; font-size: 12px; }
+  td.c { text-align: center; }
+</style>
+<!-- 디자인 레이어(Quiet Editorial Workspace): 겉모습만 바꿉니다. 화면 내용·동작은 그대로입니다. 글꼴·사진은 assets/fonts, assets/img 에 포함되어 외부 접속이 필요 없습니다. -->
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+<div class="wrap">
+  <a href="../index.html" class="home">← 홈으로</a>
+  <h1>운영 데이터 옮기기</h1>
+  <p class="sub">BDTS-main 의 구글 시트 백업 <b>거래처이력카드.xlsx</b> 를 넣으면 이 화면에서 바로 포털 형식으로 바꿔 Azure 에 넣습니다.
+    지금 Azure 에 든 자료를 <b>지우고 새로 넣는</b> 도구이며 관리자만 쓸 수 있습니다.</p>
+
+  <div id="gate" class="gate">확인하는 중…</div>
+
+  <div id="app" style="display:none">
+
+    <div class="card">
+      <h2><span class="step">1</span> 지금 Azure 에 든 자료 · 지울 저장소 고르기</h2>
+      <p class="d">먼저 건수를 세어 보여드립니다. 체크한 저장소만 <b>즉시(휴지통 미보관)</b> 비웁니다.
+        로그인·비밀번호·변경 이력은 이 화면에서 건드릴 수 없습니다.</p>
+      <div class="row">
+        <button class="btn ghost" id="check">건수 세어보기</button>
+        <span class="muted" id="checkNote"></span>
+      </div>
+      <div id="countBox"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="step off" id="s2">2</span> 거래처이력카드.xlsx 넣기</h2>
+      <p class="d">
+        구글 시트에서 내려받은 <b>거래처이력카드.xlsx</b> 한 개를 넣으면 됩니다. (드래그해도 됩니다)
+        변환 결과와 검토 리포트를 여기서 바로 보여주고, 아무것도 Azure 에 쓰지 않습니다 — 3단계에서 실행하기 전까지는 안전합니다.
+        <span class="muted">(확정한 날짜 보정표 overrides.json · 값 정리표 value-map.json 이 더 있으면 xlsx 와 같이 넣으세요. 지금까지 확정한 내용은 화면에 이미 들어 있습니다.)</span>
+      </p>
+      <div class="drop" id="drop">
+        <b>여기를 눌러 파일 고르기</b>
+        거래처이력카드.xlsx (또는 manifest.json + 변환 JSON)
+      </div>
+      <input type="file" id="file" accept=".xlsx,.xls,.json" multiple style="display:none">
+      <div id="fileResult"></div>
+      <div id="convResult"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="step off" id="s3">3</span> 확인하고 실행</h2>
+      <div class="warn">
+        <b>되돌릴 수 없습니다.</b> 1단계에서 체크한 저장소는 휴지통을 거치지 않고 바로 비워지고,
+        2단계 파일이 있는 저장소에는 그 내용이 들어갑니다. 포털에 직접 입력한 자료도 함께 사라집니다.
+        <span id="planText"></span>
+      </div>
+      <label class="chk">
+        <input type="checkbox" id="wipe">
+        <span>위 내용을 확인했습니다. 체크한 저장소를 비우고 새 자료를 넣겠습니다.</span>
+      </label>
+      <button class="btn danger" id="run" disabled>지우고 넣기</button>
+      <div class="bar" id="barBox" style="display:none"><i id="bar"></i></div>
+      <div id="progress" style="font-size:13px;color:#6b7280"></div>
+      <div class="log" id="log"></div>
+    </div>
+
+    <div class="card" id="doneCard" style="display:none">
+      <h2><span class="step">4</span> 결과</h2>
+      <div id="doneBody"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="../assets/auth-gate.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="../data/domestic-base.js"></script>
+<script src="../assets/migrate-convert.js"></script>
+<script>
+/* ---------- 저장소 목록 ----------
+   kind: 'table' = Azure Table 파티션(/api/records), 'blob' = Blob 저장소(/api/blobs)
+   file: 2단계에서 받는 파일 이름 (없으면 비우기만)
+   def : 기본으로 "지우기" 체크 여부. keep=true 는 기본 해제 + 경고 */
+var STORES = [
+  { key: 'master_log',        kind: 'table', label: '클레임 로그 (국내) — 포털에서 만든 로그', note: '과거 2,509건 씨앗 파일은 그대로', def: true },
+  { key: 'client_cards',      kind: 'table', label: '거래처 이력카드',            file: 'client_cards',      def: true },
+  { key: 'csc_cards',         kind: 'table', label: '고객지원센터 접수',          file: 'csc_cards',         def: true },
+  { key: 'claim_extra',       kind: 'table', label: '통합 클레임 로그 업로드분(BDTS-main 방식)', file: 'claim_extra', def: true },
+  { key: 'cartridge_log',     kind: 'table', label: '카트리지 수기 기록',         file: 'cartridge_log',     def: true },
+  { key: 'csc_reference_log', kind: 'table', label: 'CSC 참고 기록',              file: 'csc_reference_log', def: true },
+  { key: 'hospital_notes',    kind: 'table', label: '병원 참고사항 (병원별 조회 상단 메모)', def: false, keep: true },
+  { key: 'upload_log',        kind: 'table', label: '엑셀 업로드 이력',           def: true },
+  { key: 'trash',             kind: 'table', label: '휴지통 (30일 보관분)',       def: true },
+  { key: 'dist_alias',        kind: 'table', label: '대리점 정식 명칭 (확정한 매칭)', def: false, keep: true },
+  { key: 'claims',            kind: 'blob',  label: '통합 클레임 로그 — 포털에서 올린 엑셀 업로드분', def: false, keep: true, note: '앞으로도 계속 업로드되는 자료' },
+  { key: 'upload_blobs',      kind: 'blob',  label: 'Sales Report — 포털에서 올린 엑셀 업로드분',  def: false, keep: true, note: '앞으로도 계속 업로드되는 자료' }
+];
+var FILES = {};        // { client_cards: [..], ... }
+var MANIFEST = null;
+var COUNTS = null;     // { key: 건수 | 'err' }
+var BUSY = false;
+
+function $(id) { return document.getElementById(id); }
+function byKey(k) { return STORES.filter(function (s) { return s.key === k; })[0]; }
+function say(msg) { var el = $('log'); el.style.display = 'block'; el.textContent += msg + '\n'; el.scrollTop = el.scrollHeight; }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (m) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]; }); }
+function n(x) { return typeof x === 'number' ? x.toLocaleString() : String(x); }
+
+/* ---------- 로그인·권한 확인 ---------- */
+(window.__bdtsAuthReady || Promise.resolve()).then(function () {
+  var u = window.__bdtsUser || {};
+  if (!u.email) { $('gate').innerHTML = '로그인이 필요합니다. <a href="../index.html">홈으로</a>'; return; }
+  if (!u.isAdmin) {
+    $('gate').innerHTML = '이 화면은 <b>관리자</b>만 쓸 수 있습니다.<br><span style="font-size:13px">(' + esc(u.email) + ' 계정에는 권한이 없습니다)</span>';
+    return;
+  }
+  $('gate').style.display = 'none';
+  $('app').style.display = '';
+  renderCounts();
+});
+
+/* ---------- API ---------- */
+function post(url, body) {
+  return fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    .then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (j) {
+        if (!res.ok || j.error) throw new Error(j.error || ('오류 ' + res.status));
+        return j;
+      });
+    });
+}
+function countOf(st) {
+  if (st.kind === 'table') {
+    return fetch('/api/records?sheet=' + encodeURIComponent(st.key), { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); }).then(function (r) { return Array.isArray(r) ? r.length : 0; });
+  }
+  return fetch('/api/blobs?store=' + encodeURIComponent(st.key), { credentials: 'same-origin' })
+    .then(function (r) { return r.json(); }).then(function (r) { return (r && typeof r === 'object' && !r.error) ? Object.keys(r).length : 0; });
+}
+function wipe(st) {
+  return st.kind === 'table'
+    ? post('/api/records', { sheet: st.key, action: 'wipe', note: MANIFEST ? ('이관 원본 ' + MANIFEST._source) : '' })
+    : post('/api/blobs', { store: st.key, action: 'wipe' });
+}
+
+/* ---------- 1단계: 건수 ---------- */
+$('check').onclick = function () {
+  if (BUSY) return;
+  $('check').disabled = true; $('checkNote').textContent = '세는 중…';
+  COUNTS = {};
+  Promise.all(STORES.map(function (st) {
+    return countOf(st).then(function (c) { COUNTS[st.key] = c; }).catch(function () { COUNTS[st.key] = 'err'; });
+  })).then(function () {
+    $('check').disabled = false; $('checkNote').textContent = '(' + new Date().toLocaleTimeString() + ' 기준)';
+    renderCounts();
+  });
+};
+
+function renderCounts() {
+  var rows = STORES.map(function (st) {
+    var c = COUNTS ? COUNTS[st.key] : null;
+    var checked = $('w_' + st.key) ? $('w_' + st.key).checked : st.def;
+    return '<tr>' +
+      '<td class="c"><input type="checkbox" id="w_' + st.key + '"' + (checked ? ' checked' : '') + '></td>' +
+      '<td>' + esc(st.label) + (st.keep ? '<span class="tag keep">보통 남김</span>' : '') +
+        '<br><span class="muted">' + st.key + (st.kind === 'blob' ? ' (Blob)' : '') + (st.note ? ' · ' + esc(st.note) : '') + '</span></td>' +
+      '<td class="n">' + (c == null ? '—' : c === 'err' ? '<span class="bad">읽기 실패</span>' : n(c) + (st.kind === 'blob' ? '개 파일' : '건')) + '</td>' +
+      '<td class="n">' + (st.file ? (FILES[st.file] ? n(FILES[st.file].length) + '건' : '<span class="muted">파일 없음</span>') : '<span class="muted">비우기만</span>') + '</td>' +
+      '</tr>';
+  }).join('');
+  $('countBox').innerHTML = '<table><thead><tr><th class="c">지우기</th><th>저장소</th><th style="text-align:right">지금 건수</th><th style="text-align:right">넣을 건수</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  STORES.forEach(function (st) { $('w_' + st.key).onchange = syncPlan; });
+  syncPlan();
+}
+
+/* ---------- 2단계: 파일 ---------- */
+$('drop').onclick = function () { $('file').click(); };
+['dragover', 'dragenter'].forEach(function (ev) { $('drop').addEventListener(ev, function (e) { e.preventDefault(); $('drop').classList.add('on'); }); });
+['dragleave', 'drop'].forEach(function (ev) { $('drop').addEventListener(ev, function (e) { e.preventDefault(); $('drop').classList.remove('on'); }); });
+$('drop').addEventListener('drop', function (e) { readFiles(e.dataTransfer.files); });
+$('file').onchange = function () { readFiles(this.files); };
+
+var OVERRIDES = null;   /* 함께 넣은 overrides.json (선택) */
+var VALUEMAP = null;    /* 함께 넣은 value-map.json (선택 — 화면에 내장된 정리표에 덧붙임) */
+var CONV = null;        /* xlsx 변환 결과 */
+function readFiles(files) {
+  var known = {};
+  STORES.forEach(function (st) { if (st.file) known[st.file] = st; });
+  var list = Array.prototype.slice.call(files);
+  /* xlsx 가 있으면 이 화면에서 바로 변환합니다 (overrides.json 이 같이 있으면 먼저 읽어 적용) */
+  var xlsxFile = list.filter(function (f) { return /\.xlsx?$/i.test(f.name); })[0];
+  var ovrFile = list.filter(function (f) { return /^overrides\.json$/i.test(f.name); })[0];
+  var vmFile = list.filter(function (f) { return /^value-map\.json$/i.test(f.name); })[0];
+  if (xlsxFile) {
+    var pre = Promise.all([
+      ovrFile ? readJsonFile(ovrFile).then(function (v) { OVERRIDES = v; }).catch(function () { OVERRIDES = null; }) : null,
+      vmFile ? readJsonFile(vmFile).then(function (v) { VALUEMAP = v; }).catch(function () { VALUEMAP = null; }) : null
+    ]);
+    pre.then(function () { return convertXlsx(xlsxFile); });
+    return;
+  }
+  var jobs = list.map(function (f) {
+    return new Promise(function (res) {
+      var name = f.name.replace(/\.json$/i, '');
+      var fr = new FileReader();
+      fr.onload = function () {
+        try {
+          var v = JSON.parse(fr.result);
+          if (name === 'overrides') { OVERRIDES = v; return res({ name: f.name, manifest: true }); }
+          if (name === 'manifest') { MANIFEST = v; return res({ name: f.name, manifest: true }); }
+          if (!known[name]) return res({ name: f.name, error: '이 화면에서 쓰지 않는 파일입니다' });
+          if (!Array.isArray(v)) return res({ name: f.name, error: '내용이 목록 형태가 아닙니다' });
+          var ids = {}, dup = 0, noId = 0;
+          v.forEach(function (r) {
+            var id = r && r.id != null ? String(r.id) : '';
+            if (!id) { noId++; return; }
+            if (ids[id]) dup++; else ids[id] = 1;
+          });
+          FILES[name] = v;
+          res({ name: f.name, key: name, rows: v.length, dup: dup, noId: noId });
+        } catch (e) { res({ name: f.name, error: '파일을 읽지 못했습니다 (' + e.message + ')' }); }
+      };
+      fr.onerror = function () { res({ name: f.name, error: '파일을 열지 못했습니다' }); };
+      fr.readAsText(f, 'utf-8');
+    });
+  });
+  Promise.all(jobs).then(renderPicked);
+}
+
+function readJsonFile(f) {
+  return new Promise(function (res, rej) {
+    var fr = new FileReader();
+    fr.onload = function () { try { res(JSON.parse(fr.result)); } catch (e) { rej(e); } };
+    fr.onerror = function () { rej(new Error('읽기 실패')); };
+    fr.readAsText(f, 'utf-8');
+  });
+}
+/* ---------- xlsx → 포털 형식 (이 화면 안에서) ---------- */
+function convertXlsx(f) {
+  $('fileResult').innerHTML = '<p style="margin-top:12px;font-size:13px">📗 <b>' + esc(f.name) + '</b> 읽는 중…</p>';
+  $('convResult').innerHTML = '';
+  var fr = new FileReader();
+  fr.onload = function () {
+    try {
+      if (typeof XLSX === 'undefined' || !window.MigrateConvert) throw new Error('변환 도구를 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침해주세요.');
+      var wb = XLSX.read(fr.result, { type: 'array', cellDates: true });
+      var need = ['records', 'claim_progress', 'claim_extra'].filter(function (n) { return wb.SheetNames.indexOf(n) < 0; });
+      if (need.length) throw new Error('이 파일에는 ' + need.join(', ') + ' 탭이 없습니다. 구글 시트 전체를 내려받은 거래처이력카드.xlsx 가 맞는지 확인해주세요.');
+      CONV = window.MigrateConvert.fromWorkbook(wb, { base: window.__SEED || {}, overrides: OVERRIDES, valueMap: VALUEMAP, source: f.name });
+      FILES = {}; Object.keys(CONV.files).forEach(function (k) { FILES[k] = CONV.files[k]; });
+      MANIFEST = CONV.manifest;
+      renderConverted(f.name);
+    } catch (e) {
+      $('fileResult').innerHTML = '<p class="bad" style="margin-top:12px;font-size:13px">' + esc(f.name) + ' — ' + esc(e.message) + '</p>';
+      FILES = {}; MANIFEST = null; CONV = null; renderCounts();
+    }
+  };
+  fr.onerror = function () { $('fileResult').innerHTML = '<p class="bad">파일을 열지 못했습니다</p>'; };
+  fr.readAsArrayBuffer(f);
+}
+function download(name, text, mime) {
+  var blob = new Blob([text], { type: mime || 'text/plain;charset=utf-8' });
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+function renderConverted(srcName) {
+  var m = CONV.manifest, rows = Object.keys(MAPLABEL).map(function (k) {
+    return '<tr><td>' + esc(MAPLABEL[k]) + '<br><span class="muted">' + k + '</span></td><td class="n">' + n(m[k] || 0) + '건</td></tr>';
+  }).join('');
+  var bad = CONV.dateBad || [], fix = CONV.dateFix || [], ovr = CONV.overridesUsed || [];
+  var nlTotal = (CONV.notlist || []).reduce(function (a, g) { return a + Object.keys(g.vals).length; }, 0);
+  $('fileResult').innerHTML =
+    '<p style="margin-top:12px;font-size:13px">📗 <b>' + esc(srcName) + '</b> 변환 완료 — 원본 값은 바꾸지 않았고, 날짜 표기만 통일했습니다. Azure 에는 아직 아무것도 쓰지 않았습니다.</p>' +
+    '<table><thead><tr><th>넣을 곳</th><th style="text-align:right">건수</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  $('convResult').innerHTML =
+    '<div style="margin-top:14px;font-size:13px;line-height:1.8">' +
+    '<b>검토 사항</b><br>' +
+    '· 날짜 표기 통일 ' + n(fix.length) + '건 (예: 2024.10.11 → 2024-10-11) · 사람이 확정한 날짜 보정 ' + n(ovr.length) + '건 적용' +
+    '<br>· 확정한 값 정리표 적용 ' + n(CONV.valueFixCount || 0) + '건 (예: PM → PM(Preventive Maintenance), TRIAS-3 → TRIAS 3) — 원본은 각 건의 _valueFix 에 남김' +
+    (bad.length ? '<br>· <span class="bad">읽지 못해 비워 둔 날짜 ' + bad.length + '건</span> — ' + bad.map(function (x) { return x[0] + ' ' + x[1] + ' (' + x[3] + ')'; }).join(', ') + ' → 이관 뒤 화면에서 직접 고치거나, 확정값을 overrides.json 에 적어 다시 넣으세요' : '<br>· 읽지 못한 날짜 없음') +
+    '<br>· 원본이 "완료"인데 회신일이 없어 진행 중으로 옮기는 고객지원센터 접수 ' + n(CONV.noReply || 0) + '건' +
+    '<br>· 목록(장비·아이템·이름·분류)에 없는 값 ' + n(nlTotal) + '종 — 고치지 않고 그대로 옮깁니다' +
+    '</div>' +
+    '<div class="row" style="margin-top:10px">' +
+    '<button class="btn ghost" id="dlReport">📄 검토 리포트 내려받기 (.md)</button>' +
+    '<button class="btn ghost" id="dlNotlist">📋 목록에 없는 값 (.xlsx)</button>' +
+    '<button class="btn ghost" id="dlJson">💾 변환 결과 보관 (JSON)</button>' +
+    '<span class="muted">리포트는 작업 기록과 함께 보관하세요</span></div>';
+  $('dlReport').onclick = function () { download('이관_검토리포트_' + m._built.slice(0, 10) + '.md', CONV.report, 'text/markdown;charset=utf-8'); };
+  $('dlNotlist').onclick = function () { XLSX.writeFile(window.MigrateConvert.notlistWorkbook(CONV), '목록에_없는_값_' + m._built.slice(0, 10) + '.xlsx'); };
+  $('dlJson').onclick = function () {
+    Object.keys(CONV.files).forEach(function (k) { download(k + '.json', JSON.stringify(CONV.files[k]), 'application/json'); });
+    download('manifest.json', JSON.stringify(m, null, 2), 'application/json');
+  };
+  $('s2').className = 'step';
+  renderCounts();
+}
+var MAPLABEL = { client_cards: '거래처 이력카드', csc_cards: '고객지원센터 접수', claim_extra: '통합 클레임 로그 업로드분', csc_reference_log: 'CSC 참고 기록', cartridge_log: '카트리지 수기 기록' };
+
+function renderPicked(list) {
+  var html = '', bad = 0;
+  if (MANIFEST) {
+    html += '<p style="margin-top:12px;font-size:13px">📄 <b>manifest.json</b> — 원본 <b>' + esc(MANIFEST._source || '?') + '</b> · 변환 ' + esc((MANIFEST._built || '').replace('T', ' ').slice(0, 16)) +
+      ' · ' + Object.keys(MANIFEST).filter(function (k) { return k.charAt(0) !== '_'; }).map(function (k) { return k + ' ' + n(MANIFEST[k]); }).join(' / ') + '</p>';
+  }
+  var rows = list.filter(function (x) { return !x.manifest; }).map(function (x) {
+    var st = x.key && byKey(STORES.filter(function (s) { return s.file === x.key; })[0].key);
+    var note, cls = 'ok';
+    if (x.error) { note = x.error; cls = 'bad'; bad++; }
+    else if (x.dup || x.noId) { note = '겹치는 id ' + x.dup + '건, id 없음 ' + x.noId + '건 — 변환 도구를 다시 확인하세요'; cls = 'bad'; bad++; delete FILES[x.key]; }
+    else if (MANIFEST && MANIFEST[x.key] != null && MANIFEST[x.key] !== x.rows) { note = 'manifest 건수(' + n(MANIFEST[x.key]) + ')와 다릅니다'; cls = 'bad'; bad++; }
+    else note = '이상 없음';
+    return '<tr><td>' + esc(x.name) + (st ? '<br><span class="muted">→ ' + esc(st.label) + '</span>' : '') + '</td><td class="n">' + (x.rows != null ? n(x.rows) + '건' : '—') + '</td><td class="' + cls + '">' + esc(note) + '</td></tr>';
+  }).join('');
+  if (rows) html += '<table><thead><tr><th>파일</th><th style="text-align:right">건수</th><th>상태</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  if (!MANIFEST) html += '<p class="bad" style="margin-top:10px;font-size:13px">manifest.json 이 없습니다 — 변환 도구가 만든 seed 폴더에서 함께 골라주세요.</p>';
+  $('fileResult').innerHTML = html;
+  $('s2').className = (Object.keys(FILES).length && MANIFEST && !bad) ? 'step' : 'step off';
+  renderCounts();
+}
+
+/* ---------- 계획 요약 ---------- */
+function plan() {
+  var wipeList = STORES.filter(function (st) { return $('w_' + st.key) && $('w_' + st.key).checked; });
+  var putList = STORES.filter(function (st) { return st.file && FILES[st.file]; });
+  return { wipe: wipeList, put: putList };
+}
+function syncPlan() {
+  var p = plan();
+  var keepWarn = p.wipe.filter(function (st) { return st.keep; });
+  $('planText').innerHTML = '<br>지울 저장소 <b>' + p.wipe.length + '개</b>' + (p.wipe.length ? ' (' + p.wipe.map(function (s) { return s.key; }).join(', ') + ')' : '') +
+    ' · 넣을 저장소 <b>' + p.put.length + '개</b>' + (p.put.length ? ' (' + p.put.map(function (s) { return s.key + ' ' + n(FILES[s.file].length) + '건'; }).join(', ') + ')' : '') +
+    (keepWarn.length ? '<br><b style="color:#b91c1c">⚠ ' + keepWarn.map(function (s) { return s.label; }).join(', ') + ' 도 지워집니다 — 확정해 둔 내용이 사라집니다.</b>' : '') +
+    (p.put.filter(function (s) { return !$('w_' + s.key).checked; }).length ? '<br><b style="color:#b91c1c">⚠ 비우지 않고 넣는 저장소가 있습니다 — 같은 id 는 덮어쓰고, 다른 id 는 그대로 남아 섞입니다.</b>' : '');
+  window.__ready = !!(p.wipe.length || p.put.length) && !!(p.put.length === 0 || MANIFEST);
+  $('s3').className = window.__ready ? 'step' : 'step off';
+  syncRun();
+}
+$('wipe').onchange = syncRun;
+function syncRun() { $('run').disabled = BUSY || !window.__ready || !$('wipe').checked; }
+
+/* ---------- 3단계: 실행 ---------- */
+$('run').onclick = function () {
+  if (BUSY) return;
+  var p = plan();
+  if (!confirm('지울 저장소 ' + p.wipe.length + '개, 넣을 저장소 ' + p.put.length + '개.\n되돌릴 수 없습니다. 계속할까요?')) return;
+  BUSY = true; syncRun(); $('check').disabled = true;
+  $('log').textContent = ''; $('barBox').style.display = 'block';
+  runAll(p).then(showReport).catch(function (e) { say('■ 중단: ' + e.message); })
+    .then(function () { BUSY = false; $('check').disabled = false; syncRun(); });
+};
+
+var TOTAL = 0, DONE = 0;
+function tick(msg, k) {
+  DONE += (k || 1);
+  var pct = TOTAL ? Math.min(100, Math.round(DONE / TOTAL * 100)) : 0;
+  $('bar').style.width = pct + '%';
+  $('progress').textContent = msg + ' — ' + n(DONE) + ' / ' + n(TOTAL) + ' (' + pct + '%)';
+}
+
+var CHUNK = 200;   // bulkAdd 한 번에 보내는 건수 (서버는 100건씩 트랜잭션)
+async function runAll(p) {
+  TOTAL = p.wipe.length + p.put.reduce(function (a, s) { return a + FILES[s.file].length; }, 0);
+  DONE = 0;
+  var report = [];
+
+  say('■ 비웁니다…');
+  for (var i = 0; i < p.wipe.length; i++) {
+    var st = p.wipe[i];
+    try {
+      var r = await wipe(st);
+      say('  ' + st.label + ' : ' + n(r.deleted) + (st.kind === 'blob' ? '개 파일' : '건') + ' 삭제');
+      report.push({ st: st, deleted: r.deleted });
+    } catch (e) {
+      say('  ! ' + st.label + ' 비우기 실패 — ' + e.message);
+      throw new Error(st.key + ' 비우기 실패로 중단합니다 (넣기는 시작하지 않았습니다)');
+    }
+    tick('비우는 중 · ' + st.label);
+  }
+
+  say('\n■ 넣습니다…');
+  for (var c = 0; c < p.put.length; c++) {
+    var ps = p.put[c], list = FILES[ps.file], ok = 0, fail = 0;
+    for (var d = 0; d < list.length; d += CHUNK) {
+      var chunk = list.slice(d, d + CHUNK), last = d + CHUNK >= list.length;
+      try {
+        var res = await post('/api/records', {
+          sheet: ps.key, action: 'bulkAdd', records: chunk,
+          audit: last ? ('BDTS-main 이관 ' + n(list.length) + '건' + (MANIFEST ? ' (원본 ' + MANIFEST._source + ', 변환 ' + String(MANIFEST._built || '').slice(0, 16) + ')' : '')) : ''
+        });
+        ok += res.saved || chunk.length;
+      } catch (e) {
+        fail += chunk.length;
+        say('  ! ' + ps.label + ' ' + (d + 1) + '~' + (d + chunk.length) + '번째 저장 실패 — ' + e.message);
+      }
+      tick('넣는 중 · ' + ps.label, chunk.length);
+    }
+    say('  ' + ps.label + ' : ' + n(ok) + '건 저장' + (fail ? ' (실패 ' + n(fail) + '건)' : ''));
+    var rep = report.filter(function (x) { return x.st.key === ps.key; })[0];
+    if (!rep) { rep = { st: ps }; report.push(rep); }
+    rep.sent = list.length; rep.ok = ok; rep.fail = fail;
+  }
+
+  say('\n■ 제대로 들어갔는지 다시 세어봅니다…');
+  for (var e2 = 0; e2 < report.length; e2++) {
+    var rr = report[e2];
+    try { rr.after = await countOf(rr.st); } catch (e) { rr.after = 'err'; }
+    say('  ' + rr.st.label + ' : 지금 ' + n(rr.after) + (rr.sent != null ? ' (넣은 값 ' + n(rr.sent) + ')' : ''));
+  }
+  COUNTS = COUNTS || {};
+  report.forEach(function (rr) { COUNTS[rr.st.key] = rr.after; });
+  renderCounts();
+  return report;
+}
+
+function showReport(report) {
+  var allOk = true;
+  var rows = report.map(function (r) {
+    var expect = r.sent != null ? r.sent : 0;
+    var good = r.after === expect && !r.fail;
+    if (!good) allOk = false;
+    return '<tr><td>' + esc(r.st.label) + '</td><td class="n">' + (r.deleted != null ? n(r.deleted) : '—') + '</td>' +
+      '<td class="n">' + (r.sent != null ? n(r.sent) : '—') + '</td><td class="n">' + n(r.after) + '</td>' +
+      '<td class="' + (good ? 'ok' : 'bad') + '">' + (good ? '일치' : '다릅니다') + '</td></tr>';
+  }).join('');
+  $('doneCard').style.display = '';
+  $('doneBody').innerHTML =
+    '<table><thead><tr><th>저장소</th><th style="text-align:right">지운 건수</th><th style="text-align:right">넣은 건수</th><th style="text-align:right">지금 건수</th><th>결과</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    (allOk
+      ? '<p style="margin-top:14px" class="ok">모두 일치합니다. 거래처 이력카드 · 고객지원센터 · 클레임 로그 (국내) 화면에서 확인해보세요. (다른 창은 새로고침(Ctrl+Shift+R)이 필요합니다)</p>'
+      : '<p style="margin-top:14px" class="bad">건수가 맞지 않는 항목이 있습니다. 위 검은 상자의 기록을 확인해주세요.</p>');
+  try { $('doneCard').scrollIntoView({ behavior: 'smooth' }); } catch (e) {}
+}
+</script>
+<script src="../ui-common.js"></script>
+<script src="../assets/theme.js"></script>
+</body>
+</html>

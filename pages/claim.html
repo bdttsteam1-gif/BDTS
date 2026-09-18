@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claim Management Dashboard</title>
+<script src="../assets/auth-gate.js"></script>
+<script src="../chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --surface2: #f8fafc;
+    --border: #d1d5db;
+    --accent: #2563eb;
+    --accent2: #7c3aed;
+    --accent3: #059669;
+    --text: #111827;
+    --text2: #6b7280;
+    --red: #dc2626;
+    --orange: #d97706;
+    --yellow: #ca8a04;
+    --radius: 12px;
+    --radius-sm: 6px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; overflow-x: hidden; }
+
+  /* Layout */
+  .app { display: flex; flex-direction: column; height: 100vh; }
+  .header { padding: 16px 24px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 16px; flex-wrap: wrap; row-gap: 10px; }
+  .home-btn { display: flex; align-items: center; gap: 6px; text-decoration: none; color: #fff; background: var(--accent); font-size: 15px; font-weight: 700; padding: 8px 14px; border-radius: 8px; white-space: nowrap; }
+  .home-btn:hover { background: #1d4ed8; }
+  .home-btn .ico { font-size: 17px; }
+  .header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .header h1 span { color: var(--accent); }
+  .search-wrap { flex: 1 1 240px; max-width: 480px; position: relative; }
+  .search-wrap input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 14px 9px 38px; color: var(--text); font-size: 14px; outline: none; transition: border-color 0.2s; }
+  .search-wrap input:focus { border-color: var(--accent); }
+  .search-wrap .icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text2); font-size: 14px; }
+  .badge { background: var(--accent); color: white; border-radius: 20px; padding: 2px 10px; font-size: 12px; font-weight: 600; margin-left: auto; }
+  .year-switcher { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .year-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 14px; color: var(--text2); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .year-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .year-btn-active { background: var(--accent); border-color: var(--accent); color: #fff !important; }
+
+  .content { flex: 1; overflow-y: auto; padding: 24px; }
+
+  /* Dashboard (main) */
+  .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+  .dashboard-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 20px; }
+  .dashboard-grid.wide { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+  @media (max-width: 1280px) { .dashboard-grid.three { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .dashboard-grid.wide { grid-template-columns: 1fr; } }
+  .mini-list.cols { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 2px 12px; max-height: none; }
+  .mini-list.cols .mini-item { border-bottom: 1px dashed var(--border); border-radius: 0; padding: 6px 4px; }
+  .mini-item .sub { color: var(--text2); font-size: 11px; margin-left: 6px; }
+  /* Distributor 정식 명칭 관리 */
+  .da-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; font-size: 12.5px; }
+  .da-tools .chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 99px; padding: 4px 10px; }
+  .da-tbl select, .da-tbl input { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; background: var(--surface2); color: var(--text); }
+  .da-st { font-size: 11px; font-weight: 700; border-radius: 99px; padding: 2px 8px; white-space: nowrap; }
+  .da-st.ok { background: #d1fae5; color: #065f46; } .da-st.auto { background: #dbeafe; color: #1e40af; } .da-st.none { background: #fee2e2; color: #991b1b; } .da-st.keep { background: #f3f4f6; color: #374151; }
+  .da-alias { font-size: 11px; color: var(--text2); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .card h2 { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 16px; }
+  .card.full { grid-column: 1 / -1; }
+  .stat-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .stat { flex: 1 1 150px; min-width: 150px; background: var(--surface2); border-radius: var(--radius-sm); padding: 14px 16px; }
+  .stat .val { font-size: 28px; font-weight: 800; color: var(--accent); line-height: 1; }
+  .stat .lbl { font-size: 12px; color: var(--text2); margin-top: 4px; }
+  .chart-wrap { position: relative; height: clamp(300px, 40vh, 520px); }
+  .chart-wrap.tall { height: clamp(360px, 48vh, 640px); }
+
+  /* Search results */
+  .results-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .results-header h2 { font-size: 16px; font-weight: 700; }
+  .results-header .count { font-size: 13px; color: var(--text2); }
+  .back-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 14px; color: var(--text); font-size: 13px; cursor: pointer; }
+  .back-btn:hover { border-color: var(--accent); }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--surface2); padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.6px; white-space: nowrap; position: sticky; top: 0; }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: var(--surface2); cursor: pointer; }
+  tr.active td { background: rgba(79,126,248,0.12); }
+
+  /* Tags */
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .tag-blue { background: rgba(79,126,248,0.2); color: #7da3fb; }
+  .tag-green { background: rgba(61,191,138,0.2); color: #5dd4a6; }
+  .tag-red { background: rgba(224,90,90,0.2); color: #e87d7d; }
+  .tag-yellow { background: rgba(245,200,66,0.2); color: #f5c842; }
+
+  /* Detail panel */
+  .detail-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; }
+  .detail-overlay.open { display: flex; align-items: flex-end; justify-content: flex-end; }
+  .detail-panel { background: var(--surface); width: 560px; height: 100vh; overflow-y: auto; border-left: 1px solid var(--border); padding: 24px; }
+  .detail-panel h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .detail-panel .no { font-size: 12px; color: var(--text2); margin-bottom: 20px; }
+  .detail-close { position: absolute; top: 20px; right: 20px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; cursor: pointer; color: var(--text); font-size: 13px; }
+  .detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+  .detail-field { }
+  .detail-field.full { grid-column: 1 / -1; }
+  .detail-field label { font-size: 10px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; display: block; margin-bottom: 4px; }
+  .detail-field p { font-size: 13px; line-height: 1.5; background: var(--surface2); border-radius: 6px; padding: 8px 10px; min-height: 32px; word-break: break-word; }
+  .section-divider { font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin: 20px 0 10px; grid-column: 1 / -1; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+
+  /* Lot/Item graph view */
+  .graph-section { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; margin-bottom: 24px; }
+  .graph-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .graph-card h3 { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; }
+  .graph-card p.hint { font-size: 11px; color: var(--text2); margin-top: 8px; text-align: center; }
+  .graph-chart-wrap { position: relative; height: clamp(260px, 34vh, 440px); cursor: pointer; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text2); }
+  .empty-state .ico { font-size: 48px; margin-bottom: 12px; }
+
+  /* 화면 전체 드래그 업로드 오버레이 */
+  #dropOverlay { display: none; position: fixed; inset: 0; z-index: 9998; background: rgba(37,99,235,.12);
+    border: 3px dashed var(--accent); align-items: center; justify-content: center; pointer-events: none; }
+  #dropOverlay.on { display: flex; }
+  #dropOverlay .msg { background: #fff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 22px 34px;
+    font-size: 16px; font-weight: 700; color: #1d4ed8; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+
+  /* Top bar item list */
+  .mini-list { display: flex; flex-direction: column; gap: 4px; max-height: 280px; overflow-y: auto; }
+  .mini-item { display: flex; justify-content: space-between; padding: 8px 10px; border-radius: 6px; font-size: 13px; }
+  .mini-item:hover { background: var(--surface2); }
+  .mini-item .name { color: var(--text); flex: 1; }
+  .mini-item .cnt { color: var(--accent); font-weight: 700; font-size: 13px; padding-left: 12px; }
+
+  /* ===== Mobile ===== */
+  @media (max-width: 768px) {
+    .app { height: auto; min-height: 100vh; }
+    .header { flex-wrap: wrap; padding: 12px 14px; gap: 8px; position: sticky; top: 0; z-index: 50; }
+    .header h1 { font-size: 16px; }
+    .year-switcher { margin-left: auto; }
+    .year-btn { padding: 8px 12px; font-size: 13px; }
+    .search-wrap { flex: 1 1 100%; max-width: none; order: 10; }
+    .search-wrap input { font-size: 16px; padding: 11px 14px 11px 38px; }
+    .badge { margin-left: 0; }
+    .content { padding: 14px; overflow-y: visible; }
+    .dashboard-grid { grid-template-columns: 1fr; gap: 14px; }
+    .graph-section { grid-template-columns: 1fr; gap: 14px; }
+    .stat-row { flex-wrap: wrap; gap: 10px; }
+    .stat { flex: 1 1 calc(50% - 5px); min-width: 0; padding: 12px 14px; }
+    .stat .val { font-size: 22px; }
+    .card { padding: 14px; }
+    .chart-wrap { height: 240px; }
+    .graph-chart-wrap { height: 220px; }
+    th, td { padding: 8px 10px; }
+    .table-wrap { -webkit-overflow-scrolling: touch; }
+    .detail-overlay.open { align-items: stretch; }
+    .detail-panel { width: 100vw; max-width: 100vw; border-left: none; padding: 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+    .detail-grid { grid-template-columns: 1fr; }
+    .results-header { flex-wrap: wrap; }
+    .back-btn { padding: 8px 14px; }
+    .mini-item { padding: 10px; }
+  }
+  @media (max-width: 420px) {
+    .stat { flex: 1 1 100%; }
+    .chart-wrap { height: 210px; }
+  }
+</style>
+<script src="../ui-common.js"></script>
+<script src="../search-utils.js"></script>
+<script src="../azure-store.js"></script>
+<script src="../claim-sheet.js"></script>
+<script src="../assets/upload-log.js"></script>
+<script src="../assets/dist-alias.js"></script>
+<!-- 디자인 레이어(Quiet Editorial Workspace): 겉모습만 바꿉니다. 화면 내용·동작은 그대로입니다. 글꼴·사진은 assets/fonts, assets/img 에 포함되어 외부 접속이 필요 없습니다. -->
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <a href="../index.html" class="home-btn"><span class="ico">🏠</span>홈</a>
+    <h1>Claim <span>Dashboard</span></h1>
+    <div class="year-switcher" id="yearTabs">
+      <button class="year-btn" data-year="2024" onclick="switchYear('2024')">2024</button>
+      <button class="year-btn" data-year="2025" onclick="switchYear('2025')">2025</button>
+      <button class="year-btn year-btn-active" data-year="2026" onclick="switchYear('2026')">2026</button>
+    </div>
+    <div class="search-wrap">
+      <span class="icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="국가·대리점·아이템·LOT 입력 후 Enter (2개 이상은 쉼표(,)로 구분 → 상세 목록)" autocomplete="off">
+    </div>
+    <button class="year-btn" id="uploadBtn" onclick="document.getElementById('excelFile').click()" title="현재 선택된 연도 시트에 신규 클레임만 추가됩니다 (화면 아무 곳에나 파일을 드래그해도 됩니다)">⬆ 엑셀 업로드</button>
+    <input type="file" id="excelFile" accept=".xlsx,.xlsm" style="display:none" onchange="handleExcelUpload(this)">
+    <button class="year-btn" id="resetExtraBtn" onclick="resetExtras()" title="업로드로 추가된 데이터를 삭제합니다" style="display:none">↺ 업로드 초기화</button>
+    <button class="year-btn" onclick="UICommon.downloadDashboard(document.getElementById('mainContent'),'클레임_대시보드_'+currentYear)" title="현재 화면을 PNG 이미지로 저장합니다">📷 다운로드</button>
+    <button class="year-btn" id="distAdminBtn" onclick="renderDistAdmin()" title="Sales Report 고객명(정식 명칭)과 클레임 로그의 약식 대리점명을 연결합니다">🏷 대리점명 정리</button>
+    <div class="badge" id="totalBadge">0 건</div>
+  </div>
+  <div id="dropOverlay"><div class="msg">📥 여기에 놓으면 엑셀 파일이 업로드됩니다</div></div>
+  <!-- 마지막 업로드 (Azure upload_log — 다른 PC 에서도 같은 내용) -->
+  <div id="uploadLog" class="upload-log"></div>
+  <div id="uploadStatus" style="display:none; padding:8px 24px; font-size:13px; background:#eff6ff; border-bottom:1px solid #bfdbfe; color:#1d4ed8;"></div>
+  <div class="content" id="mainContent">
+    <!-- Filled by JS -->
+  </div>
+</div>
+
+<!-- Detail overlay -->
+<div class="detail-overlay" id="detailOverlay">
+  <div class="detail-panel" id="detailPanel">
+    <button class="detail-close" onclick="closeDetail()">✕ 닫기</button>
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<script>
+/* ===== 띄어쓰기 무시 비교 (2026-09 요청: 모든 검색은 공백·대소문자와 관계없이 내용이 같으면 같은 것으로) ===== */
+function nrm(s){ return String(s==null?'':s).toLowerCase().replace(/[\s\u00a0\u3000]+/g,''); }
+function nrmHas(hay, q){ q = nrm(q); return !q || nrm(hay).indexOf(q) >= 0; }
+
+// Normalize
+let currentYear = '2026';
+let EXTRAS_ALL = { '2024': [], '2025': [], '2026': [] };
+
+function normalizeRaw(arr) {
+  return arr.map(r => {
+    const o = {};
+    for (const [k, v] of Object.entries(r)) o[k] = (v === null || v === undefined) ? '' : String(v).trim();
+    return o;
+  });
+}
+
+// ---- 최신순 정렬 (수신일 내림차순, 없으면 Complaint No. 내림차순) ----
+function byNewest(a, b) {
+  const da = a.recv_date || '', db = b.recv_date || '';
+  if (da !== db) return da < db ? 1 : -1;
+  return (a.no || '') < (b.no || '') ? 1 : -1;
+}
+
+// ---- 업로드 병합 데이터 (구글 시트 공유, 미설정 시 localStorage 폴백은 claim-sheet.js가 처리) ----
+function buildYearData(year) {
+  const base = normalizeRaw(window['RAW_' + year] || []);
+  const extras = normalizeRaw(EXTRAS_ALL[year] || []);
+  const seen = new Set(base.map(r => r.no));
+  const merged = base.concat(extras.filter(r => r.no && !seen.has(r.no)));
+  merged.sort(byNewest);
+  return merged;
+}
+
+let DATA = normalizeRaw(window['RAW_' + currentYear] || []).sort(byNewest);
+
+function updateUploadUI() {
+  const extras = EXTRAS_ALL[currentYear] || [];
+  const btn = document.getElementById('resetExtraBtn');
+  const status = document.getElementById('uploadStatus');
+  if (extras.length > 0) {
+    btn.style.display = '';
+    status.style.display = 'block';
+    const scope = isClaimSheetConfigured() ? '전 직원 화면에 공유되어' : '이 브라우저에만 저장되어';
+    status.textContent = '📌 ' + currentYear + '년: 엑셀 업로드로 추가된 신규 클레임 ' + extras.length + '건이 ' + scope + ' 있습니다. (기존 데이터는 그대로 유지됨)';
+  } else {
+    btn.style.display = 'none';
+    status.style.display = 'none';
+  }
+}
+
+function switchYear(year) {
+  currentYear = year;
+  _claimAcItems = null;
+  DATA = buildYearData(year);
+  rebuildDataMap();
+  document.querySelectorAll('.year-btn').forEach(b => {
+    if (b.dataset.year) b.classList.toggle('year-btn-active', b.dataset.year === year);
+  });
+  document.getElementById('searchInput').value = '';
+  updateUploadUI();
+  renderUploadLog();
+  renderDashboard();
+}
+/* 화면 상단에 "마지막 업로드: 파일명 · 일시 · 업로더 · 추가 N건" 표시 */
+function renderUploadLog() {
+  if (typeof UploadLog === 'undefined') return;
+  UploadLog.render(document.getElementById('uploadLog'), 'claims', { year: currentYear });
+}
+
+// ---- 엑셀 업로드: 신규 건만 추가 ----
+const XLSX_COLMAP = {
+  'Complaint No.':'no','Area':'area','Country':'country','Distributor':'dist','E-mail':'email',
+  'Contact':'contact','Via':'via','Received date':'recv_date','Receiver':'receiver',
+  '1st CLASS.':'c1','2nd CLASS.':'c2','3rd CLASS.':'c3','Device':'device',
+  'Serial number':'serial','SW version':'sw','Item':'item','LOT No.':'lot','Control LOT':'ctrl_lot',
+  'Title':'title','Complaint(Attachment)':'complaint','Severity Level':'severity',
+  'Investigation DETS.':'invest','Action':'action','Reply':'reply','Replied Date':'replied'
+};
+/* ===== 국내(K) 건을 클레임 로그 (국내)에도 함께 넣기 (2026-09) =====
+   통합 클레임로그 엑셀에는 국내 건(Complaint No. 가 K 로 끝남)도 함께 들어 있습니다.
+   예전에는 통합 클레임로그에만 쌓여, 클레임 로그 (국내)에서는 8월 이후 건이 검색되지 않았습니다.
+   이제 업로드할 때 K 건을 갈라내어 마스터로그(master_log)에도 넣습니다.
+     · 이미 있는 번호는 건드리지 않습니다 (서버가 건너뜁니다) — 화면에서 고친 내용이 덮이지 않습니다.
+     · 넣은 번호만큼 서버 번호 장부가 올라가, 앞으로 새 건이 같은 번호를 받지 않습니다.
+   엑셀 열 이름은 Complaint Master Log 원본 양식 그대로입니다. */
+var DOM_COLMAP = {
+  'Month':'month','Complaint No.':'no','Area':'area','Country':'country','Distributor':'dist',
+  'Distributor ':'dist','E-mail':'email','Contact':'contact','Via':'via','Via ':'via',
+  'Received date':'recvDate','Receiver':'receiver','1st CLASS.':'c1','2nd CLASS.':'c2','3rd CLASS.':'c3',
+  'Device':'device','Serial number':'sn','SW version':'sw','Item':'item','LOT No.':'lot','Control LOT':'ctrlLot',
+  'Title':'title','Complaint(Attachment)':'complaint','Severity Level':'severity','Hazard Report':'hazard',
+  'INVES.':'inves','Investigation DETS.':'invesDets','Action':'action','CAPA':'capa','Reply':'reply',
+  'Replied Date':'repliedDate','Reminder':'reminder','Confirmation':'confirmation','END Date':'endDate',
+  'Termination':'term'
+};
+var DOM_DATE = { recvDate:1, repliedDate:1, endDate:1 };
+function domDiffDays(a, b) {
+  if (!a || !b) return '';
+  var x = Date.parse(a), y = Date.parse(b);
+  if (isNaN(x) || isNaN(y)) return '';
+  return String(Math.round((y - x) / 86400000));
+}
+/* 엑셀 한 줄 → 마스터로그 한 건. 국내(K) 가 아니면 null */
+function domRecordFrom(row, domIdx) {
+  var get = function(k) {
+    var i = domIdx[k];
+    if (i === undefined || row[i] === undefined || row[i] === null) return '';
+    var v = row[i];
+    if (v instanceof Date) return excelDateStr(v);
+    var t = String(v).trim();
+    return t.charAt(0) === '=' ? '' : t;
+  };
+  var no = get('no');
+  if (!no || no.charAt(no.length - 1) !== 'K') return null;     /* 국내 건만 */
+  var rec = {};
+  Object.keys(DOM_COLMAP).forEach(function(h) {
+    var f = DOM_COLMAP[h];
+    if (rec[f] === undefined || rec[f] === '') rec[f] = DOM_DATE[f] ? excelDateStr(row[domIdx[f]]) : get(f);
+  });
+  rec.no = no;
+  rec.rowNo = ''; rec.n = '';                                   /* Row Number·#N 은 공란 (엑셀에도 표기하지 않음) */
+  rec.month = Number(rec.month) || (rec.recvDate ? Number(rec.recvDate.slice(5, 7)) : '') || '';   /* 목록·대시보드가 숫자로 씁니다 */
+  if (!rec.term) rec.term = rec.endDate ? 'Closed' : 'On Going';
+  rec.replyUpon = domDiffDays(rec.recvDate, rec.repliedDate);
+  rec.duration = domDiffDays(rec.recvDate, rec.endDate);
+  rec.src = '통합 클레임로그 업로드';
+  rec.id = no;
+  return rec;
+}
+/* 마스터로그에 새 건만 넣습니다 (200건씩). 실패해도 통합 클레임로그 업로드는 그대로 끝냅니다. */
+function pushDomestic(recs, fileName, onProgress) {
+  if (!recs.length || typeof makeHubStore !== 'function') return Promise.resolve({ saved: 0, skipped: 0 });
+  var CH = 200, chunks = [];
+  for (var i = 0; i < recs.length; i += CH) chunks.push(recs.slice(i, i + CH));
+  var saved = 0, skipped = 0, done = 0;
+  return chunks.reduce(function(p, chunk, ci) {
+    return p.then(function() {
+      return fetch('/api/records', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sheet: 'master_log', action: 'importNew', records: chunk,
+          audit: ci === chunks.length - 1 ? ('통합 클레임로그 업로드 · ' + fileName + ' 국내 ' + recs.length + '건') : ''
+        })
+      }).then(function(res) { return res.json(); }).then(function(j) {
+        if (j && j.error) throw new Error(j.error);
+        saved += (j && j.saved) || 0; skipped += (j && j.skipped) || 0;
+        done += chunk.length;
+        if (onProgress) onProgress(done, recs.length);
+      });
+    });
+  }, Promise.resolve()).then(function() { return { saved: saved, skipped: skipped }; });
+}
+
+function excelDateStr(v) {
+  if (v === null || v === undefined || v === '') return '';
+  if (v instanceof Date) {
+    const p = n => String(n).padStart(2, '0');
+    return v.getFullYear() + '-' + p(v.getMonth() + 1) + '-' + p(v.getDate());
+  }
+  const s = String(v).trim();
+  const m = s.match(/^(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
+  if (m) return m[1] + '-' + String(m[2]).padStart(2,'0') + '-' + String(m[3]).padStart(2,'0');
+  return s.startsWith('=') ? '' : s;
+}
+function handleExcelUpload(input) {
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  handleClaimFile(file);
+}
+function handleClaimFile(file) {
+  const status = document.getElementById('uploadStatus');
+  status.style.display = 'block';
+  status.textContent = '⏳ "' + file.name + '" 읽는 중... (파일이 크면 1분 이상 걸릴 수 있습니다)';
+  setTimeout(() => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
+        // 'Complaint list' 시트 찾기
+        let sheetName = wb.SheetNames.find(n => n.trim().toLowerCase().indexOf('complaint list') !== -1);
+        if (!sheetName) sheetName = wb.SheetNames.find(n => {
+          const rows = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, range: 0, blankrows: false });
+          return rows[0] && rows[0].some(h => String(h).trim() === 'Complaint No.');
+        });
+        if (!sheetName) { status.textContent = '⚠ "Complaint list" 시트를 찾을 수 없습니다.'; if (window.bdtsOps) bdtsOps.report('upload_fail', { sheet: 'claims', action: '엑셀 읽기', recId: file.name, message: 'Complaint list 시트 없음' }); return; }
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, blankrows: false });
+        const header = rows[0].map(h => String(h == null ? '' : h).trim());
+        const colIdx = {};
+        header.forEach((h, i) => { if (XLSX_COLMAP[h]) colIdx[XLSX_COLMAP[h]] = i; });
+        let endIdx = header.indexOf('END Date');
+        const prefix = currentYear.slice(2);
+        const existing = new Set(DATA.map(r => r.no));
+        const newRecs = [];
+        /* 국내(K) 건은 클레임 로그 (국내)에도 넣습니다 — 통합 클레임로그의 신규 여부와 상관없이
+           엑셀에 있는 국내 건을 전부 모읍니다. 이미 저장된 번호는 서버가 건너뜁니다. */
+        const domIdx = {};
+        header.forEach((h, i) => { if (DOM_COLMAP[h]) domIdx[DOM_COLMAP[h]] = i; });
+        const domRecs = [];
+        const domSeen = new Set();
+        for (let ri = 1; ri < rows.length; ri++) {
+          const row = rows[ri];
+          if (!row) continue;
+          const get = k => {
+            const i = colIdx[k];
+            if (i === undefined || row[i] === undefined || row[i] === null) return '';
+            const v = row[i];
+            if (v instanceof Date) return excelDateStr(v);
+            const s = String(v).trim();
+            return s.startsWith('=') ? '' : s;
+          };
+          const no = get('no');
+          if (!no || no.slice(0, 2) !== prefix) continue;
+          if (domIdx.no !== undefined && !domSeen.has(no)) {
+            const dr = domRecordFrom(row, domIdx);
+            if (dr) { domSeen.add(no); domRecs.push(dr); }
+          }
+          if (existing.has(no)) continue;
+          const rec = { no:no, area:get('area'), country:get('country'), dist:get('dist'), email:'',
+            contact:get('contact'), via:get('via'), recv_date:excelDateStr(row[colIdx['recv_date']]),
+            receiver:get('receiver'), c1:get('c1'), c2:get('c2'), c3:get('c3'), device:get('device'),
+            serial:get('serial'), sw:get('sw'), item:get('item'), lot:get('lot'), ctrl_lot:get('ctrl_lot'),
+            title:get('title'), complaint:get('complaint'), severity:get('severity'), invest:get('invest'),
+            action:get('action'), reply:get('reply'), replied:excelDateStr(row[colIdx['replied']]),
+            term:'', dur:'' };
+          const endV = endIdx >= 0 ? row[endIdx] : null;
+          if (endV instanceof Date) {
+            rec.term = 'Closed';
+            const rv = row[colIdx['recv_date']];
+            if (rv instanceof Date) rec.dur = String(Math.round((endV - rv) / 86400000));
+          } else { rec.term = 'On Going'; }
+          newRecs.push(rec);
+          existing.add(no);
+        }
+        if (newRecs.length === 0) {
+          /* 통합 클레임로그에는 신규가 없어도, 클레임 로그 (국내)에는 빠진 건이 있을 수 있습니다 */
+          pushDomestic(domRecs, file.name).then(function(dm) {
+            status.textContent = '✅ 신규 클레임 없음 — 기존 ' + DATA.length.toLocaleString() + '건이 모두 최신 상태입니다. ('
+              + currentYear + '년)' + domMsg(dm);
+            if (typeof UploadLog !== 'undefined') UploadLog.record('claims', { file: file.name, year: currentYear, added: 0,
+              note: '신규 없음 (이미 최신)' + (dm.saved ? ' · 클레임 로그 (국내) ' + dm.saved + '건 추가' : '') }).then(renderUploadLog).catch(function(){});
+          }).catch(function(err) {
+            status.textContent = '✅ 신규 클레임 없음 — 기존 ' + DATA.length.toLocaleString() + '건이 모두 최신 상태입니다. ('
+              + currentYear + '년) ⚠ 단, 클레임 로그 (국내) 반영에 실패했습니다: ' + err.message;
+            if (window.bdtsOps) bdtsOps.report('upload_fail', { sheet: 'master_log', action: '국내 반영', recId: file.name, message: err.message });
+          });
+          updateBadge();
+          return;
+        }
+        status.textContent = '⏳ 신규 클레임 ' + newRecs.length + '건 저장 중...' + (isClaimSheetConfigured() ? ' (전 직원 공유 저장소로 업로드)' : '');
+        postClaimExtras(currentYear, newRecs, function(d, t) {
+          status.textContent = '⏳ 신규 클레임 ' + newRecs.length + '건 저장 중... (전 직원 공유 저장소 업로드 ' + d + '/' + t + ')';
+        }).then(function(res) {
+          EXTRAS_ALL[currentYear] = (EXTRAS_ALL[currentYear] || []).concat(newRecs);
+          _claimAcItems = null;
+          DATA = buildYearData(currentYear);
+          rebuildDataMap();
+          renderDashboard();
+          updateUploadUI();
+          updateBadge();
+          const scope = res.mode === 'shared'
+            ? '전 직원 화면에 자동으로 반영됩니다.'
+            : res.mode === 'partial'
+              ? res.sharedCount + '건은 전 직원 화면에 반영되고, ' + res.localCount + '건은 이 브라우저에만 저장되었습니다. (사유: ' + res.error + ')'
+              : '이 브라우저에만 저장되었습니다.' + (res.error ? ' (사유: ' + res.error + ')' : '');
+          const baseMsg = '✅ 신규 클레임 ' + newRecs.length + '건 추가 완료 — ' + scope + ' 현재 ' + currentYear + '년 총 ' + DATA.length.toLocaleString() + '건';
+          status.textContent = baseMsg + (domRecs.length ? ' · 클레임 로그 (국내) 반영 중…' : '');
+          pushDomestic(domRecs, file.name, function(d, t) {
+            status.textContent = baseMsg + ' · 클레임 로그 (국내) 반영 중 ' + d + '/' + t;
+          }).then(function(dm) {
+            status.textContent = baseMsg + domMsg(dm);
+            if (typeof UploadLog !== 'undefined') UploadLog.record('claims', { file: file.name, year: currentYear, added: newRecs.length,
+              note: '추가 ' + newRecs.length.toLocaleString() + '건' + (res.mode === 'shared' ? '' : ' (' + (res.mode === 'partial' ? '일부만 공유' : '이 브라우저만') + ')')
+                + (dm.saved ? ' · 클레임 로그 (국내) ' + dm.saved + '건 추가' : '') }).then(renderUploadLog).catch(function(){});
+          }).catch(function(err) {
+            status.textContent = baseMsg + ' ⚠ 단, 클레임 로그 (국내) 반영에 실패했습니다: ' + err.message;
+            if (window.bdtsOps) bdtsOps.report('upload_fail', { sheet: 'master_log', action: '국내 반영', recId: file.name, message: err.message });
+            if (typeof UploadLog !== 'undefined') UploadLog.record('claims', { file: file.name, year: currentYear, added: newRecs.length,
+              note: '추가 ' + newRecs.length.toLocaleString() + '건 · 국내 반영 실패' }).then(renderUploadLog).catch(function(){});
+          });
+        }).catch(function(err) {
+          status.textContent = '⚠ 저장 중 오류: ' + err.message;
+        });
+      } catch (err) {
+        status.textContent = '⚠ 엑셀 처리 중 오류: ' + err.message;
+        if (window.bdtsOps) bdtsOps.report('upload_fail', { sheet: 'claims', action: '엑셀 처리', recId: file.name, message: err.message });
+      }
+    };
+    reader.onerror = function() { status.textContent = '⚠ 파일을 읽지 못했습니다.'; if (window.bdtsOps) bdtsOps.report('upload_fail', { sheet: 'claims', action: '파일 읽기', recId: file.name, message: '파일을 읽지 못함' }); };
+    reader.readAsArrayBuffer(file);
+  }, 50);
+}
+function domMsg(dm) {
+  if (!dm || (!dm.saved && !dm.skipped)) return '';
+  return ' · 클레임 로그 (국내)에 ' + dm.saved + '건 추가'
+    + (dm.skipped ? ' (이미 있던 ' + dm.skipped + '건은 그대로 두었습니다)' : '');
+}
+function resetExtras() {
+  const scope = isClaimSheetConfigured() ? '전 직원의 화면에서' : '이 브라우저에서만';
+  if (!confirm(currentYear + '년에 업로드로 추가된 데이터를 ' + scope + ' 모두 삭제할까요? (claim-data.js의 기본 데이터는 유지됩니다)')) return;
+  const status = document.getElementById('uploadStatus');
+  status.style.display = 'block';
+  status.textContent = '⏳ 삭제 중...';
+  resetClaimExtras(currentYear).then(function() {
+    EXTRAS_ALL[currentYear] = [];
+    _claimAcItems = null;
+    DATA = buildYearData(currentYear);
+    rebuildDataMap();
+    updateUploadUI();
+    updateBadge();
+    renderDashboard();
+    if (typeof UploadLog !== 'undefined') UploadLog.record('claims', { file: '(업로드 초기화)', year: currentYear, added: 0, note: '업로드로 추가된 건 전부 삭제' }).then(renderUploadLog).catch(function(){});
+  }).catch(function(err) {
+    status.textContent = '⚠ 삭제 중 오류: ' + err.message;
+  });
+}
+function updateBadge() {
+  document.getElementById('totalBadge').textContent = DATA.length.toLocaleString() + ' 건';
+}
+
+/* 그래프 색은 Sales Report(pages/sales.html 의 PAL)와 같은 순서·같은 색을 씁니다. 막대는 반투명 테두리 대신 채운 막대 (2026-09) */
+const COLORS = ['#2563eb','#16a34a','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16','#f97316','#64748b','#0ea5e9','#a855f7','#2563eb','#16a34a','#f59e0b'];
+
+function countBy(arr, key) {
+  const m = {};
+  for (const r of arr) {
+    const v = (typeof key === 'function' ? key(r) : r[key]) || '(없음)';
+    m[v] = (m[v] || 0) + 1;
+  }
+  return Object.entries(m).sort((a, b) => b[1] - a[1]);
+}
+/* 그래프에는 반드시 숫자도 함께 — 막대 위에 값을 씁니다 */
+const valueLabelPlugin = {
+  id: 'valueLabel',
+  afterDatasetsDraw(chart) {
+    if (chart.config.type !== 'bar') return;
+    const ctx = chart.ctx; ctx.save();
+    ctx.font = '700 11px "IBM Plex Sans KR", "Malgun Gothic", sans-serif'; ctx.fillStyle = '#1a1a2e'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    const horiz = chart.options.indexAxis === 'y';
+    if (horiz) { ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; }
+    chart.data.datasets.forEach((ds, di) => {
+      const meta = chart.getDatasetMeta(di);
+      meta.data.forEach((bar, i) => { const v = ds.data[i]; if (v == null) return; if (horiz) ctx.fillText(String(v), bar.x + 4, bar.y); else ctx.fillText(String(v), bar.x, bar.y - 3); });
+    });
+    ctx.restore();
+  }
+};
+if (typeof Chart !== 'undefined') Chart.register(valueLabelPlugin);
+
+function tag(text, cls='tag-blue') {
+  if (!text) return '';
+  return `<span class="tag ${cls}">${text}</span>`;
+}
+
+function severityTag(s) {
+  if (!s) return '';
+  if (s.includes('High') || s.includes('high')) return tag(s, 'tag-red');
+  if (s.includes('Moderate') || s.includes('moderate')) return tag(s, 'tag-yellow');
+  if (s.includes('Low') || s.includes('low')) return tag(s, 'tag-green');
+  return tag(s, 'tag-blue');
+}
+
+function termTag(s) {
+  if (!s) return '';
+  if (s === 'Closed') return tag(s, 'tag-green');
+  if (s === 'On Going') return tag(s, 'tag-yellow');
+  return tag(s, 'tag-blue');
+}
+
+// ---- DETAIL PANEL ----
+function showDetail(row) {
+  const fields = [
+    ['Complaint No.', row.no, false],
+    ['수신일', row.recv_date, false],
+    ['담당자', row.receiver, false],
+    ['상태', termTag(row.term) || row.term, false],
+    ['국가 / 지역', `${row.country} / ${row.area}`, false],
+    ['Distributor', officialDist(row) === row.dist ? row.dist : `${officialDist(row)} <span class="da-alias">(클레임 로그 표기: ${row.dist})</span>`, false],
+    ['Contact (연락처)', row.contact, false],
+    ['E-mail', row.email, false],
+    ['Via', row.via, false],
+    ['중증도', severityTag(row.severity) || row.severity, false],
+    ['---분류', '', false],
+    ['1st CLASS', row.c1, false],
+    ['2nd CLASS', row.c2, false],
+    ['3rd CLASS', row.c3, false],
+    ['---기기/제품', '', false],
+    ['Item', row.item, false],
+    ['LOT No.', row.lot, false],
+    ['Control LOT', row.ctrl_lot, false],
+    ['Device', row.device, false],
+    ['Serial No.', row.serial, false],
+    ['SW Version', row.sw, false],
+    ['---내용', '', false],
+    ['제목', row.title, true],
+    ['클레임 내용', row.complaint, true],
+    ['조사 내용', row.invest, true],
+    ['Action', row.action, true],
+    ['Reply', row.reply, false],
+    ['회신일', row.replied, false],
+    ['처리기간(일)', row.dur, false],
+  ];
+
+  let html = `<h3>${row.title || row.no}</h3><div class="no">${row.no}</div><div class="detail-grid">`;
+  for (const [label, val, full] of fields) {
+    if (label.startsWith('---')) {
+      html += `<div class="section-divider">${label.slice(3)}</div>`;
+    } else {
+      html += `<div class="detail-field ${full ? 'full' : ''}"><label>${label}</label><p>${val || '-'}</p></div>`;
+    }
+  }
+  html += '</div>';
+
+  document.getElementById('detailContent').innerHTML = html;
+  document.getElementById('detailOverlay').classList.add('open');
+}
+
+function closeDetail() {
+  document.getElementById('detailOverlay').classList.remove('open');
+}
+document.getElementById('detailOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeDetail();
+});
+
+// ---- CHARTS ----
+const chartInstances = {};
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+  /* 화면(대시보드 ↔ 검색)이 바뀌어 사라진 그래프도 정리합니다.
+     정리하지 않으면 보이지 않는 그래프가 창 크기 변화를 계속 따라가며 쌓입니다. (2026-09) */
+  Object.keys(chartInstances).forEach(k => {
+    const c = chartInstances[k];
+    if (!c || !c.canvas || !c.canvas.isConnected) { try { c && c.destroy(); } catch (e) {} delete chartInstances[k]; }
+  });
+}
+
+function makeBarChart(canvasId, labels, values, clickFn, opts) {
+  opts = opts || {};
+  destroyChart(canvasId);
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  const top = labels.slice(0, 15);
+  const vals = values.slice(0, 15);
+  chartInstances[canvasId] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: top,
+      datasets: [{
+        data: vals,
+        backgroundColor: COLORS.slice(0, top.length),
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      indexAxis: opts.horizontal ? 'y' : 'x',       /* 이름이 긴 항목(대리점)은 가로 막대로 — 이름이 잘리지 않습니다 */
+      layout: { padding: { right: opts.horizontal ? 36 : 0 } },
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { font: { size: 11 } }, grid: { display: !!opts.horizontal } },   /* Sales Report 와 같게: 세로 막대는 x 격자 숨김 */
+        y: { ticks: { font: { size: 11 }, autoSkip: false } }
+      },
+      onClick: (event, elements) => {
+        if (elements.length > 0 && clickFn) clickFn(top[elements[0].index]);
+      }
+    }
+  });
+}
+
+function makeDoughnutChart(canvasId, labels, values, clickFn) {
+  destroyChart(canvasId);
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  const top = labels.slice(0, 10);
+  const vals = values.slice(0, 10);
+  chartInstances[canvasId] = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: top.map((k, i) => `${k} · ${vals[i]}`),
+      datasets: [{
+        data: vals,
+        backgroundColor: COLORS.slice(0, top.length),
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: (c) => ` ${top[c.dataIndex]}: ${vals[c.dataIndex]}건 (${Math.round(vals[c.dataIndex] / vals.reduce((a, b) => a + b, 0) * 100)}%)` } }
+      },
+      onClick: (event, elements) => {
+        if (elements.length > 0 && clickFn) clickFn(top[elements[0].index]);
+      }
+    }
+  });
+}
+
+/* ===== Distributor 정식 명칭 (Sales Report 고객명 기준, 국내 제외) =====
+   클레임 로그에는 약식 이름(예: Labtek)으로 올라오지만, 화면에서는 Sales Report의 정식 고객명으로 보여줍니다.
+   1) sales-data.js 의 국가별 고객명을 읽고  2) 국가가 같은 고객 중 이름이 겹치는 것을 자동으로 맞추고
+   3) 사람이 [대리점명 정리]에서 확정·수정한 것은 Azure(dist_alias)에 저장되어 자동 매칭보다 우선합니다. */
+function distCell(r) {
+  const o = officialDist(r);
+  return o === r.dist ? (r.dist || '-') : `${o}<span class="da-alias"> (${r.dist})</span>`;
+}
+/* [대리점명 정리] 화면 — 국가별 약식 이름 ↔ 정식 명칭 */
+let daFilter = 'todo';
+function renderDistAdmin() {
+  viewStack.push({ view: currentView, keyword: '' });
+  currentView = 'distadmin';
+  const counts = {}; const info = {};
+  daAllRows().forEach(r => {
+    if (daIsDomestic(r) || !r.dist) return;
+    const k = daKey(r.country, r.dist); counts[k] = (counts[k] || 0) + 1;
+    if (!info[k]) info[k] = { country: r.country, dist: r.dist };
+  });
+  const rows = Object.keys(info).map(k => {
+    const sv = DistAlias.saved[k], sd = daSeedOf(info[k].country, info[k].dist), au = DistAlias.auto[k];
+    const st = sv ? (sv.official ? 'ok' : 'keep') : sd !== undefined ? (sd ? 'list' : 'listkeep') : au ? 'auto' : 'none';
+    return Object.assign({ key: k, n: counts[k], st, official: sv ? sv.official : (sd || au || '') }, info[k]);
+  }).sort((a, b) => a.country.localeCompare(b.country) || b.n - a.n);
+  const tot = rows.length, nOk = rows.filter(r => r.st === 'ok' || r.st === 'keep').length, nList = rows.filter(r => r.st === 'list' || r.st === 'listkeep').length, nAuto = rows.filter(r => r.st === 'auto').length, nNone = rows.filter(r => r.st === 'none').length;
+  const shown = rows.filter(r => daFilter === 'all' ? true : daFilter === 'todo' ? (r.st === 'auto' || r.st === 'none') : daFilter === 'list' ? (r.st === 'list' || r.st === 'listkeep') : r.st === daFilter);
+  const html = `
+  <div class="results-header">
+    <button class="back-btn" onclick="goBack()">← 뒤로</button>
+    <h2>🏷 대리점명 정리 — Sales Report 정식 명칭 연결</h2>
+    <span class="count">${tot}개</span>
+  </div>
+  <div class="card">
+    <div class="da-tools">
+      <span class="chip">확정 <b>${nOk}</b></span><span class="chip">목록(이름_매칭) <b>${nList}</b></span><span class="chip">자동 매칭(미확정) <b>${nAuto}</b></span><span class="chip">매칭 없음 <b>${nNone}</b></span>
+      <select id="daFilter" onchange="daFilter=this.value;renderDistAdmin()">
+        <option value="todo" ${daFilter === 'todo' ? 'selected' : ''}>미확정만 (자동 매칭 + 매칭 없음)</option>
+        <option value="auto" ${daFilter === 'auto' ? 'selected' : ''}>자동 매칭만</option>
+        <option value="none" ${daFilter === 'none' ? 'selected' : ''}>매칭 없음만</option>
+        <option value="list" ${daFilter === 'list' ? 'selected' : ''}>목록(이름_매칭)으로 정한 것</option>
+        <option value="all" ${daFilter === 'all' ? 'selected' : ''}>전체</option>
+      </select>
+      <button class="year-btn" onclick="daConfirmAllAuto()" title="자동으로 맞춘 ${nAuto}개를 그대로 확정해 저장합니다">✔ 자동 매칭 전부 확정 (${nAuto})</button>
+      <span style="color:var(--text2)">한 국가에 대리점이 여러 개여도 <b>국가 + 약식 이름</b>마다 따로 연결됩니다. 국가가 같은 Sales Report 고객명 중에서 고르거나 직접 입력하고, 저장하면 다른 PC에서도 같은 이름으로 보입니다. Sales에 없는 대리점은 "약식 유지"를 고르면 클레임 로그 이름 그대로 씁니다.</span>
+    </div>
+    <div class="table-wrap"><table class="da-tbl">
+      <thead><tr><th>국가</th><th>클레임 로그 약식 이름</th><th>건수</th><th style="min-width:340px">정식 명칭 (Sales Report)</th><th>상태</th><th></th></tr></thead>
+      <tbody>${shown.map((r, i) => {
+        const { ck, cands } = daCandidates(r.country, r.dist);
+        const opts = cands.map(c => `<option value="${c.name.replace(/"/g, '&quot;')}" ${c.name === r.official ? 'selected' : ''}>${c.name}${c.score >= 2 ? ' ★' : ''}</option>`).join('');
+        const custom = r.official && !cands.some(c => c.name === r.official);
+        return `<tr data-k="${r.key}">
+          <td>${r.country}${ck ? ` <span class="da-alias">Sales 고객 ${cands.length}개</span>` : ' <span class="da-alias">(Sales에 없는 국가)</span>'}</td>
+          <td style="font-weight:600">${r.dist}</td><td>${r.n}</td>
+          <td><select class="da-sel" onchange="daOnSelect(this)">
+                <option value="">— 선택 —</option>${opts}
+                <option value="__keep__" ${r.st === 'keep' || r.st === 'listkeep' ? 'selected' : ''}>약식 유지 (클레임 로그 이름 그대로)</option>
+                <option value="__custom__" ${custom ? 'selected' : ''}>직접 입력…</option>
+              </select>
+              <input class="da-custom" placeholder="정식 명칭 직접 입력" value="${custom ? r.official.replace(/"/g, '&quot;') : ''}" style="margin-top:4px;display:${custom ? 'block' : 'none'}"></td>
+          <td><span class="da-st ${r.st === 'list' ? 'ok' : r.st === 'listkeep' ? 'keep' : r.st}">${{ ok: '확정', keep: '약식 유지', list: '목록: Sales 명칭', listkeep: '목록: 클레임 로그 유지', auto: '자동 매칭', none: '매칭 없음' }[r.st]}</span></td>
+          <td><button type="button" class="year-btn" onclick="daSaveRow(this)">저장</button></td>
+        </tr>`; }).join('') || '<tr><td colspan="6" style="color:var(--text2);padding:20px">해당하는 항목이 없습니다.</td></tr>'}
+      </tbody></table></div>
+  </div>`;
+  document.getElementById('mainContent').innerHTML = html;
+}
+function daOnSelect(sel) { const inp = sel.parentNode.querySelector('.da-custom'); inp.style.display = sel.value === '__custom__' ? 'block' : 'none'; if (sel.value === '__custom__') inp.focus(); }
+function daSaveRow(btn) {
+  const tr = btn.closest('tr'), k = tr.dataset.k, sel = tr.querySelector('.da-sel'), inp = tr.querySelector('.da-custom');
+  let official = sel.value === '__custom__' ? inp.value.trim() : sel.value === '__keep__' ? '' : sel.value;
+  if (!sel.value || (sel.value === '__custom__' && !official)) { alert('정식 명칭을 고르거나 입력해주세요.'); return; }
+  const parts = k.split('|');
+  const rec = { id: k, country: tr.cells[0].textContent.replace(/\(.*\)/, '').trim(), alias: tr.cells[1].textContent.trim(), official, keep: sel.value === '__keep__' };
+  daPersist([rec]).then(() => renderDistAdmin());
+}
+function daConfirmAllAuto() {
+  const recs = [];
+  const autos = Object.assign({}, DistAlias.seed, DistAlias.auto);
+  Object.keys(autos).forEach(k => {
+    if (DistAlias.saved[k]) return;
+    const parts = k.split('|');
+    recs.push({ id: k, country: parts[0], alias: parts[1], official: autos[k], keep: false, byAuto: true });
+  });
+  if (!recs.length) { alert('확정할 자동 매칭이 없습니다.'); return; }
+  if (!confirm(recs.length + '개의 자동 매칭을 그대로 확정해 저장할까요? (나중에 개별 수정 가능)')) return;
+  daPersist(recs).then(() => renderDistAdmin());
+}
+function daPersist(recs) {
+  const st = DistAlias.store;
+  return recs.reduce((p, rec) => p.then(() => {
+    const prev = DistAlias.saved[rec.id];
+    DistAlias.saved[rec.id] = Object.assign({}, prev || {}, rec);
+    delete DistAlias.auto[rec.id];
+    if (!st) return;
+    return (prev ? st.update(rec) : st.add(rec)).catch(e => { alert('저장 실패: ' + (e.message || e)); });
+  }), Promise.resolve()).then(() => { daRefresh(); });
+}
+
+// ---- VIEWS ----
+
+let currentView = 'dashboard';
+let viewStack = [];
+
+function renderDashboard() {
+  currentView = 'dashboard';
+  const total = DATA.length;
+  document.getElementById('totalBadge').textContent = total.toLocaleString() + ' 건';
+
+  const countryCounts = countBy(DATA, 'country');
+  const itemCounts = countBy(DATA, 'item').filter(([k]) => k && k !== '(없음)');
+  const c3Counts = countBy(DATA, 'c3').filter(([k]) => k && k !== '(없음)');
+  const distCounts = countBy(DATA.filter(r => !daIsDomestic(r)), officialDist).filter(([k]) => k && k !== '(없음)');
+
+  const closed = (DATA.filter(r => r.term === 'Closed').length);
+  const ongoing = (DATA.filter(r => r.term === 'On Going').length);
+
+  const topCountries = countryCounts.slice(0, 10);
+  const topItems = itemCounts.slice(0, 10);
+  const topDists = distCounts.slice(0, 10);
+
+  let html = `
+  <div class="stat-row">
+    <div class="stat"><div class="val">${total.toLocaleString()}</div><div class="lbl">전체 클레임</div></div>
+    <div class="stat"><div class="val" style="color:var(--accent3)">${closed.toLocaleString()}</div><div class="lbl">Closed</div></div>
+    <div class="stat"><div class="val" style="color:var(--yellow)">${ongoing.toLocaleString()}</div><div class="lbl">On Going</div></div>
+    <div class="stat"><div class="val" style="color:var(--accent2)">${countryCounts.length}</div><div class="lbl">접수 국가 수</div></div>
+  </div>
+  <div class="dashboard-grid" style="margin-bottom:20px">
+    <div class="card">
+      <h2>국가별 클레임 수량 (상위 10) <span style="font-size:11px;color:var(--text2);text-transform:none;font-weight:400;">— 막대를 클릭하면 상세 목록</span></h2>
+      <div class="chart-wrap"><canvas id="chartCountry"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>아이템별 클레임 수량 (상위 10) <span style="font-size:11px;color:var(--text2);text-transform:none;font-weight:400;">— 막대를 클릭하면 상세 목록</span></h2>
+      <div class="chart-wrap"><canvas id="chartItem"></canvas></div>
+    </div>
+  </div>
+  <div class="dashboard-grid wide">
+    <div class="card">
+      <h2>3rd CLASS 분류 <span style="font-size:11px;color:var(--text2);text-transform:none;font-weight:400;">— 항목을 클릭하면 상세 목록</span></h2>
+      <div class="chart-wrap"><canvas id="chartC3"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>대리점별 클레임 수량 (상위 10) <span style="font-size:11px;color:var(--text2);text-transform:none;font-weight:400;">— Sales Report 정식 명칭 · 국내 제외 · 막대를 클릭하면 상세 목록${DistAlias.ready ? '' : ' · 명칭 불러오는 중'}</span></h2>
+      <div class="chart-wrap tall"><canvas id="chartDist"></canvas></div>
+    </div>
+  </div>`;
+
+  document.getElementById('mainContent').innerHTML = html;
+
+  requestAnimationFrame(() => {
+    makeBarChart('chartCountry', topCountries.map(([k]) => k), topCountries.map(([,v]) => v), (country) => {
+      showDashboardCategoryList('country', country, `국가: ${country}`);
+    });
+    makeBarChart('chartItem', topItems.map(([k]) => k), topItems.map(([,v]) => v), (item) => {
+      showDashboardCategoryList('item', item, `아이템: ${item}`);
+    });
+    makeBarChart('chartDist', topDists.map(([k]) => k), topDists.map(([,v]) => v), (d) => {
+      showDashboardCategoryList(officialDist, d, `대리점: ${d}`);
+    }, { horizontal: true });
+    makeDoughnutChart('chartC3', c3Counts.map(([k]) => k).slice(0,10), c3Counts.map(([,v]) => v).slice(0,10), (c3) => {
+      showDashboardCategoryList('c3', c3, `3rd CLASS: ${c3}`);
+    });
+  });
+}
+
+// 대시보드 그래프 클릭 → 해당 항목에 해당하는 클레임만 리스트로 보여줌
+function showDashboardCategoryList(key, value, label) {
+  viewStack.push({ view: 'dashboard' });
+  const rows = DATA.filter(r => ((typeof key === 'function' ? key(r) : r[key]) || '(없음)') === value);
+  renderCountryOrDistributor(label, rows);
+}
+
+function renderCountryOrDistributor(keyword, matchedRows, searchType) {
+  // Show table with item, lot, c3
+  const html = `
+  <div class="results-header">
+    <button class="back-btn" onclick="goBack()">← 뒤로</button>
+    <h2>${keyword}</h2>
+    <span class="count">${matchedRows.length}건</span>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Complaint No.</th><th>Item</th><th>LOT No.</th><th>3rd CLASS</th><th>국가</th><th>대리점</th><th>연락처</th><th>수신일</th><th>상태</th><th>상세</th></tr></thead>
+        <tbody>
+          ${matchedRows.map((r, i) => `
+          <tr onclick="showDetail(DATA_MAP['${r.no}'])" title="클릭하여 상세 보기">
+            <td style="color:var(--text2)">${i+1}</td>
+            <td style="font-weight:600;color:var(--accent)">${r.no}</td>
+            <td>${r.item || '-'}</td>
+            <td>${r.lot || '-'}</td>
+            <td>${r.c3 || '-'}</td>
+            <td>${r.country || '-'}</td>
+            <td>${distCell(r)}</td>
+            <td>${r.contact || '-'}</td>
+            <td>${r.recv_date || '-'}</td>
+            <td>${termTag(r.term) || r.term || '-'}</td>
+            <td><button type="button" onclick="event.stopPropagation();showDetail(DATA_MAP['${r.no}'])" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--accent);cursor:pointer;white-space:nowrap;">자세히</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+  document.getElementById('mainContent').innerHTML = html;
+}
+
+function renderLotNo(lotNo, matchedRows) {
+  const countryCounts = countBy(matchedRows, 'country');
+  const c3Counts = countBy(matchedRows, 'c3').filter(([k]) => k && k !== '(없음)');
+
+  const html = `
+  <div class="results-header">
+    <button class="back-btn" onclick="goBack()">← 뒤로</button>
+    <h2>LOT No. : ${lotNo}</h2>
+    <span class="count">${matchedRows.length}건</span>
+  </div>
+  <div class="graph-section">
+    <div class="graph-card">
+      <h3>접수 국가</h3>
+      <div class="graph-chart-wrap"><canvas id="lotCountryChart"></canvas></div>
+      <p class="hint">클릭하면 해당 클레임 목록을 봅니다</p>
+    </div>
+    <div class="graph-card">
+      <h3>3rd CLASS 분류</h3>
+      <div class="graph-chart-wrap"><canvas id="lotC3Chart"></canvas></div>
+      <p class="hint">클릭하면 해당 클레임 목록을 봅니다</p>
+    </div>
+  </div>
+  <div id="lotSubResults"></div>`;
+
+  document.getElementById('mainContent').innerHTML = html;
+
+  requestAnimationFrame(() => {
+    makeBarChart('lotCountryChart', countryCounts.map(([k]) => k), countryCounts.map(([,v]) => v), (country) => {
+      const filtered = matchedRows.filter(r => r.country === country);
+      showLotSubTable(filtered, `LOT: ${lotNo} — 국가: ${country}`);
+    });
+    makeDoughnutChart('lotC3Chart', c3Counts.map(([k]) => k), c3Counts.map(([,v]) => v), (c3) => {
+      const filtered = matchedRows.filter(r => r.c3 === c3);
+      showLotSubTable(filtered, `LOT: ${lotNo} — ${c3}`);
+    });
+  });
+}
+
+function showLotSubTable(rows, title) {
+  const el = document.getElementById('lotSubResults');
+  if (!el) return;
+  el.innerHTML = `
+  <div class="card" style="margin-top:0">
+    <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:12px">${title} (${rows.length}건)</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Complaint No.</th><th>Item</th><th>LOT No.</th><th>3rd CLASS</th><th>국가</th><th>연락처</th><th>수신일</th><th>상태</th></tr></thead>
+        <tbody>
+          ${rows.map((r, i) => `
+          <tr onclick="showDetail(DATA_MAP['${r.no}'])" title="클릭하여 상세 보기">
+            <td style="color:var(--text2)">${i+1}</td>
+            <td style="font-weight:600;color:var(--accent)">${r.no}</td>
+            <td>${r.item || '-'}</td>
+            <td>${r.lot || '-'}</td>
+            <td>${r.c3 || '-'}</td>
+            <td>${r.country || '-'}</td>
+            <td>${r.contact || '-'}</td>
+            <td>${r.recv_date || '-'}</td>
+            <td>${termTag(r.term) || r.term || '-'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+  el.scrollIntoView({ behavior: 'smooth' });
+}
+
+function renderItem(itemName, matchedRows) {
+  const countryCounts = countBy(matchedRows, 'country');
+  const c3Counts = countBy(matchedRows, 'c3').filter(([k]) => k && k !== '(없음)');
+
+  const html = `
+  <div class="results-header">
+    <button class="back-btn" onclick="goBack()">← 뒤로</button>
+    <h2>Item : ${itemName}</h2>
+    <span class="count">${matchedRows.length}건</span>
+  </div>
+  <div class="graph-section">
+    <div class="graph-card">
+      <h3>접수 국가</h3>
+      <div class="graph-chart-wrap"><canvas id="itemCountryChart"></canvas></div>
+      <p class="hint">클릭하면 LOT / 3rd CLASS 목록을 봅니다</p>
+    </div>
+    <div class="graph-card">
+      <h3>3rd CLASS 분류</h3>
+      <div class="graph-chart-wrap"><canvas id="itemC3Chart"></canvas></div>
+      <p class="hint">클릭하면 LOT / 3rd CLASS 목록을 봅니다</p>
+    </div>
+  </div>
+  <div id="itemSubResults"></div>`;
+
+  document.getElementById('mainContent').innerHTML = html;
+
+  requestAnimationFrame(() => {
+    makeBarChart('itemCountryChart', countryCounts.map(([k]) => k), countryCounts.map(([,v]) => v), (country) => {
+      const filtered = matchedRows.filter(r => r.country === country);
+      showItemSubTable(filtered, `${itemName} — 국가: ${country}`);
+    });
+    makeDoughnutChart('itemC3Chart', c3Counts.map(([k]) => k), c3Counts.map(([,v]) => v), (c3) => {
+      const filtered = matchedRows.filter(r => r.c3 === c3);
+      showItemSubTable(filtered, `${itemName} — ${c3}`);
+    });
+  });
+}
+
+function showItemSubTable(rows, title) {
+  const el = document.getElementById('itemSubResults');
+  if (!el) return;
+  el.innerHTML = `
+  <div class="card" style="margin-top:0">
+    <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:12px">${title} (${rows.length}건)</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Complaint No.</th><th>LOT No.</th><th>3rd CLASS</th><th>국가</th><th>연락처</th><th>수신일</th><th>상태</th></tr></thead>
+        <tbody>
+          ${rows.map((r, i) => `
+          <tr onclick="showDetail(DATA_MAP['${r.no}'])" title="클릭하여 상세 보기">
+            <td style="color:var(--text2)">${i+1}</td>
+            <td style="font-weight:600;color:var(--accent)">${r.no}</td>
+            <td>${r.lot || '-'}</td>
+            <td>${r.c3 || '-'}</td>
+            <td>${r.country || '-'}</td>
+            <td>${r.contact || '-'}</td>
+            <td>${r.recv_date || '-'}</td>
+            <td>${termTag(r.term) || r.term || '-'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+  el.scrollIntoView({ behavior: 'smooth' });
+}
+
+function renderGenericSearch(keyword, matchedRows) {
+  const html = `
+  <div class="results-header">
+    <button class="back-btn" onclick="goBack()">← 뒤로</button>
+    <h2>"${keyword}" 검색 결과</h2>
+    <span class="count">${matchedRows.length}건</span>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Complaint No.</th><th>국가</th><th>연락처</th><th>Item</th><th>LOT No.</th><th>3rd CLASS</th><th>수신일</th><th>상태</th></tr></thead>
+        <tbody>
+          ${matchedRows.map((r, i) => `
+          <tr onclick="showDetail(DATA_MAP['${r.no}'])" title="클릭하여 상세 보기">
+            <td style="color:var(--text2)">${i+1}</td>
+            <td style="font-weight:600;color:var(--accent)">${r.no}</td>
+            <td>${r.country || '-'}</td>
+            <td>${r.contact || '-'}</td>
+            <td>${r.item || '-'}</td>
+            <td>${r.lot || '-'}</td>
+            <td>${r.c3 || '-'}</td>
+            <td>${r.recv_date || '-'}</td>
+            <td>${termTag(r.term) || r.term || '-'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+  document.getElementById('mainContent').innerHTML = html;
+}
+
+// ---- DATA MAP ----
+let DATA_MAP = {};
+function rebuildDataMap() {
+  DATA_MAP = {};
+  for (const r of DATA) DATA_MAP[r.no] = r;
+}
+rebuildDataMap();
+
+// ---- SEARCH LOGIC ----
+function detectSearchType(keyword, matchedRows) {
+  const kl = nrm(keyword);
+  const sm = SearchUtils.makeMatcher(keyword); // 한↔영 스마트 매칭 포함
+  // Check if majority match on country
+  const countries = new Set(DATA.map(r => nrm(r.country)));
+  if (countries.has(kl)) return 'country';
+
+  const dists = new Set(DATA.map(r => nrm(r.dist)).concat(DATA.map(r => nrm(officialDist(r)))));
+  if (dists.has(kl)) return 'distributor';
+
+  // Check if it looks like a lot no. (alphanumeric pattern)
+  const lots = new Set(DATA.map(r => nrm(r.lot)).filter(Boolean));
+  if (lots.has(kl)) return 'lot';
+
+  const items = new Set(DATA.map(r => nrm(r.item)).filter(Boolean));
+  if (items.has(kl)) return 'item';
+
+  // Partial matches (스마트 매칭 — 한글 국가명·이름도 인식)
+  const countryMatch = matchedRows.filter(r => sm(r.country)).length;
+  const distMatch = matchedRows.filter(r => sm(r.dist) || sm(officialDist(r))).length;
+  const lotMatch = matchedRows.filter(r => nrm(r.lot).includes(kl)).length;
+  const itemMatch = matchedRows.filter(r => nrm(r.item).includes(kl)).length;
+
+  const maxVal = Math.max(countryMatch, distMatch, lotMatch, itemMatch);
+  if (maxVal === 0) return 'generic';
+  if (countryMatch === maxVal) return 'country';
+  if (distMatch === maxVal) return 'distributor';
+  if (lotMatch === maxVal) return 'lot';
+  if (itemMatch === maxVal) return 'item';
+  return 'generic';
+}
+
+// 검색 결과를 기억해 "자세히" 버튼이 상세 목록을 다시 그릴 수 있게 함
+let lastSearch = { keyword: '', matched: [] };
+
+function doSearch(rawKeyword) {
+  // 쉼표(,)로 구분된 다중 키워드
+  const terms = rawKeyword.split(',').map(s => s.trim()).filter(Boolean);
+  if (terms.length === 0) { renderDashboard(); return; }
+
+  // 모든 키워드가 매칭되어야 함(AND)
+  // 1차: 전체 필드 부분일치 / 2차: 국가·대리점·담당자 등 핵심 필드에 한↔영 스마트 매칭
+  //      (예: "체코" → Czech republic, "장명선" → Myoungseon JANG)
+  const SMART_FIELDS = ['country', 'dist', 'receiver', 'contact', 'item', 'area'];
+  const matchers = terms.map(t => SearchUtils.makeMatcher(t));
+  const matched = DATA.filter(r => {
+    const vals = Object.values(r).map(v => nrm(v));
+    const od = officialDist(r);                 /* 정식 명칭으로도 찾습니다 */
+    return terms.every((t, ti) => {
+      const tl = nrm(t);
+      if (vals.some(v => v.includes(tl))) return true;
+      if (od && nrm(od).includes(tl)) return true;
+      return SMART_FIELDS.some(f => r[f] && matchers[ti](r[f])) || (od && matchers[ti](od));
+    });
+  });
+  matched.sort(byNewest); // 검색 결과 최신순 정렬
+
+  const label = terms.join(', ');
+  if (matched.length === 0) {
+    document.getElementById('mainContent').innerHTML = `
+      <div class="empty-state"><div class="ico">🔍</div><p>"${label}"에 해당하는 결과가 없습니다.</p></div>`;
+    return;
+  }
+
+  viewStack.push({ view: currentView, keyword: '' });
+  currentView = 'search';
+  lastSearch = { keyword: label, matched: matched, type: null };
+
+  // 키워드 2개 이상 → 현재와 같이 상세 목록을 바로 표시
+  if (terms.length >= 2) {
+    renderGenericSearch(label, matched);
+    return;
+  }
+
+  // 키워드 1개 → 국가/대리점/아이템 검색이면 대시보드 형태, 그 외에는 상세 목록
+  const keyword = terms[0];
+  const type = detectSearchType(keyword, matched);
+  lastSearch.type = type;
+  if (type === 'country' || type === 'distributor' || type === 'item' || type === 'lot') {
+    renderDashboardSearch(keyword, matched, type);
+  } else {
+    renderGenericSearch(keyword, matched);
+  }
+}
+
+// 국가/대리점/아이템/LOT 단일 검색 → 대시보드(차트) 형태 + [자세히] 버튼
+function renderDashboardSearch(keyword, matched, type) {
+  const typeLabel = { country: '국가', distributor: '대리점', item: '아이템', lot: 'LOT No.' }[type] || '검색';
+  const countryCounts = countBy(matched, 'country');
+  const itemCounts = countBy(matched, 'item').filter(([k]) => k && k !== '(없음)');
+  const c3Counts = countBy(matched, 'c3').filter(([k]) => k && k !== '(없음)');
+  const closed = matched.filter(r => r.term === 'Closed').length;
+  const ongoing = matched.filter(r => r.term === 'On Going').length;
+
+  // 두 번째 분포 차트: 아이템/LOT 검색이면 국가, 국가/대리점 검색이면 아이템을 함께 보여줌
+  const secondIsItem = (type === 'country' || type === 'distributor');
+  const secondCounts = secondIsItem ? itemCounts.slice(0, 10) : countryCounts.slice(0, 10);
+  const secondTitle = secondIsItem ? '아이템별 클레임 수량 (상위 10)' : '국가별 클레임 수량 (상위 10)';
+
+  const html = `
+  <div class="results-header">
+    <button class="back-btn" onclick="goBack()">← 뒤로</button>
+    <h2>${typeLabel} : ${keyword}${type === 'distributor' && matched.length && nrm(officialDist(matched[0])) !== nrm(keyword) ? ` <span style="font-size:13px;color:var(--text2);font-weight:400">→ ${officialDist(matched[0])}</span>` : ''}</h2>
+    <span class="count">${matched.length.toLocaleString()}건</span>
+    <button class="year-btn" style="margin-left:auto" onclick="showSearchDetail()">자세히 →</button>
+  </div>
+  <div class="stat-row">
+    <div class="stat"><div class="val">${matched.length.toLocaleString()}</div><div class="lbl">검색 클레임</div></div>
+    <div class="stat"><div class="val" style="color:var(--accent3)">${closed.toLocaleString()}</div><div class="lbl">Closed</div></div>
+    <div class="stat"><div class="val" style="color:var(--yellow)">${ongoing.toLocaleString()}</div><div class="lbl">On Going</div></div>
+    <div class="stat"><div class="val" style="color:var(--accent2)">${countryCounts.length}</div><div class="lbl">접수 국가 수</div></div>
+  </div>
+  <div class="graph-section">
+    <div class="graph-card">
+      <h3>접수 국가</h3>
+      <div class="graph-chart-wrap"><canvas id="dashCountryChart"></canvas></div>
+      <p class="hint">막대를 클릭하면 해당 클레임 목록을 봅니다</p>
+    </div>
+    <div class="graph-card">
+      <h3>3rd CLASS 분류</h3>
+      <div class="graph-chart-wrap"><canvas id="dashC3Chart"></canvas></div>
+      <p class="hint">항목을 클릭하면 해당 클레임 목록을 봅니다</p>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:20px">
+    <h2>${secondTitle} <span style="font-size:11px;color:var(--text2);text-transform:none;font-weight:400;">— 막대를 클릭하면 해당 클레임 목록</span></h2>
+    <div class="chart-wrap"><canvas id="dashSecondChart"></canvas></div>
+  </div>
+  <div id="dashSubResults"></div>`;
+
+  document.getElementById('mainContent').innerHTML = html;
+
+  requestAnimationFrame(() => {
+    const topCountries = countryCounts.slice(0, 12);
+    makeBarChart('dashCountryChart', topCountries.map(([k]) => k), topCountries.map(([, v]) => v), (country) => {
+      showDashSubTable(matched.filter(r => r.country === country), `${keyword} — 국가: ${country}`);
+    });
+    makeDoughnutChart('dashC3Chart', c3Counts.map(([k]) => k).slice(0, 10), c3Counts.map(([, v]) => v).slice(0, 10), (c3) => {
+      showDashSubTable(matched.filter(r => r.c3 === c3), `${keyword} — ${c3}`);
+    });
+    makeBarChart('dashSecondChart', secondCounts.map(([k]) => k), secondCounts.map(([, v]) => v), (val) => {
+      const field = secondIsItem ? 'item' : 'country';
+      showDashSubTable(matched.filter(r => r[field] === val), `${keyword} — ${val}`);
+    });
+  });
+}
+
+function showDashSubTable(rows, title) {
+  const el = document.getElementById('dashSubResults');
+  if (!el) return;
+  el.innerHTML = `
+  <div class="card" style="margin-top:20px">
+    <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:12px">${title} (${rows.length}건)</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Complaint No.</th><th>Item</th><th>LOT No.</th><th>3rd CLASS</th><th>국가</th><th>연락처</th><th>수신일</th><th>상태</th></tr></thead>
+        <tbody>
+          ${rows.map((r, i) => `
+          <tr onclick="showDetail(DATA_MAP['${r.no}'])" title="클릭하여 상세 보기">
+            <td style="color:var(--text2)">${i + 1}</td>
+            <td style="font-weight:600;color:var(--accent)">${r.no}</td>
+            <td>${r.item || '-'}</td>
+            <td>${r.lot || '-'}</td>
+            <td>${r.c3 || '-'}</td>
+            <td>${r.country || '-'}</td>
+            <td>${r.contact || '-'}</td>
+            <td>${r.recv_date || '-'}</td>
+            <td>${termTag(r.term) || r.term || '-'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+  el.scrollIntoView({ behavior: 'smooth' });
+}
+
+// [자세히] → 현재와 동일한 상세 목록
+function showSearchDetail() {
+  viewStack.push({ view: 'dashSearch', keyword: lastSearch.keyword });
+  renderGenericSearch(lastSearch.keyword, lastSearch.matched);
+}
+
+function goBack() {
+  if (viewStack.length > 0) {
+    const prev = viewStack.pop();
+    if (prev.view === 'dashSearch' && lastSearch.matched.length) {
+      renderDashboardSearch(lastSearch.keyword, lastSearch.matched, lastSearch.type);
+    } else {
+      renderDashboard();
+    }
+  } else {
+    renderDashboard();
+  }
+}
+
+// ---- 국가·대리점·담당자 자동완성 ----
+let _claimAcItems = null;
+function claimAcItems() {
+  if (_claimAcItems) return _claimAcItems;
+  const c = {}, d = {}, rv = {};
+  for (const r of DATA) {
+    if (r.country) c[r.country] = 1;
+    if (r.dist) d[r.dist] = 1;
+    if (r.receiver) rv[r.receiver] = 1;
+  }
+  _claimAcItems = Object.keys(c).sort().map(n => {
+      const ko = SearchUtils.koNameOf(n);
+      return { value: n, label: n, sub: (ko ? ko + ' · ' : '') + '국가' };
+    })
+    .concat(Object.keys(d).sort().map(n => ({ value: n, label: n, sub: '대리점' })))
+    .concat(Object.keys(rv).sort().map(n => ({ value: n, label: n, sub: '담당자' })));
+  return _claimAcItems;
+}
+
+// ---- SEARCH INPUT (Enter를 눌러야만 검색 실행) ----
+SearchUtils.attachAutocomplete(document.getElementById('searchInput'), claimAcItems, {
+  onSelect: function(it) { doSearch(it.value); }
+});
+document.getElementById('searchInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    const val = this.value.trim();
+    if (val) doSearch(val);
+    else renderDashboard();
+  }
+});
+document.getElementById('searchInput').addEventListener('input', function() {
+  if (!this.value.trim() && currentView !== 'dashboard') renderDashboard();
+});
+
+// ---- 화면 어디에나 파일을 드래그하면 업로드 ----
+(function() {
+  const overlay = document.getElementById('dropOverlay');
+  let dragDepth = 0;
+  function hasFiles(e) {
+    return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') !== -1;
+  }
+  document.addEventListener('dragenter', function(e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault(); dragDepth++;
+    overlay.classList.add('on');
+  });
+  document.addEventListener('dragover', function(e) { if (hasFiles(e)) e.preventDefault(); });
+  document.addEventListener('dragleave', function(e) {
+    if (!hasFiles(e)) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0) overlay.classList.remove('on');
+  });
+  document.addEventListener('drop', function(e) {
+    e.preventDefault(); dragDepth = 0;
+    overlay.classList.remove('on');
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) handleClaimFile(f);
+  });
+})();
+
+/* 클레임 자료 불러오기 — 통합 검색과 같은 파일(data/claims-YYYY.json)을 씁니다.
+   자료를 두 벌 두면 엑셀을 올렸을 때 한쪽 화면 숫자만 바뀌므로 한 곳만 둡니다.
+   화면 코드는 예전처럼 window.RAW_2024 / RAW_2025 … 를 그대로 읽습니다. */
+async function loadClaimData() {
+  let years = ['2024', '2025', '2026'];
+  try {
+    const meta = await (await fetch('../data/meta.json')).json();
+    if (meta.claimYears && meta.claimYears.length) years = meta.claimYears.map(y => String(y.year));
+  } catch (e) { /* meta.json 을 못 읽으면 기본 연도로 진행 */ }
+  window.CLAIM_YEARS = years.slice().sort();
+  await Promise.all(years.map(async y => {
+    try {
+      const rows = await (await fetch('../data/claims-' + y + '.json')).json();
+      window['RAW_' + y] = Array.isArray(rows) ? rows : [];
+    } catch (e) { window['RAW_' + y] = []; }
+  }));
+  // 연도 탭을 자료에 맞춰 다시 그립니다 (새 연도가 생겨도 따라갑니다)
+  const box = document.getElementById('yearTabs');
+  if (box) {
+    const desc = window.CLAIM_YEARS.slice().reverse();
+    box.innerHTML = desc.map(y =>
+      '<button class="year-btn' + (y === currentYear ? ' year-btn-active' : '') +
+      '" data-year="' + y + '" onclick="switchYear(\'' + y + '\')">' + y + '</button>').join('');
+    if (desc.indexOf(currentYear) === -1) currentYear = desc[0];
+  }
+  window.CLAIM_YEARS.forEach(y => { if (!EXTRAS_ALL[y]) EXTRAS_ALL[y] = []; });
+}
+
+// ---- INIT ----
+(async function initClaim() {
+  const status = document.getElementById('uploadStatus');
+  status.style.display = 'block';
+  status.textContent = '⏳ 데이터 불러오는 중...' + (isClaimSheetConfigured() ? ' (전 직원 공유 저장소 확인)' : '');
+  await loadClaimData();
+  try {
+    EXTRAS_ALL = await fetchAllClaimExtras();
+  } catch (e) { /* claim-sheet.js가 이미 폴백 처리함 */ }
+  DATA = buildYearData(currentYear);
+  _claimAcItems = null;
+  rebuildDataMap();
+  updateUploadUI();
+  renderUploadLog();
+  renderDashboard();
+  /* Sales Report 고객명 + 저장된 연결을 읽어 대리점 정식 명칭을 적용합니다 (assets/dist-alias.js) */
+  DistAlias.load({
+    rows: function(){ let all = []; ['2024', '2025', '2026'].forEach(y => { all = all.concat(normalizeRaw(window['RAW_' + y] || []), normalizeRaw(EXTRAS_ALL[y] || [])); }); return all; },
+    onReady: function(){ if (currentView === 'dashboard') renderDashboard(); }
+  }).catch(function(){});
+})();
+</script>
+<script src="../assets/theme.js"></script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+{
+  "_설명": "사용자가 확정한 값 정리표(목록에_없는_값_260909.xlsx, 2026-09-09). 원본 값 → 포털 목록 값. 형식 {\"화면\": {\"항목\": {\"원본\": \"바꿀 값\"}}}. 여기에 없는 값은 원본 그대로 옮깁니다. 적용 내역은 리포트와 각 건의 _valueFix 에 남습니다. assets/migrate-convert.js 의 DEFAULT_VALUE_MAP 과 같이 고쳐 주세요.",
+  "거래처 이력카드": {
+    "분류": {
+      "PM": "PM(Preventive Maintenance)",
+      "소프트웨어 업데이트": "PM(Preventive Maintenance)",
+      "A/S 수리": "AS 수리",
+      "Pre-maintenance": "PM(Preventive Maintenance)",
+      "컴플": "컴플레인"
+    },
+    "시약명": {
+      "Total b-hCG": "Total B-hCG",
+      "b-HCG Plus": "b-hCG Plus",
+      "B-hcg": "Total B-hCG",
+      "Total Anti-Infliximab": "Total Anti-infliximab",
+      "TRIAS Mycoplasma": "Mycoplasma",
+      "Washing Cartridge": "AFIAS washing cartridge",
+      "TRIAS Influenza A+B": "influenza A+B",
+      "Total B-hcG": "Total B-hCG"
+    },
+    "담당자": {
+      "김대영, 최형우": "최형우, 김대영",
+      ".최형우": "최형우"
+    },
+    "기기명": {
+      "TRIAS-3": "TRIAS 3",
+      "AH600Pro": "AH600 Pro",
+      "AH600 PRO": "AH600 Pro",
+      "ALCIS-2": "ALCIS 2",
+      "ALCIS-1": "ALCIS 1",
+      "Hemochroma Plus": "Hemochroma plus",
+      "AFIAS-11": "AFIAS-1",
+      "ichroma II": "ichroma 2",
+      "AFIAS 10": "AFIAS-10"
+    }
+  },
+  "고객지원센터": {
+    "접수담당자": {
+      "하용왕": "하용황"
+    },
+    "회신자": {
+      "박헤신": "박혜신",
+      "박혜신/김대영": "박혜신, 김대영"
+    },
+    "장비": {
+      "AH600 PRO": "AH600 Pro",
+      "AH-600 Pro": "AH600 Pro"
+    },
+    "아이템": {
+      "b-hCG Plus,b-hCG": "b-hCG Plus, Total B-hCG",
+      "Total B-hcG": "Total B-hCG"
+    }
+  }
+}

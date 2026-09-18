@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>변경 이력 — Boditech MED</title>
+<link rel="stylesheet" href="../assets/portal.css">
+<style>
+.act{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+.act.등록{background:#dcfce7;color:#15803d}
+.act.수정{background:#dbeafe;color:#1d4ed8}
+.act.삭제{background:#fee2e2;color:#b91c1c}
+.act.로그인{background:#f3f4f6;color:#6b7280}
+.act.비번{background:#fef3c7;color:#b45309}
+.who{font-weight:700}
+.mail{color:#9ca3af;font-size:11px}
+.fields{color:#374151}
+.none{color:#9ca3af}
+.denied{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:10px;
+  padding:22px 24px;font-size:13.5px;line-height:1.7}
+.sum{font-size:12.5px;color:#6b7280;margin-bottom:10px}
+/* 탭: 변경 이력 | 운영 로그 (2026-09) */
+.lg-tabs{display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid #d1d5db}
+.lg-tabs button{background:none;border:none;border-bottom:3px solid transparent;padding:10px 16px;font-size:14px;font-weight:700;color:#6b7280;cursor:pointer;margin-bottom:-1px}
+.lg-tabs button.on{color:#111827;border-bottom-color:#111827}
+.lg-tabs .bd{display:inline-block;min-width:18px;padding:1px 6px;margin-left:6px;border-radius:999px;background:#c2532a;color:#fff;font-size:11px;line-height:16px;text-align:center}
+.lg-tabs .bd.zero{background:#e5e7eb;color:#6b7280}
+.kchips{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 12px}
+.kchip{border:1px solid #d1d5db;background:#fff;padding:5px 10px;font-size:12px;font-weight:600;color:#374151;cursor:pointer;border-radius:999px}
+.kchip b{margin-left:4px}
+.kchip.on{background:#111827;border-color:#111827;color:#fff}
+.kind{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+.kind.red{background:#fee2e2;color:#b91c1c}.kind.amber{background:#fef3c7;color:#b45309}
+.kind.violet{background:#ede9fe;color:#6d28d9}.kind.gray{background:#f3f4f6;color:#4b5563}.kind.orange{background:#ffedd5;color:#c2410c}
+.cnt{font-weight:800;color:#b91c1c;white-space:nowrap}
+.src{color:#9ca3af;font-size:11px}
+.occ td{background:#fafaf7}
+.occ table{width:100%;border-collapse:collapse;font-size:12px}
+.occ table td{border-bottom:1px dashed #e5e7eb;padding:5px 8px;background:transparent}
+.det{white-space:pre-wrap;word-break:break-all;color:#6b7280;font-size:11.5px;max-height:160px;overflow:auto}
+.keep{font-size:11.5px;color:#9ca3af;margin-top:6px}
+</style>
+<!-- 디자인 레이어(Quiet Editorial Workspace): 겉모습만 바꿉니다. 화면 내용·동작은 그대로입니다. 글꼴·사진은 assets/fonts, assets/img 에 포함되어 외부 접속이 필요 없습니다. -->
+<link rel="stylesheet" href="../assets/theme.css">
+</head>
+<body>
+
+<nav class="b-nav">
+  <a class="b-home" href="../index.html"><span>🏠</span>홈</a>
+  <div class="b-brand">Boditech <span>MED</span></div>
+  <div class="b-spacer"></div>
+  <span class="b-who" id="who"></span>
+</nav>
+
+<section class="b-hero">
+  <h1>변경 이력 · 운영 로그 <em>Audit · Ops Log</em></h1>
+  <p>변경 이력은 누가 · 언제 · 무엇을 바꿨는지, 운영 로그는 저장 실패 · 오류 · 로그인 잠김처럼 무엇이 잘못됐는지 남긴 기록입니다. 관리자만 볼 수 있습니다.</p>
+</section>
+
+<div class="wrap">
+
+  <div id="denied" class="denied" style="display:none">
+    이 화면은 관리자(admin)만 볼 수 있습니다. 권한이 필요하면 장명선님에게 문의해주세요.
+  </div>
+
+  <div id="main" style="display:none">
+    <div class="lg-tabs" role="tablist">
+      <button type="button" data-tab="audit" class="on">변경 이력</button>
+      <button type="button" data-tab="ops">운영 로그<span class="bd zero" id="opsBadge">·</span></button>
+    </div>
+
+  <div id="tab-audit">
+    <div class="card">
+      <h3>검색</h3>
+      <div class="desc">비워두면 전체를 최신순으로 보여줍니다. 조건은 함께 적용됩니다.</div>
+      <div class="row">
+        <select id="fSheet">
+          <option value="">전체 메뉴</option>
+          <option value="master_log">클레임 로그 (국내)</option>
+          <option value="client_cards">거래처 이력카드</option>
+          <option value="csc_cards">고객지원센터</option>
+          <option value="upload_log">엑셀 업로드</option>
+          <option value="-">로그인 · 비밀번호</option>
+        </select>
+        <select id="fBy"><option value="">전체 사용자</option></select>
+        <input id="fRec" placeholder="건번호 (예: 2608-CC-007K)">
+        <input id="fFrom" placeholder="시작일 (예: 8/1)">
+        <input id="fTo" placeholder="종료일 (예: 8/21)">
+        <button class="btn" id="btnGo">검색</button>
+        <button class="btn ghost" id="btnReset">초기화</button>
+        <button class="btn ghost" id="btnCsv">CSV 저장</button>
+      </div>
+    </div>
+
+    <div class="sum" id="sum"></div>
+    <div class="tblbox">
+      <table class="lst">
+        <thead><tr>
+          <th style="width:140px">일시</th>
+          <th style="width:150px">누가</th>
+          <th style="width:70px">무엇을</th>
+          <th style="width:130px">메뉴</th>
+          <th style="width:150px">건번호</th>
+          <th>바뀐 항목 / 비고</th>
+        </tr></thead>
+        <tbody id="tb"><tr><td colspan="6" style="padding:20px;color:#9ca3af">불러오는 중…</td></tr></tbody>
+      </table>
+    </div>
+  </div><!-- /tab-audit -->
+
+  <!-- ==================== 운영 로그 ==================== -->
+  <div id="tab-ops" hidden>
+    <div class="card">
+      <h3>최근 7일</h3>
+      <div class="desc">누르면 그 종류만 봅니다. 같은 문제가 되풀이된 것은 한 줄로 묶어 횟수로 보여줍니다.</div>
+      <div class="kchips" id="oChips"><span class="none">불러오는 중…</span></div>
+      <div class="row">
+        <select id="oKind">
+          <option value="">전체 종류</option>
+          <option value="save_fail">저장 실패</option>
+          <option value="delete_fail">삭제 실패</option>
+          <option value="load_fail">불러오기 실패</option>
+          <option value="upload_fail">업로드 실패</option>
+          <option value="server_error">서버 오류</option>
+          <option value="client_error">화면 오류</option>
+          <option value="login_fail">로그인 실패</option>
+          <option value="login_locked">로그인 잠김</option>
+        </select>
+        <select id="oBy"><option value="">전체 사용자</option></select>
+        <input id="oFrom" placeholder="시작일 (예: 8/1)">
+        <input id="oTo" placeholder="종료일 (예: 8/21)">
+        <select id="oView"><option value="group">같은 문제 묶어 보기</option><option value="flat">한 줄씩 보기</option></select>
+        <button class="btn" id="oGo">검색</button>
+        <button class="btn ghost" id="oReset">초기화</button>
+        <button class="btn ghost" id="oCsv">CSV 저장</button>
+      </div>
+      <div class="keep">90일이 지난 기록은 자동으로 지워집니다. 클레임 본문·연락처 같은 내용은 남기지 않고 메뉴·건번호·오류 메시지만 남깁니다.</div>
+    </div>
+    <div class="sum" id="oSum"></div>
+    <div class="tblbox">
+      <table class="lst">
+        <thead id="oHead"></thead>
+        <tbody id="oTb"><tr><td style="padding:20px;color:#9ca3af">불러오는 중…</td></tr></tbody>
+      </table>
+    </div>
+  </div><!-- /tab-ops -->
+  </div>
+
+</div>
+
+<script src="../assets/auth-gate.js"></script>
+<script src="../assets/portal.js"></script>
+<script>
+/* 서버 시각(UTC ISO)을 한국 시간(브라우저 로컬)으로 */
+function fmtLocal(iso, sec) {
+  if (!iso) return '';
+  var d = new Date(iso); if (isNaN(d.getTime())) return String(iso).replace('T', ' ').slice(0, 16);
+  var p = function (n) { return String(n).padStart(2, '0'); };
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + (sec ? ':' + p(d.getSeconds()) : '');
+}
+var SHEET_KO = {
+  master_log: '클레임 로그 (국내)',
+  client_cards: '거래처 이력카드',
+  CSC: '고객지원센터', csc_cards: '고객지원센터', upload_log: '엑셀 업로드',
+  claim_progress: '클레임 진행',
+  '-': '로그인 · 비밀번호'
+};
+var rows = [];
+
+/* "8/1" 같은 짧은 입력을 ISO 로 바꿉니다 (서버는 ISO 문자열끼리 비교합니다) */
+function toIso(v, endOfDay) {
+  v = String(v || '').trim();
+  if (!v) return '';
+  var y = new Date().getFullYear(), m, d;
+  var a = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  var b = v.match(/^(\d{1,2})[\/.\-](\d{1,2})$/);
+  if (a) { y = +a[1]; m = +a[2]; d = +a[3]; }
+  else if (b) { m = +b[1]; d = +b[2]; }
+  else return '';
+  /* 브라우저(한국) 시간 자정 기준으로 바꿔 보냅니다. 예전에는 UTC 자정이라 오전 0~9시 기록이 하루 어긋났습니다. */
+  var dt = endOfDay ? new Date(y, m - 1, d, 23, 59, 59, 999) : new Date(y, m - 1, d, 0, 0, 0, 0);
+  return isNaN(dt.getTime()) ? '' : dt.toISOString();
+}
+
+function load() {
+  var q = [];
+  var sheet = $('#fSheet').value, by = $('#fBy').value, rec = $('#fRec').value.trim();
+  var from = toIso($('#fFrom').value), to = toIso($('#fTo').value, true);
+  if (sheet) q.push('sheet=' + encodeURIComponent(sheet));
+  if (by) q.push('by=' + encodeURIComponent(by));
+  if (rec) q.push('recId=' + encodeURIComponent(rec));
+  if (from) q.push('from=' + encodeURIComponent(from));
+  if (to) q.push('to=' + encodeURIComponent(to));
+  q.push('limit=1000');
+
+  $('#tb').innerHTML = '<tr><td colspan="6" style="padding:20px;color:#9ca3af">불러오는 중…</td></tr>';
+  fetch('/api/audit?' + q.join('&'), { credentials: 'same-origin' })
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (j.error) {
+        $('#tb').innerHTML = '<tr><td colspan="6" style="padding:20px;color:#b91c1c">' + esc(j.error) + '</td></tr>';
+        return;
+      }
+      rows = j || [];
+      render();
+    })
+    .catch(function () {
+      $('#tb').innerHTML = '<tr><td colspan="6" style="padding:20px;color:#b91c1c">불러오지 못했습니다. 새로고침해주세요.</td></tr>';
+    });
+}
+
+function render() {
+  $('#sum').textContent = rows.length ? (rows.length + '건 · 최신순') : '';
+  if (!rows.length) {
+    $('#tb').innerHTML = '<tr><td colspan="6" style="padding:20px;color:#9ca3af">해당하는 기록이 없습니다.</td></tr>';
+    return;
+  }
+  $('#tb').innerHTML = rows.map(function (r) {
+    var when = fmtLocal(r.at);
+    var cls = r.action === '비밀번호 변경' ? '비번' : (r.action || '');
+    var body = r.fields ? '<span class="fields">' + esc(r.fields) + '</span>'
+             : (r.note ? '<span class="none">' + esc(r.note) + '</span>' : '<span class="none">—</span>');
+    return '<tr>'
+      + '<td>' + esc(when) + '</td>'
+      + '<td><span class="who">' + esc(r.byName || '(이름 없음)') + '</span><br><span class="mail">' + esc(r.by || '') + '</span></td>'
+      + '<td><span class="act ' + esc(cls) + '">' + esc(r.action || '') + '</span></td>'
+      + '<td>' + esc(SHEET_KO[r.sheet] || r.sheet || '') + '</td>'
+      + '<td>' + (r.recId && r.recId !== '-' ? esc(r.recId) : '<span class="none">—</span>') + '</td>'
+      + '<td class="wrap">' + body + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+function toCsv() {
+  if (!rows.length) { alert('저장할 기록이 없습니다.'); return; }
+  var head = ['일시', '이름', '메일', '무엇을', '메뉴', '건번호', '바뀐 항목', '비고'];
+  var q = function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+  var body = rows.map(function (r) {
+    return [fmtLocal(r.at, true), r.byName, r.by, r.action,
+            SHEET_KO[r.sheet] || r.sheet, r.recId, r.fields, r.note].map(q).join(',');
+  });
+  /* 엑셀에서 한글이 깨지지 않도록 BOM 을 붙입니다 */
+  var blob = new Blob(['\uFEFF' + [head.map(q).join(',')].concat(body).join('\r\n')],
+    { type: 'text/csv;charset=utf-8;' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '변경이력_' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+
+/* ==================== 운영 로그 (2026-09) ==================== */
+var KIND = {
+  save_fail: ['저장 실패', 'red'], delete_fail: ['삭제 실패', 'red'], server_error: ['서버 오류', 'red'],
+  load_fail: ['불러오기 실패', 'amber'], upload_fail: ['업로드 실패', 'amber'],
+  client_error: ['화면 오류', 'violet'], login_fail: ['로그인 실패', 'gray'], login_locked: ['로그인 잠김', 'orange']
+};
+var KIND_ORDER = ['save_fail', 'delete_fail', 'server_error', 'upload_fail', 'load_fail', 'client_error', 'login_locked', 'login_fail'];
+var OPS_SHEET = {
+  master_log: '클레임 로그 (국내)', client_cards: '거래처 이력카드', csc_cards: '고객지원센터', hospital_notes: '병원 참고사항',
+  claim_extra: '통합 클레임 로그 (업로드분)', upload_log: '업로드 기록', dist_alias: '대리점명 정리', trash: '휴지통',
+  'blob:claims': '통합 클레임 로그 (엑셀)', 'blob:sales': 'Sales Report (엑셀)', claims: '통합 클레임 로그 (엑셀)', sales: 'Sales Report (엑셀)'
+};
+function pageKo(pg) {
+  pg = String(pg || '');
+  if (/^records\.html#client/.test(pg)) return '거래처 이력';
+  if (/^records\.html#csc/.test(pg)) return '고객지원센터';
+  if (/^records\.html#claim/.test(pg)) return '클레임 로그 (국내)';
+  if (/^records\.html/.test(pg)) return '기록하기';
+  var map = { 'claim.html': '통합 클레임 로그', 'sales.html': 'Sales Report', 'search.html': '통합 검색', 'info.html': '정보',
+    'index.html': '포털 메인', 'import.html': '운영 데이터 옮기기', 'audit.html': '변경 이력', 'api/records': '서버 · 기록 저장',
+    'api/blobs': '서버 · 엑셀 저장소', 'auth/login': '로그인', 'api/auth/login': '로그인', 'api/auth/change-password': '비밀번호 변경', 'api/audit': '변경 이력 조회' };
+  var k = pg.split('#')[0];
+  return map[k] || map[pg] || pg || '—';
+}
+var ACT_KO = { add: '등록', update: '수정', delete: '삭제', purge: '영구삭제', restore: '되살리기', list: '불러오기', trash: '휴지통 목록',
+  save: '저장', wipe: '초기화', bulkAdd: '이관', GET: '읽기', POST: '저장' };
+function kindTag(k) { var v = KIND[k] || [k, 'gray']; return '<span class="kind ' + v[1] + '">' + esc(v[0]) + '</span>'; }
+function whereOf(r) {
+  var sh = OPS_SHEET[r.sheet] || r.sheet || '';
+  return esc(pageKo(r.page)) + (sh ? '<br><span class="src">' + esc(sh) + (r.action ? ' · ' + esc(ACT_KO[r.action] || r.action) : '') + '</span>' : (r.action ? '<br><span class="src">' + esc(ACT_KO[r.action] || r.action) + '</span>' : ''));
+}
+function whoOf(r) {
+  return r.by ? '<span class="who">' + esc(r.byName || '(이름 없음)') + '</span><br><span class="mail">' + esc(r.by) + '</span>' : '<span class="none">—</span>';
+}
+var ops = [], opsGroups = [], opsFilterKind = '';
+
+function opsLoadSummary() {
+  fetch('/api/opslog?summary=7', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+    if (!j || j.error) { $('#oChips').innerHTML = '<span class="none">' + esc((j && j.error) || '불러오지 못했습니다.') + '</span>'; return; }
+    var bd = $('#opsBadge');
+    bd.textContent = j.total ? j.total.toLocaleString() : '0'; bd.classList.toggle('zero', !j.total);
+    var chips = KIND_ORDER.filter(function (k) { return j.byKind[k]; }).map(function (k) {
+      return '<button type="button" class="kchip" data-k="' + k + '">' + esc(KIND[k][0]) + '<b>' + j.byKind[k] + '</b></button>';
+    });
+    $('#oChips').innerHTML = chips.length ? '<button type="button" class="kchip on" data-k="">전체<b>' + j.total + '</b></button>' + chips.join('')
+      : '<span class="none">최근 7일 동안 기록된 문제가 없습니다. 👍</span>';
+    $$('#oChips .kchip').forEach(function (b) { b.onclick = function () {
+      $('#oKind').value = b.getAttribute('data-k');
+      var since = new Date(Date.now() - 7 * 86400000);
+      $('#oFrom').value = since.getFullYear() + '-' + (since.getMonth() + 1) + '-' + since.getDate();   /* 칩은 최근 7일 건수이므로 목록도 7일로 맞춥니다 */
+      $('#oTo').value = '';
+      $$('#oChips .kchip').forEach(function (x) { x.classList.toggle('on', x === b); });
+      opsLoad();
+    }; });
+  }).catch(function () { $('#oChips').innerHTML = '<span class="none">불러오지 못했습니다.</span>'; });
+}
+
+function opsLoad() {
+  var q = [], kind = $('#oKind').value, by = $('#oBy').value;
+  var from = toIso($('#oFrom').value), to = toIso($('#oTo').value, true);
+  if (kind) q.push('kind=' + encodeURIComponent(kind));
+  if (by) q.push('by=' + encodeURIComponent(by));
+  if (from) q.push('from=' + encodeURIComponent(from));
+  if (to) q.push('to=' + encodeURIComponent(to));
+  q.push('limit=2000');
+  $('#oTb').innerHTML = '<tr><td style="padding:20px;color:#9ca3af">불러오는 중…</td></tr>';
+  fetch('/api/opslog?' + q.join('&'), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+    if (!Array.isArray(j)) { $('#oTb').innerHTML = '<tr><td style="padding:20px;color:#b91c1c">' + esc((j && j.error) || '불러오지 못했습니다.') + '</td></tr>'; return; }
+    ops = j;
+    /* 사용자 목록은 불러온 로그에서 뽑습니다 */
+    var sel = $('#oBy'), keep = sel.value, seen = {};
+    ops.forEach(function (r) { if (r.by && !seen[r.by]) seen[r.by] = r.byName || ''; });
+    sel.innerHTML = '<option value="">전체 사용자</option>' + Object.keys(seen).sort().map(function (m) {
+      return '<option value="' + esc(m) + '">' + esc(seen[m] ? seen[m] + ' (' + m + ')' : m) + '</option>'; }).join('');
+    if (keep && seen[keep] !== undefined) sel.value = keep;
+    opsRender();
+  }).catch(function () { $('#oTb').innerHTML = '<tr><td style="padding:20px;color:#b91c1c">불러오지 못했습니다. 새로고침해주세요.</td></tr>'; });
+}
+
+function opsRender() {
+  var total = ops.reduce(function (a, r) { return a + (r.count || 1); }, 0);
+  if (!ops.length) {
+    $('#oSum').textContent = '';
+    $('#oHead').innerHTML = '';
+    $('#oTb').innerHTML = '<tr><td style="padding:20px;color:#9ca3af">해당하는 기록이 없습니다.</td></tr>';
+    return;
+  }
+  if ($('#oView').value === 'flat') {
+    $('#oSum').textContent = ops.length.toLocaleString() + '줄 · 발생 ' + total.toLocaleString() + '회 · 최신순';
+    $('#oHead').innerHTML = '<tr><th style="width:140px">일시</th><th style="width:100px">종류</th><th style="width:150px">누가</th><th style="width:170px">화면 · 메뉴</th><th style="width:130px">건번호</th><th>내용</th><th style="width:56px">횟수</th></tr>';
+    $('#oTb').innerHTML = ops.map(function (r) {
+      return '<tr><td>' + esc(fmtLocal(r.at, true)) + '</td><td>' + kindTag(r.kind) + '</td><td>' + whoOf(r) + '</td><td>' + whereOf(r) + '</td>'
+        + '<td>' + (r.recId ? esc(r.recId) : '<span class="none">—</span>') + '</td>'
+        + '<td class="wrap">' + esc(r.message) + (r.detail ? '<div class="det">' + esc(r.detail) + '</div>' : '') + '</td>'
+        + '<td class="cnt">' + (r.count > 1 ? r.count + '회' : '') + '</td></tr>';
+    }).join('');
+    return;
+  }
+  /* 같은 문제 묶기: 종류 + 화면 + 메뉴 + 메시지 */
+  var g = {}, order = [];
+  ops.forEach(function (r) {
+    var k = [r.kind, pageKo(r.page), r.sheet, r.action, r.message].join('|');
+    var e = g[k];
+    if (!e) { e = g[k] = { first: r, rows: [], n: 0, users: {}, recs: {}, lastAt: r.at, firstAt: r.at }; order.push(k); }
+    e.rows.push(r); e.n += r.count || 1;
+    if (r.by) e.users[r.byName || r.by] = 1;
+    if (r.recId) e.recs[r.recId] = 1;
+    if (r.at < e.firstAt) e.firstAt = r.at;
+  });
+  opsGroups = order.map(function (k) { return g[k]; });                       /* ops 가 최신순이므로 마지막 발생 기준 최신순 */
+  $('#oSum').textContent = opsGroups.length.toLocaleString() + '가지 문제 · 발생 ' + total.toLocaleString() + '회 · 마지막 발생 최신순 · 줄을 누르면 하나하나 봅니다';
+  $('#oHead').innerHTML = '<tr><th style="width:140px">마지막 발생</th><th style="width:100px">종류</th><th style="width:170px">화면 · 메뉴</th><th>내용</th><th style="width:64px">횟수</th><th style="width:170px">누가</th><th style="width:140px">처음 발생</th></tr>';
+  $('#oTb').innerHTML = opsGroups.map(function (e, i) {
+    var users = Object.keys(e.users), recs = Object.keys(e.recs);
+    return '<tr data-g="' + i + '"><td>' + esc(fmtLocal(e.lastAt)) + '</td><td>' + kindTag(e.first.kind) + '</td><td>' + whereOf(e.first) + '</td>'
+      + '<td class="wrap">' + esc(e.first.message) + (recs.length ? '<br><span class="src">건번호 ' + esc(recs.slice(0, 3).join(', ')) + (recs.length > 3 ? ' 외 ' + (recs.length - 3) + '건' : '') + '</span>' : '') + '</td>'
+      + '<td class="cnt">' + e.n + '회</td>'
+      + '<td>' + (users.length ? esc(users.slice(0, 2).join(', ')) + (users.length > 2 ? ' 외 ' + (users.length - 2) + '명' : '') : '<span class="none">—</span>') + '</td>'
+      + '<td>' + esc(fmtLocal(e.firstAt)) + '</td></tr>'
+      + '<tr class="occ" data-occ="' + i + '" hidden><td colspan="7"></td></tr>';
+  }).join('');
+}
+function opsToggle(i) {
+  var tr = document.querySelector('#oTb tr[data-occ="' + i + '"]'); if (!tr) return;
+  if (!tr.hidden) { tr.hidden = true; return; }
+  var e = opsGroups[i];
+  tr.firstChild.innerHTML = '<table>' + e.rows.map(function (r) {
+    return '<tr><td style="width:140px">' + esc(fmtLocal(r.at, true)) + '</td><td style="width:170px">' + whoOf(r) + '</td>'
+      + '<td style="width:130px">' + (r.recId ? esc(r.recId) : '<span class="none">—</span>') + '</td>'
+      + '<td>' + (r.detail ? '<div class="det">' + esc(r.detail) + '</div>' : '<span class="none">—</span>') + '</td>'
+      + '<td style="width:56px" class="cnt">' + (r.count > 1 ? r.count + '회' : '') + '</td></tr>';
+  }).join('') + '</table>';
+  tr.hidden = false;
+}
+function opsCsv() {
+  if (!ops.length) { alert('저장할 기록이 없습니다.'); return; }
+  var head = ['일시', '종류', '이름', '메일', '화면', '메뉴', '동작', '건번호', '내용', '자세히', '횟수', '보낸 곳'];
+  var q = function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+  var body = ops.map(function (r) {
+    return [fmtLocal(r.at, true), (KIND[r.kind] || [r.kind])[0], r.byName, r.by, pageKo(r.page), OPS_SHEET[r.sheet] || r.sheet,
+            ACT_KO[r.action] || r.action, r.recId, r.message, r.detail, r.count, r.source === 'client' ? '화면' : '서버'].map(q).join(',');
+  });
+  var blob = new Blob(['\uFEFF' + [head.map(q).join(',')].concat(body).join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '운영로그_' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+var _opsLoaded = false;
+function showTab(t) {
+  $$('.lg-tabs button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === t); });
+  $('#tab-audit').hidden = t !== 'audit';
+  $('#tab-ops').hidden = t !== 'ops';
+  if (t === 'ops' && !_opsLoaded) { _opsLoaded = true; opsLoad(); }
+  try { history.replaceState(null, '', location.pathname + (t === 'ops' ? '?tab=ops' : location.search.replace(/[?&]tab=ops/, ''))); } catch (e) {}
+}
+function initOps() {
+  $$('.lg-tabs button').forEach(function (b) { b.onclick = function () { showTab(b.getAttribute('data-tab')); }; });
+  $('#oGo').onclick = opsLoad;
+  $('#oCsv').onclick = opsCsv;
+  $('#oView').onchange = opsRender;
+  $('#oReset').onclick = function () {
+    ['oKind', 'oBy', 'oFrom', 'oTo'].forEach(function (id) { $('#' + id).value = ''; });
+    $$('#oChips .kchip').forEach(function (x) { x.classList.toggle('on', x.getAttribute('data-k') === ''); });
+    opsLoad();
+  };
+  ['oFrom', 'oTo'].forEach(function (id) { $('#' + id).addEventListener('keydown', function (e) { if (e.key === 'Enter') opsLoad(); }); });
+  $('#oTb').addEventListener('click', function (e) { var tr = e.target.closest('tr[data-g]'); if (tr) opsToggle(tr.getAttribute('data-g')); });
+  opsLoadSummary();
+  if (new URLSearchParams(location.search).get('tab') === 'ops') showTab('ops');
+}
+
+window.__bdtsAuthReady.then(function () {
+  var me = window.__bdtsUser || {};
+  /* 이 화면은 azure-store.js 를 쓰지 않으므로(whoAmI 없음) 상단 표시를 직접 채웁니다 */
+  var w = $('#who');
+  if (w && me.email) w.textContent = me.email + (me.isAdmin ? ' (관리자)' : '');
+  if (!me.isAdmin) { $('#denied').style.display = 'block'; return; }
+  $('#main').style.display = 'block';
+  initOps();
+
+  /* 상세 팝업의 [🕓 수정 이력] 버튼으로 들어오면 주소의 sheet · recId 로 바로 걸러 보여줍니다 */
+  var qs = new URLSearchParams(location.search);
+  var preset = false;
+  if (qs.get('sheet')) { $('#fSheet').value = qs.get('sheet'); preset = true; }
+  if (qs.get('recId')) { $('#fRec').value = qs.get('recId'); preset = true; }
+
+  /* 사용자 목록은 불러온 이력에서 뽑습니다 (allowlist 를 화면에 내려주지 않기 위함) */
+  fetch('/api/audit?limit=1000', { credentials: 'same-origin' })
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (!Array.isArray(j)) return;
+      var seen = {};
+      j.forEach(function (r) { if (r.by && !seen[r.by]) seen[r.by] = r.byName || r.by; });
+      var sel = $('#fBy');
+      Object.keys(seen).sort().forEach(function (mail) {
+        var o = document.createElement('option');
+        o.value = mail; o.textContent = seen[mail] + ' (' + mail + ')';
+        sel.appendChild(o);
+      });
+      if (preset) { load(); return; }
+      rows = j; render();
+    })
+    .catch(function () { load(); });
+
+  $('#btnGo').onclick = load;
+  $('#btnCsv').onclick = toCsv;
+  $('#btnReset').onclick = function () {
+    ['fSheet', 'fBy', 'fRec', 'fFrom', 'fTo'].forEach(function (id) { $('#' + id).value = ''; });
+    load();
+  };
+  ['fRec', 'fFrom', 'fTo'].forEach(function (id) {
+    $('#' + id).addEventListener('keydown', function (e) { if (e.key === 'Enter') load(); });
+  });
+});
+</script>
+<script src="../ui-common.js"></script>
+<script src="../assets/theme.js"></script>
+</body>
+</html>
